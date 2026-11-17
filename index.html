@@ -37,6 +37,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button class="active" data-tab="matches">Correspondances</button>
 <button class="secondary" data-tab="sellers">Stocks vendeurs</button>
 <button class="secondary" data-tab="buyers">Besoins acheteurs</button>
+<button class="secondary" data-tab="imports">Import CSV</button>
 </div>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
@@ -66,13 +67,22 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="submit">Enregistrer le besoin</button></form></section>
 <section class="panel"><h2>Besoins enregistrés</h2><div id="buyerList" class="cards"></div></section>
 </div>
+<section id="imports" class="panel hidden">
+<h2>Importer des opportunités CSV</h2>
+<p class="muted">Importe un fichier provenant d'une source dont les conditions autorisent l'utilisation. Les lignes arrivent en attente de vérification et ne sont pas proposées aux acheteurs avant validation.</p>
+<div class="field" style="margin:14px 0"><label for="csvFile">Fichier CSV (UTF-8, séparateur virgule ou point-virgule)</label><input id="csvFile" type="file" accept=".csv,text/csv"></div>
+<p class="muted">Colonnes attendues : product, category, quantity, unit, unit_price, currency, city, country_code, source_url. Les colonnes seller et company sont facultatives.</p>
+<div class="muted">Exemple : <code>product,category,quantity,unit,unit_price,currency,city,country_code,source_url</code></div>
+<div id="importMessage" class="muted" role="status" aria-live="polite"></div>
+<div id="importList" class="cards"></div>
+</section>
 </main>
 <footer>DEALHUNTER © 2026 — Prototype fonctionnel de matching local.</footer>
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers');
-const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));render()};
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports');
+const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function score(s,b){
  if(s.category!==b.category)return 0;
@@ -89,11 +99,63 @@ function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=sc
 function card(title,sub,meta){return '<article class="item"><span class="pill">'+meta+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div></article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function render(){
+ const importList=$('importList');
+ if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
  $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category)).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
  $('matchList').innerHTML=ms.length?ms.map(m=>'<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' disponibles / '+m.b.qty+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p><div class="muted">Suggestion à vérifier avant toute prise de contact ou commande.</div></article>').join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
 }
+
+function parseCSV(text){
+ const first=(text.split(/\r?\n/,1)[0]||'');
+ const delimiter=(first.split(';').length>first.split(',').length)?';':',';
+ const rows=[];let row=[],cell='',quoted=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i],next=text[i+1];
+  if(c==='"'&&quoted&&next==='"'){cell+='"';i++}
+  else if(c==='"'){quoted=!quoted}
+  else if(c===delimiter&&!quoted){row.push(cell);cell=''}
+  else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&next==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell=''}
+  else cell+=c;
+ }
+ row.push(cell);if(row.some(v=>v.trim()))rows.push(row);
+ if(rows.length<2)throw new Error('Le CSV doit contenir un en-tête et au moins une ligne.');
+ const headers=rows.shift().map(h=>h.trim().toLowerCase().replace(/^\uFEFF/,''));
+ return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||'').trim()])));
+}
+$('csvFile').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ const msg=$('importMessage');msg.textContent='Lecture du fichier…';
+ try{
+  const rows=parseCSV(await file.text());let added=0,skipped=0;
+  for(const r of rows){
+   const product=r.product||r.product_name||r.title||'';
+   const category=r.category||'Autre';
+   const qty=Number((r.quantity||r.qty||'').replace(',','.'));
+   const price=Number((r.unit_price||r.price||'').replace(',','.'));
+   const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
+   const sourceUrl=r.source_url||r.url||'';
+   if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
+   if(sourceUrl&&!/^https?:\/\//i.test(sourceUrl)){skipped++;continue}
+   const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
+   const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
+   if(exists){skipped++;continue}
+   pendingImports.push({company:r.seller||r.company||'Vendeur à confirmer',product,category,qty,unit,price,currency,city:r.city||'',countryCode:(r.country_code||'').toUpperCase(),sourceUrl,dedupeKey:key,status:'pending'});
+   added++;
+  }
+  save();msg.textContent=added+' ligne(s) importée(s) en attente de vérification ; '+skipped+' ligne(s) ignorée(s) (données invalides ou doublons).';
+ }catch(err){msg.textContent='Import impossible : '+err.message}
+ e.target.value='';
+});
+$('importList').addEventListener('click',e=>{
+ const approve=e.target.closest('[data-approve-import]'),reject=e.target.closest('[data-reject-import]');
+ if(approve){const i=Number(approve.dataset.approveImport),x=pendingImports[i];if(!x)return;
+  sellers.push({company:x.company,product:x.product,category:x.category,qty:x.qty,price:x.price,location:x.city||x.countryCode||'',sourceUrl:x.sourceUrl,verified:true});
+  pendingImports.splice(i,1);save();$('importMessage').textContent='Opportunité validée et ajoutée aux stocks locaux.';
+ }
+ if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
+});
 document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
