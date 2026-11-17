@@ -22,6 +22,10 @@ DealHunter utilisera **Appwrite Cloud**, en commençant par le plan Free à 0 �
 
 Le modèle Appwrite prévoit les tables entreprises, offres vendeurs, demandes acheteurs, correspondances et ventes. Les tables de correspondances et de ventes doivent être modifiées uniquement par des fonctions serveur de confiance.
 
+## Répertoire mondial des sources
+
+Un premier répertoire multi-secteurs de plateformes de surplus, enchères industrielles, liquidations, ventes publiques et annuaires B2B est disponible dans [docs/SOURCES.md](docs/SOURCES.md). Il s'agit de pistes de sourcing à vérifier : aucune source n'est réputée connectée tant qu'une intégration autorisée n'a pas été développée et testée.
+
 ## Architecture cible
 
 1. **Sources de stocks autorisées** : API partenaires, flux fournisseurs, imports CSV et portails dont les conditions autorisent explicitement la collecte.
