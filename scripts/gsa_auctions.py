@@ -16,6 +16,16 @@ from urllib.request import Request, urlopen
 API_URL = "https://api.gsa.gov/assets/gsaauctions/v2/auctions"
 
 
+def extract_results(payload):
+    """Accept the API's Results capitalization as well as lowercase fixtures."""
+    if not isinstance(payload, dict):
+        return None
+    for key, value in payload.items():
+        if str(key).casefold() == "results":
+            return value
+    return None
+
+
 def normalize_listing(item: dict, collected_at: str) -> dict:
     sale_no = str(item.get("SaleNo") or "").strip()
     lot_no = str(item.get("LotNo") or "").strip()
@@ -81,7 +91,7 @@ def fetch_listings(api_key: str) -> list[dict]:
     if isinstance(payload, dict) and payload.get("error"):
         detail = str(payload.get("message") or payload.get("error")).strip()
         raise RuntimeError(f"GSA API a refusé la requête : {detail}")
-    results = payload.get("results") if isinstance(payload, dict) else None
+    results = extract_results(payload)
     if not isinstance(results, list):
         keys = ", ".join(sorted(str(key) for key in payload.keys())) if isinstance(payload, dict) else type(payload).__name__
         raise RuntimeError(
@@ -103,9 +113,9 @@ def main() -> int:
         except (OSError, json.JSONDecodeError) as exc:
             print(f"Lecture du fichier de test impossible : {exc}", file=sys.stderr)
             return 1
-        results = payload.get("results") if isinstance(payload, dict) else None
+        results = extract_results(payload)
         if not isinstance(results, list):
-            print("Le fichier de test doit contenir un tableau 'results'.", file=sys.stderr)
+            print("Le fichier de test doit contenir un tableau 'Results' ou 'results'.", file=sys.stderr)
             return 1
     else:
         api_key = os.environ.get("GSA_API_KEY", "").strip()
