@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function ownsCompany(companyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/companies/$(companyId))
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerUid == request.auth.uid;
+    }
+    function validCompany() {
+      return request.resource.data.keys().hasAll(['ownerUid', 'name', 'countryCode', 'verificationStatus'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 160
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.size() == 2
+        && request.resource.data.verificationStatus == 'pending';
+    }
+    function validListing() {
+      return request.resource.data.keys().hasAll([
+          'companyId', 'productName', 'category', 'quantity', 'unit',
+          'unitPrice', 'currency', 'countryCode', 'status'
+        ])
+        && request.resource.data.companyId is string
+        && ownsCompany(request.resource.data.companyId)
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() > 0
+        && request.resource.data.productName.size() <= 200
+        && request.resource.data.category is string
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.unit is string
+        && request.resource.data.unit.size() <= 30
+        && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice >= 0
+        && request.resource.data.currency is string
+        && request.resource.data.currency.size() == 3
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.size() == 2
+        && request.resource.data.status in ['draft', 'active', 'paused', 'closed'];
+    }
+    function validRequest() {
+      return request.resource.data.keys().hasAll([
+          'companyId', 'productName', 'category', 'quantity', 'unit',
+          'currency', 'countryCode', 'status'
+        ])
+        && request.resource.data.companyId is string
+        && ownsCompany(request.resource.data.companyId)
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() > 0
+        && request.resource.data.productName.size() <= 200
+        && request.resource.data.category is string
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.unit is string
+        && request.resource.data.unit.size() <= 30
+        && request.resource.data.currency is string
+        && request.resource.data.currency.size() == 3
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.size() == 2
+        && request.resource.data.status in ['draft', 'open', 'paused', 'fulfilled', 'cancelled']
+        && (!('maxUnitPrice' in request.resource.data) || (request.resource.data.maxUnitPrice is number && request.resource.data.maxUnitPrice >= 0));
+    }
+
+    match /companies/{companyId} {
+      allow create: if validCompany();
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.verificationStatus == resource.data.verificationStatus;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /seller_listings/{listingId} {
+      allow read: if signedIn() && (
+        resource.data.status == 'active' || ownsCompany(resource.data.companyId)
+      );
+      allow create: if signedIn() && validListing();
+      allow update: if signedIn()
+        && resource.data.companyId == request.resource.data.companyId
+        && ownsCompany(resource.data.companyId)
+        && validListing();
+      allow delete: if signedIn() && ownsCompany(resource.data.companyId);
+    }
+
+    match /buyer_requests/{requestId} {
+      allow read: if signedIn() && (
+        resource.data.status == 'open' || ownsCompany(resource.data.companyId)
+      );
+      allow create: if signedIn() && validRequest();
+      allow update: if signedIn()
+        && resource.data.companyId == request.resource.data.companyId
+        && ownsCompany(resource.data.companyId)
+        && validRequest();
+      allow delete: if signedIn() && ownsCompany(resource.data.companyId);
+    }
+
+    match /matches/{matchId} {
+      allow read: if signedIn() && (
+        ownsCompany(resource.data.sellerCompanyId)
+        || ownsCompany(resource.data.buyerCompanyId)
+      );
+      allow write: if false;
+    }
+
+    match /deals/{dealId} {
+      allow read: if signedIn() && (
+        ownsCompany(resource.data.sellerCompanyId)
+        || ownsCompany(resource.data.buyerCompanyId)
+      );
+      allow write: if false;
+    }
+  }
+}
