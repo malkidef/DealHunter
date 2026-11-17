@@ -18,6 +18,14 @@ button{cursor:pointer;border:0;border-radius:9px;padding:11px 14px;background:va
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h2{font-size:18px;margin:0 0 7px}.panel p{line-height:1.5}
 form{display:grid;gap:10px;margin-top:14px}label{font-size:12px;color:var(--muted)}input,select{width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit}
 .field{display:grid;gap:5px}.sam-feed{grid-column:1/-1}.cards{display:grid;gap:10px;margin-top:14px}.item{padding:13px;border:1px solid #30425c;background:#15243a;border-radius:11px}.item h3{margin:5px 0;font-size:16px}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#173d35;color:var(--green);font-size:11px;font-weight:700}.match{border-color:#2d725e}.match-score{color:var(--green);font-weight:800}.hidden{display:none}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed #354761;border-radius:10px}
+.dashboard-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.dashboard-stat{background:#15243a;border:1px solid #30425c;border-radius:12px;padding:15px}
+.dashboard-stat strong{display:block;font-size:24px;color:var(--green);margin:5px 0}
+.dashboard-section{margin-top:18px}
+.dashboard-section h3{font-size:16px;margin:0 0 8px}
+.dashboard-role{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.status-note{padding:12px;border:1px solid #66552a;background:#2a2415;color:#f3d99b;border-radius:10px;font-size:13px;line-height:1.5}
+@media(max-width:680px){.dashboard-grid{grid-template-columns:1fr 1fr}.dashboard-role{grid-template-columns:1fr}}
 footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 @media(max-width:680px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.stat:last-child{grid-column:1/-1}main{padding-top:18px}}
 </style>
@@ -35,12 +43,40 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 <div class="tabs" id="mainTabs">
 <button type="button" class="active" data-tab="matches">Correspondances</button>
+<button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
 <button type="button" class="secondary" data-tab="sellers">Stocks vendeurs</button>
 <button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
 <button type="button" class="secondary" data-tab="sources">Sources</button>
 </div>
+<section id="dashboard" class="panel hidden">
+<h2>Tableau de bord DealHunter</h2>
+<p class="muted">Suivi des activités vendeur et acheteur. Les chiffres ci-dessous proviennent uniquement de ce navigateur tant que Firebase n’est pas connecté.</p>
+<div class="status-note" id="dashboardConnection" role="status">Mode prototype : aucun compte connecté, aucune transaction réelle synchronisée et aucun paiement disponible.</div>
+<div class="dashboard-grid">
+<div class="dashboard-stat"><span class="muted">Stocks locaux</span><strong id="dashSellerCount">0</strong><span class="muted">Offres enregistrées sur cet appareil</span></div>
+<div class="dashboard-stat"><span class="muted">Besoins locaux</span><strong id="dashBuyerCount">0</strong><span class="muted">Demandes enregistrées sur cet appareil</span></div>
+<div class="dashboard-stat"><span class="muted">Correspondances</span><strong id="dashMatchCount">0</strong><span class="muted">Compatibilités indicatives</span></div>
+</div>
+<div class="dashboard-role">
+<section class="item dashboard-section">
+<h3>Espace vendeur</h3>
+<div class="muted">Suivi prévu : stocks publiés, ventes acceptées, paiements reçus, commission DealHunter de 5 %, montant net et versements.</div>
+<div class="cards" id="sellerDashboardStatus"><div class="empty">Aucune vente réelle synchronisée. La connexion Firebase sera nécessaire pour afficher les transactions.</div></div>
+</section>
+<section class="item dashboard-section">
+<h3>Espace acheteur</h3>
+<div class="muted">Suivi prévu : besoins publiés, offres compatibles, commandes, paiements, livraison et confirmation de réception.</div>
+<div class="cards" id="buyerDashboardStatus"><div class="empty">Aucun achat réel synchronisé. Les besoins saisis ici restent locaux à cet appareil.</div></div>
+</section>
+</div>
+<section class="dashboard-section">
+<h3>Transactions et litiges</h3>
+<p class="muted">Les statuts seront alimentés par le serveur sécurisé : paiement en attente, payé, confirmations vendeur/acheteur, versement, litige ou remboursement.</p>
+<div id="dealDashboardList" class="empty">Aucune transaction réelle à afficher.</div>
+</section>
+</section>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
 <div id="matchList" class="cards"></div>
@@ -436,7 +472,11 @@ function render(){
 
  }
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
- const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
+ const ms=matches();
+ const ds=$('dashSellerCount');if(ds)ds.textContent=sellers.length;
+ const db=$('dashBuyerCount');if(db)db.textContent=buyers.length;
+ const dm=$('dashMatchCount');if(dm)dm.textContent=ms.length;
+ $('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
  $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category)).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
  $('matchList').innerHTML=ms.length?ms.map(m=>'<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' disponibles / '+m.b.qty+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p><div class="muted">Suggestion à vérifier avant toute prise de contact ou commande.</div></article>').join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
@@ -574,7 +614,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','dashboard','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','dashboard','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
