@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-17",
+  "policy": "Connect only official public APIs, open datasets, or sources for which DealHunter has explicit permission. A catalogue entry is not proof that the source has been integrated.",
+  "sources": [
+    {
+      "id": "gsa_auctions",
+      "name": "GSA Auctions",
+      "countryCoverage": [
+        "US"
+      ],
+      "direction": [
+        "seller"
+      ],
+      "sectors": [
+        "equipment",
+        "vehicles",
+        "industrial",
+        "office",
+        "scientific"
+      ],
+      "access": "public_api",
+      "authentication": "api_key",
+      "integrationStatus": "active",
+      "endpoint": "https://api.gsa.gov/assets/gsaauctions/v2/auctions",
+      "documentation": "https://gsa.github.io/auctions_api/",
+      "notes": "Existing DealHunter connector. Public federal surplus assets and auctions; verify current bid, reserve, condition and auction status."
+    },
+    {
+      "id": "ted_eu",
+      "name": "TED — Tenders Electronic Daily",
+      "countryCoverage": [
+        "EU-27",
+        "EEA"
+      ],
+      "direction": [
+        "buyer"
+      ],
+      "sectors": [
+        "all"
+      ],
+      "access": "public_api",
+      "authentication": "none_for_search",
+      "integrationStatus": "catalogued",
+      "endpoint": "https://api.ted.europa.eu/",
+      "documentation": "https://docs.ted.europa.eu/api/latest/search.html",
+      "notes": "Public procurement notices and demand signals. A tender is not a confirmed purchase order or available stock."
+    },
+    {
+      "id": "sam_gov",
+      "name": "SAM.gov Get Opportunities",
+      "countryCoverage": [
+        "US"
+      ],
+      "direction": [
+        "buyer"
+      ],
+      "sectors": [
+        "all"
+      ],
+      "access": "public_api",
+      "authentication": "api_key_required",
+      "integrationStatus": "catalogued",
+      "endpoint": "https://api.sam.gov/opportunities/v2/search",
+      "documentation": "https://open.gsa.gov/api/get-opportunities-public-api/",
+      "notes": "Federal opportunity notices; API key and rate limits apply. Treat notices as buyer demand, not confirmed orders."
+    },
+    {
+      "id": "ocds_registry",
+      "name": "Open Contracting Data Registry",
+      "countryCoverage": [
+        "worldwide"
+      ],
+      "direction": [
+        "buyer"
+      ],
+      "sectors": [
+        "all"
+      ],
+      "access": "open_datasets",
+      "authentication": "varies_by_publisher",
+      "integrationStatus": "catalogued",
+      "endpoint": "https://data.open-contracting.org/en/",
+      "documentation": "https://data.open-contracting.org/en/",
+      "notes": "Catalogue of public contracting datasets from 100+ publishers. Each publisher has its own coverage, format, licence and update schedule."
+    },
+    {
+      "id": "world_bank_procurement",
+      "name": "World Bank Procurement Notices",
+      "countryCoverage": [
+        "worldwide"
+      ],
+      "direction": [
+        "buyer"
+      ],
+      "sectors": [
+        "all"
+      ],
+      "access": "open_dataset",
+      "authentication": "none_for_public_dataset",
+      "integrationStatus": "catalogued",
+      "endpoint": "https://financesone.worldbank.org/d/DS00979",
+      "documentation": "https://datacatalog.worldbank.org/search/dataset/0037795/world-bank-procurement-notices",
+      "notes": "Public notices for World Bank-financed projects. Procurement demand signals, not seller inventory."
+    },
+    {
+      "id": "eu_ppds",
+      "name": "EU Public Procurement Data Space",
+      "countryCoverage": [
+        "EU-27"
+      ],
+      "direction": [
+        "buyer"
+      ],
+      "sectors": [
+        "all"
+      ],
+      "access": "open_data_portal",
+      "authentication": "varies_by_service",
+      "integrationStatus": "catalogued",
+      "endpoint": "https://data.europa.eu/en/PPDS",
+      "documentation": "https://data.europa.eu/en/PPDS",
+      "notes": "Discovery and reuse of EU and national public procurement data; identify underlying datasets before integrating to avoid duplicate notices."
+    }
+  ]
+}
