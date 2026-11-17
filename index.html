@@ -13,7 +13,7 @@ header{padding:22px max(18px,calc((100% - 1100px)/2));background:#101b2e;border-
 main{max-width:1100px;margin:auto;padding:24px 18px 50px}h1{font-size:clamp(26px,4vw,38px);margin:6px 0 8px}.intro{color:var(--muted);max-width:720px;line-height:1.6}
 .notice{margin:20px 0;padding:13px 15px;border:1px solid #66552a;background:#2a2415;color:#f3d99b;border-radius:12px;font-size:13px;line-height:1.5}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px}.stat strong{display:block;font-size:27px;color:var(--green)}.stat span,.muted{color:var(--muted);font-size:13px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.tabs button,.secondary{background:#21314a;color:#eaf1fb}.tabs button.active{background:var(--green);color:#071b16}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0;position:relative;z-index:2}.tabs button{touch-action:manipulation;pointer-events:auto;position:relative;z-index:3}.tabs button,.secondary{background:#21314a;color:#eaf1fb}.tabs button.active{background:var(--green);color:#071b16}
 button{cursor:pointer;border:0;border-radius:9px;padding:11px 14px;background:var(--green);color:#071b16;font-weight:750}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h2{font-size:18px;margin:0 0 7px}.panel p{line-height:1.5}
 form{display:grid;gap:10px;margin-top:14px}label{font-size:12px;color:var(--muted)}input,select{width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit}
@@ -33,13 +33,13 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="stat"><strong id="buyerCount">0</strong><span>Besoins acheteurs</span></div>
 <div class="stat"><strong id="matchCount">0</strong><span>Correspondances</span></div>
 </section>
-<div class="tabs">
-<button class="active" data-tab="matches">Correspondances</button>
-<button class="secondary" data-tab="sellers">Stocks vendeurs</button>
-<button class="secondary" data-tab="buyers">Besoins acheteurs</button>
-<button class="secondary" data-tab="imports">Import CSV</button>
-<button class="secondary" data-tab="gsa">Annonces GSA</button>
-<button class="secondary" data-tab="sources">Sources</button>
+<div class="tabs" id="mainTabs">
+<button type="button" class="active" data-tab="matches">Correspondances</button>
+<button type="button" class="secondary" data-tab="sellers">Stocks vendeurs</button>
+<button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
+<button type="button" class="secondary" data-tab="imports">Import CSV</button>
+<button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
+<button type="button" class="secondary" data-tab="sources">Sources</button>
 </div>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
@@ -415,7 +415,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
