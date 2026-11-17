@@ -39,3 +39,13 @@ test("construit les correspondances triées par score", () => {
   assert.equal(results.length, 2);
   assert.ok(results[0].compatibilityScore >= results[1].compatibilityScore);
 });
+
+test("exclut une entreprise qui publie son propre besoin", () => {
+  assert.equal(scorePair({ ...listing, companyId: "company-1" }, { ...request, companyId: "company-1" }), null);
+});
+test("rejette un stock dont la date de disponibilité est dépassée", () => {
+  assert.equal(scorePair({ ...listing, availableUntil: "2000-01-01T00:00:00.000Z" }, request), null);
+});
+test("rejette un besoin dont la date limite est passée", () => {
+  assert.equal(scorePair(listing, { ...request, neededBy: "2000-01-01T00:00:00.000Z" }), null);
+});
