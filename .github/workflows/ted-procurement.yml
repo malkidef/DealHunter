@@ -1,0 +1,59 @@
+name: TED — avis acheteurs publics (automatique + manuel)
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: "Requête TED (vide = avis publiés depuis le 1er janvier 2026)"
+        required: false
+        type: string
+      limit:
+        description: "Nombre maximal d'avis (1 à 250)"
+        required: false
+        default: "100"
+        type: string
+  schedule:
+    - cron: "30 11 */2 * *"
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-ted-notices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester les connecteurs
+        run: python -m unittest discover -s tests -v
+      - name: Collecter les avis TED
+        env:
+          TED_QUERY: ${{ inputs.query }}
+          TED_LIMIT: ${{ inputs.limit }}
+        run: |
+          QUERY="${TED_QUERY:-PD>=20260101}"
+          LIMIT="${TED_LIMIT:-100}"
+          python scripts/ted_procurement.py --query "$QUERY" --limit "$LIMIT" --output output/ted-buyer-opportunities.json
+      - name: Publier le flux de revue
+        run: |
+          mkdir -p data
+          cp output/ted-buyer-opportunities.json data/ted-buyer-opportunities.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ted-buyer-opportunities.json
+          if git diff --cached --quiet; then
+            echo "Le flux TED est déjà à jour."
+          else
+            git commit -m "Update TED buyer opportunities feed"
+            git push
+          fi
+      - name: Joindre le fichier de revue
+        uses: actions/upload-artifact@v4
+        with:
+          name: ted-buyer-opportunities
+          path: output/ted-buyer-opportunities.json
+          retention-days: 14
