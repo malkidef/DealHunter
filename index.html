@@ -76,6 +76,20 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="samFeedSummary" class="muted"></div>
 <div id="samFeedList" class="cards"></div>
 </section>
+<section class="item sam-feed" aria-labelledby="tedFeedTitle">
+<h2 id="tedFeedTitle">Marchés publics européens — TED</h2>
+<p class="muted">Avis publics européens issus de TED. Ils indiquent un besoin potentiel, jamais une commande ferme. Vérifie l’avis, la date limite et les conditions avant toute démarche.</p>
+<div id="tedFeedStatus" class="muted" role="status" aria-live="polite">Chargement des avis TED…</div>
+<div class="field" style="margin:12px 0"><label for="tedSearch">Rechercher un avis (titre, acheteur, pays)</label><input id="tedSearch" type="search" placeholder="Ex. équipements médicaux, France…"></div>
+<div id="tedFeedSummary" class="muted"></div>
+<div id="tedFeedList" class="cards"></div>
+</section>
+<section class="item sam-feed" aria-labelledby="publicMatchTitle">
+<h2 id="publicMatchTitle">Pistes publiques correspondant à tes stocks</h2>
+<p class="muted">Comparaison indicative des mots-clés entre tes stocks locaux et les avis SAM.gov / TED. Ce n’est pas une confirmation d’achat : aucun besoin public n’est ajouté à tes acheteurs enregistrés.</p>
+<div id="publicMatchSummary" class="muted"></div>
+<div id="publicMatchList" class="cards"></div>
+</section>
 </div>
 <section id="imports" class="panel hidden">
 <h2>Importer des opportunités CSV</h2>
@@ -140,7 +154,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
 let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
-let samNotices=[],samFeedMeta=null;
+let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -333,6 +347,47 @@ function render(){
   }).join(''):'<div class="empty">Aucun avis ne correspond à cette recherche.</div>';
   if(filtered.length>50)samList.insertAdjacentHTML('beforeend','<div class="muted">Affichage des 50 premiers avis. Affine ta recherche pour trouver les suivants.</div>');
  }
+ const tedList=$('tedFeedList');
+ if(tedList){
+  const q=norm($('tedSearch')?.value||'');
+  const filtered=tedNotices.filter(n=>[n.title,n.buyer_name,n.buyer_country,n.source_notice_id,n.notice_type].join(' ').toLowerCase().includes(q));
+  $('tedFeedSummary').textContent=filtered.length+' avis correspondant(s) · '+tedNotices.length+' avis chargés sur '+(tedFeedMeta?.total_matching_notices??'—')+' avis trouvés par la requête TED.';
+  tedList.innerHTML=filtered.length?filtered.slice(0,50).map(n=>{
+   const link=typeof n.source_url==='string'&&/^https:\/\//i.test(n.source_url)?'<a href="'+escapeHtml(n.source_url)+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel TED</a>':'Lien officiel indisponible';
+   const details=[n.buyer_country?'Pays : '+n.buyer_country:'',n.notice_type?'Type : '+n.notice_type:'',n.publication_date?'Publié : '+n.publication_date:'',n.deadline_date?'Date limite : '+n.deadline_date:'',n.source_notice_id?'Référence : '+n.source_notice_id:''].filter(Boolean).join(' · ');
+   return '<article class="item"><span class="pill">Signal public · à vérifier</span><h3>'+escapeHtml(n.title||'Avis TED sans titre')+'</h3><div class="muted">'+escapeHtml(n.buyer_name||'Acheteur non précisé')+'</div><div class="muted">'+escapeHtml(details)+'</div><p class="muted">'+link+'</p></article>';
+  }).join(''):'<div class="empty">Aucun avis TED correspondant. Si le flux n’est pas encore publié, la collecte automatique doit d’abord s’exécuter.</div>';
+  if(filtered.length>50)tedList.insertAdjacentHTML('beforeend','<div class="muted">Affichage des 50 premiers avis. Affine ta recherche pour voir les suivants.</div>');
+ }
+ const publicMatchList=$('publicMatchList');
+ if(publicMatchList){
+  const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','and','the','you','are']);
+  const tokens=value=>[...new Set(norm(value).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!stop.has(w)))];
+  const publicSignals=[
+   ...samNotices.map(n=>({...n,_source:'SAM.gov',_buyer:n.buyer_organization,_date:n.deadline_date,_url:n.source_url})),
+   ...tedNotices.map(n=>({...n,_source:'TED',_buyer:n.buyer_name,_date:n.deadline_date,_url:n.source_url}))
+  ];
+  const candidates=[];
+  sellers.forEach(s=>{
+   const wanted=tokens(s.product);
+   if(!wanted.length)return;
+   publicSignals.forEach(n=>{
+    const available=new Set(tokens([n.title,n._buyer,n.notes].join(' ')));
+    const common=wanted.filter(w=>available.has(w));
+    if(!common.length)return;
+    const score=Math.round(100*common.length/wanted.length);
+    if(score<25)return;
+    candidates.push({s,n,common,score});
+   });
+  });
+  candidates.sort((a,b)=>b.score-a.score||a.s.product.localeCompare(b.s.product));
+  $('publicMatchSummary').textContent=candidates.length+' piste(s) trouvée(s) · '+sellers.length+' stock(s) comparé(s) à '+publicSignals.length+' avis publics.';
+  publicMatchList.innerHTML?publicMatchList.innerHTML='';
+  publicMatchList.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
+   const link=typeof m.n._url==='string'&&/^https:\/\//i.test(m.n._url)?'<a href="'+escapeHtml(m.n._url)+'" target="_blank" rel="noopener noreferrer">Consulter la source</a>':'Source officielle indisponible';
+   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.n._source)+'</span><h3>'+escapeHtml(m.s.product)+' — stock de '+escapeHtml(m.s.company)+'</h3><div><strong>'+escapeHtml(m.n.title||'Avis public sans titre')+'</strong></div><div class="muted">Acheteur : '+escapeHtml(m.n._buyer||'non précisé')+' · Échéance : '+escapeHtml(m.n._date||'non précisée')+'</div><div class="match-score">Proximité lexicale indicative : '+m.score+'/100</div><div class="muted">Termes communs : '+escapeHtml(m.common.join(', '))+' · Stock local : '+escapeHtml(m.s.qty)+' unités</div><p class="muted">'+link+'</p><div class="muted">Aucun budget ni volume ferme confirmé. Vérification humaine indispensable.</div></article>';
+  }).join(''):'<div class="empty">Aucune piste publique rapprochée des stocks pour le moment. Ajoute des stocks avec des intitulés précis ou attends les prochaines collectes.</div>';
+ }
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
@@ -407,6 +462,23 @@ async function syncSamFeed(){
  }
 }
 $('samSearch').addEventListener('input',render);
+async function syncTedFeed(){
+ const status=$('tedFeedStatus');
+ try{
+  const response=await fetch('data/ted-buyer-opportunities.json',{cache:'no-store'});
+  if(!response.ok)throw new Error('Flux TED indisponible ('+response.status+').');
+  const data=await response.json();
+  if(!data||data.source!=='TED — Tenders Electronic Daily'||!Array.isArray(data.notices))throw new Error('Format du flux TED invalide.');
+  tedNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.title);
+  tedFeedMeta=data;
+  render();
+  status.textContent=tedNotices.length+' avis publics chargés · collecte du '+(data.collected_at||'date inconnue')+'. Tous les avis restent à vérifier.';
+ }catch(err){
+  status.textContent='Flux TED pas encore disponible : '+err.message+' Il sera affiché après la première collecte réussie.';
+  render();
+ }
+}
+$('tedSearch').addEventListener('input',render);
 async function syncGsaFeed(){
  const status=$('gsaSyncStatus');
  try{
@@ -463,5 +535,6 @@ $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({com
 render();
 syncGsaFeed();
 syncSamFeed();
+syncTedFeed();
 </script>
 </body></html>
