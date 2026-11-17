@@ -1,8 +1,7 @@
-// Configuration publique Firebase Web. Remplace ces valeurs depuis Firebase Console.
-// Aucun secret serveur ne doit être placé dans ce fichier.
+
 export const firebaseConfig = {
-  apiKey: "A_REMPLACER",
-  authDomain: "A_REMPLACER.firebaseapp.com",
-  projectId: "A_REMPLACER",
-  appId: "A_REMPLACER"
+  apiKey: "TA_CLE_API_FIREBASE",
+  authDomain: "dealhunter-3747b.firebaseapp.com",
+  projectId: "dealhunter-3747b",
+  appId: "1:393926853107:web:44f5f47590b2e9de7b5286"
 };
