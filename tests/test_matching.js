@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { scorePair, makeCandidates } = require("../functions/matching/src/main.js");
+const { scorePair, makeCandidates, canonicalCategory, canonicalUnit } = require("../functions/matching/src/main.js");
 
 const listing = {
   $id: "stock-1", status: "active", productName: "Cartons emballage",
@@ -48,4 +48,31 @@ test("rejette un stock dont la date de disponibilité est dépassée", () => {
 });
 test("rejette un besoin dont la date limite est passée", () => {
   assert.equal(scorePair(listing, { ...request, neededBy: "2000-01-01T00:00:00.000Z" }), null);
+});
+
+test("normalise les anciennes catégories et les nouvelles familles sectorielles", () => {
+  assert.equal(canonicalCategory("High-tech"), "it");
+  assert.equal(canonicalCategory("Informatique et électronique"), "it");
+  assert.equal(canonicalCategory("Véhicules et transport"), "vehicles");
+  assert.equal(canonicalCategory("Textile et habillement"), "textile");
+  assert.equal(canonicalCategory("Alimentation et boissons"), "food");
+  assert.equal(canonicalCategory("Machines et équipements industriels"), "industrial");
+});
+test("accepte les unités équivalentes sans confondre des unités différentes", () => {
+  assert.equal(canonicalUnit("pièces"), "unit");
+  assert.equal(canonicalUnit("pcs"), "unit");
+  assert.equal(canonicalUnit("tonnes"), "t");
+  assert.notEqual(canonicalUnit("kg"), canonicalUnit("tonne"));
+});
+test("rapproche une ancienne catégorie avec son nouveau libellé canonique", () => {
+  assert.notEqual(scorePair(
+    { ...listing, category: "High-tech", productName: "Ordinateur portable" },
+    { ...request, category: "Informatique et électronique", productName: "Ordinateur portable" }
+  ), null);
+});
+test("ne rapproche jamais deux familles sectorielles différentes", () => {
+  assert.equal(scorePair(
+    { ...listing, category: "Textile et habillement" },
+    { ...request, category: "Véhicules et transport" }
+  ), null);
 });
