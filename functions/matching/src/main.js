@@ -15,6 +15,10 @@ const tokens = (v) => [...new Set(text(v).split(/[^a-z0-9]+/).filter((w) => w.le
 function scorePair(listing, request) {
   if (!listing || !request) return null;
   if (text(listing.status) !== "active" || text(request.status) !== "open") return null;
+  if (listing.companyId && request.companyId && listing.companyId === request.companyId) return null;
+  const now = Date.now();
+  if (listing.availableUntil && Date.parse(listing.availableUntil) <= now) return null;
+  if (request.neededBy && Date.parse(request.neededBy) < now) return null;
   if (text(listing.category) !== text(request.category)) return null;
   if (text(listing.unit) !== text(request.unit)) return null;
   if (text(listing.currency || "EUR") !== text(request.currency || "EUR")) return null;
@@ -74,17 +78,33 @@ async function appwriteRequest(path, { method = "GET", body, queries = [] } = {}
   const raw = await response.text();
   let data = {};
   try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error("Réponse Appwrite non JSON."); }
-  if (!response.ok) throw new Error(`Appwrite HTTP ${response.status}: ${data.message || "erreur inconnue"}`);
+  if (!response.ok) {
+    const err = new Error(`Appwrite HTTP ${response.status}: ${data.message || "erreur inconnue"}`);
+    err.status = response.status;
+    throw err;
+  }
   return data;
 }
 
 async function listDocuments(collectionId, status) {
   const { APPWRITE_DATABASE_ID } = process.env;
   const path = `databases/${encodeURIComponent(APPWRITE_DATABASE_ID)}/collections/${encodeURIComponent(collectionId)}/documents`;
-  const result = await appwriteRequest(path, {
-    queries: [queryParam("equal", "status", status), JSON.stringify({ method: "limit", values: [500] })]
-  });
-  return Array.isArray(result.documents) ? result.documents : [];
+  const documents = [];
+  const pageSize = 100;
+  const safetyCap = 10000;
+  for (let offset = 0; offset < safetyCap; offset += pageSize) {
+    const result = await appwriteRequest(path, {
+      queries: [
+        queryParam("equal", "status", status),
+        JSON.stringify({ method: "limit", values: [pageSize] }),
+        JSON.stringify({ method: "offset", values: [offset] })
+      ]
+    });
+    const page = Array.isArray(result.documents) ? result.documents : [];
+    documents.push(...page);
+    if (page.length < pageSize) return documents;
+  }
+  throw new Error(`Limite de sécurité atteinte : plus de ${safetyCap} documents pour le statut ${status}. Augmenter le traitement par lots avant de continuer.`);
 }
 
 async function createMatch(candidate) {
@@ -98,21 +118,26 @@ async function createMatch(candidate) {
     ]
   });
   if (duplicate.total > 0) return "existing";
-  await appwriteRequest(base, {
-    method: "POST",
-    body: {
-      documentId: "unique()",
-      data: {
-        listingId: candidate.listingId,
-        requestId: candidate.requestId,
-        compatibilityScore: candidate.compatibilityScore,
-        status: "suggested",
-        createdAt: new Date().toISOString()
-      },
-      permissions: []
-    }
-  });
-  return "created";
+  try {
+    await appwriteRequest(base, {
+      method: "POST",
+      body: {
+        documentId: "unique()",
+        data: {
+          listingId: candidate.listingId,
+          requestId: candidate.requestId,
+          compatibilityScore: candidate.compatibilityScore,
+          status: "suggested",
+          createdAt: new Date().toISOString()
+        },
+        permissions: []
+      }
+    });
+    return "created";
+  } catch (err) {
+    if (err.status === 409) return "existing"; // Unique index: concurrent run already inserted it.
+    throw err;
+  }
 }
 
 async function handler({ req, res, log = () => {}, error = () => {} }) {
