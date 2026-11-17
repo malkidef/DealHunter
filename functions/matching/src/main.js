@@ -26,14 +26,14 @@ const CATEGORY_ALIASES = new Map([
   ["mode", "textile"], ["textile", "textile"], ["textile et habillement", "textile"],
   ["alimentaire", "food"], ["alimentation", "food"], ["alimentation et boissons", "food"],
   ["agriculture", "agri"], ["agricole", "agri"],
-  ["sante", "medical"], ["medical", "medical"], ["materiel medical", "medical"],
+  ["sante", "medical"], ["medical", "medical"], ["materiel medical", "medical"], ["sante et materiel medical", "medical"],
   ["chimie", "chemicals"], ["chimie et consommables", "chemicals"],
   ["energie", "energy"], ["energie et environnement", "energy"],
   ["emballage", "packaging"], ["logistique", "packaging"], ["emballage et logistique", "packaging"],
   ["autre", "other"], ["autres", "other"], ["autre / a classer", "other"]
 ]);
 const canonicalCategory = (value) => {
-  const key = text(value).replace(/\\s+/g, " ");
+  const key = text(value).replace(/\s+/g, " ");
   return CATEGORY_ALIASES.get(key) || key;
 };
 const UNIT_ALIASES = new Map([
