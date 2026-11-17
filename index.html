@@ -382,7 +382,7 @@ function render(){
   });
   candidates.sort((a,b)=>b.score-a.score||a.s.product.localeCompare(b.s.product));
   $('publicMatchSummary').textContent=candidates.length+' piste(s) trouvée(s) · '+sellers.length+' stock(s) comparé(s) à '+publicSignals.length+' avis publics.';
-  publicMatchList.innerHTML?publicMatchList.innerHTML='';
+  publicMatchList.innerHTML='';
   publicMatchList.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
    const link=typeof m.n._url==='string'&&/^https:\/\//i.test(m.n._url)?'<a href="'+escapeHtml(m.n._url)+'" target="_blank" rel="noopener noreferrer">Consulter la source</a>':'Source officielle indisponible';
    return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.n._source)+'</span><h3>'+escapeHtml(m.s.product)+' — stock de '+escapeHtml(m.s.company)+'</h3><div><strong>'+escapeHtml(m.n.title||'Avis public sans titre')+'</strong></div><div class="muted">Acheteur : '+escapeHtml(m.n._buyer||'non précisé')+' · Échéance : '+escapeHtml(m.n._date||'non précisée')+'</div><div class="match-score">Proximité lexicale indicative : '+m.score+'/100</div><div class="muted">Termes communs : '+escapeHtml(m.common.join(', '))+' · Stock local : '+escapeHtml(m.s.qty)+' unités</div><p class="muted">'+link+'</p><div class="muted">Aucun budget ni volume ferme confirmé. Vérification humaine indispensable.</div></article>';
