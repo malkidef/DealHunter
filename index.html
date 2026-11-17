@@ -156,7 +156,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
+document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
 render();
