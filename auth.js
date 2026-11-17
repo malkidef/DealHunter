@@ -1,146 +1,95 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { firebaseConfig } from "./firebase-web-config.js";
+
 const status = document.getElementById("authStatus");
-const account = document.getElementById("authAccount");
-const companyForm = document.getElementById("companyForm");
 const emailForm = document.getElementById("emailAuthForm");
-const signUpButton = document.getElementById("emailSignUp");
-const signOutButton = document.getElementById("signOut");
+const emailButton = document.getElementById("emailSignIn");
+const createButton = document.getElementById("emailCreate");
 const googleButton = document.getElementById("googleSignIn");
+const appleButton = document.getElementById("appleSignIn");
+const signOutButton = document.getElementById("signOut");
+const ready = Object.values(firebaseConfig).every(value =>
+  typeof value === "string" && value.length > 0 && !value.includes("A_REMPLACER")
+);
 
-let auth = null;
-let db = null;
-let currentUser = null;
-let firebaseApi = null;
+if (!ready) {
+  status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js. Les connexions Google, Apple et e-mail seront disponibles après cette étape.";
+  [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
+} else {
+  const auth = getAuth(initializeApp(firebaseConfig));
+  const showError = error => {
+    const messages = {
+      "auth/operation-not-allowed": "Ce mode de connexion n’est pas activé dans Firebase Authentication.",
+      "auth/popup-closed-by-user": "Fenêtre de connexion fermée avant la fin.",
+      "auth/account-exists-with-different-credential": "Cette adresse e-mail est déjà associée à un autre mode de connexion.",
+      "auth/invalid-credential": "Identifiants incorrects. Vérifie ton adresse et ton mot de passe.",
+      "auth/user-not-found": "Aucun compte trouvé avec cette adresse. Utilise « Créer un compte ».",
+      "auth/wrong-password": "Mot de passe incorrect.",
+      "auth/weak-password": "Choisis un mot de passe d’au moins 8 caractères.",
+      "auth/email-already-in-use": "Cette adresse possède déjà un compte. Connecte-toi.",
+      "auth/invalid-email": "Adresse e-mail invalide."
+    };
+    status.textContent = messages[error.code] || "Connexion impossible : " + (error.message || error.code);
+  };
+  const credentials = () => ({
+    email: document.getElementById("authEmail").value.trim(),
+    password: document.getElementById("authPassword").value
+  });
 
-function setStatus(message, error = false) {
-  if (!status) return;
-  status.textContent = message;
-  status.style.borderColor = error ? "#8b4141" : "#66552a";
+  onAuthStateChanged(auth, user => {
+    status.replaceChildren();
+    if (user) {
+      const label = document.createElement("span");
+      label.className = "auth-user";
+      label.textContent = "Connecté : " + (user.email || user.displayName || "compte utilisateur");
+      status.append(label);
+      signOutButton.classList.remove("hidden");
+      [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
+    } else {
+      status.textContent = "Aucun compte connecté.";
+      signOutButton.classList.add("hidden");
+      [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = false);
+    }
+  });
+
+  googleButton.addEventListener("click", async () => {
+    status.textContent = "Ouverture de Google…";
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (error) { showError(error); }
+  });
+  appleButton.addEventListener("click", async () => {
+    status.textContent = "Ouverture de la connexion Apple…";
+    try {
+      const provider = new OAuthProvider("apple.com");
+      provider.addScope("email");
+      provider.addScope("name");
+      await signInWithPopup(auth, provider);
+    } catch (error) { showError(error); }
+  });
+  emailForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const { email, password } = credentials();
+    status.textContent = "Connexion en cours…";
+    try { await signInWithEmailAndPassword(auth, email, password); }
+    catch (error) { showError(error); }
+  });
+  createButton.addEventListener("click", async () => {
+    const { email, password } = credentials();
+    if (!email || password.length < 8) {
+      status.textContent = "Saisis une adresse e-mail et un mot de passe d’au moins 8 caractères.";
+      return;
+    }
+    status.textContent = "Création du compte…";
+    try { await createUserWithEmailAndPassword(auth, email, password); }
+    catch (error) { showError(error); }
+  });
+  signOutButton.addEventListener("click", async () => {
+    try { await signOut(auth); }
+    catch (error) { showError(error); }
+  });
 }
-function showAccount(user, companies = []) {
-  if (!account) return;
-  if (!user) {
-    account.textContent = "Aucun utilisateur connecté.";
-    return;
-  }
-  const companyNames = companies.map((c) => c.name).filter(Boolean);
-  account.textContent = "Connecté : " + (user.email || user.uid) +
-    (companyNames.length ? " · Entreprise(s) : " + companyNames.join(", ") : " · Aucune entreprise enregistrée.");
-}
-function requireConfigured() {
-  return Boolean(window.DEALHUNTER_FIREBASE_CONFIG &&
-    window.DEALHUNTER_FIREBASE_CONFIG.apiKey &&
-    window.DEALHUNTER_FIREBASE_CONFIG.projectId);
-}
-
-async function init() {
-  if (!requireConfigured()) {
-    setStatus("Firebase non configuré. Ajoute firebase-config.js à partir du modèle firebase-config.example.js après avoir créé ton projet Firebase.");
-    return;
-  }
-  try {
-    const appSdk = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js");
-    const authSdk = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js");
-    const dbSdk = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
-    const app = appSdk.initializeApp(window.DEALHUNTER_FIREBASE_CONFIG);
-    auth = authSdk.getAuth(app);
-    db = dbSdk.getFirestore(app);
-    firebaseApi = { ...authSdk, ...dbSdk };
-    authSdk.onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      if (!user) {
-        showAccount(null);
-        setStatus("Firebase connecté. Connecte-toi ou crée un compte pour continuer.");
-        return;
-      }
-      try {
-        const q = dbSdk.query(dbSdk.collection(db, "companies"), dbSdk.where("ownerUid", "==", user.uid));
-        const result = await dbSdk.getDocs(q);
-        const companies = result.docs.map((d) => ({ id: d.id, ...d.data() }));
-        showAccount(user, companies);
-        if (companies[0]) localStorage.setItem("dh_company_id", companies[0].id);
-        setStatus("Compte connecté. " + (companies.length ? "Espace entreprise disponible." : "Crée maintenant ton espace entreprise."));
-      } catch (error) {
-        showAccount(user);
-        setStatus("Connecté, mais impossible de charger les entreprises : " + error.message, true);
-      }
-    });
-  } catch (error) {
-    setStatus("Initialisation Firebase impossible : " + error.message, true);
-  }
-}
-
-emailForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!auth || !firebaseApi) return setStatus("Configure Firebase avant de te connecter.", true);
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  try {
-    await firebaseApi.signInWithEmailAndPassword(auth, email, password);
-    setStatus("Connexion réussie.");
-  } catch (error) {
-    setStatus("Connexion impossible : " + error.message, true);
-  }
-});
-
-signUpButton?.addEventListener("click", async () => {
-  if (!auth || !firebaseApi) return setStatus("Configure Firebase avant de créer un compte.", true);
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  if (!email || password.length < 8) return setStatus("Saisis un e-mail valide et un mot de passe d’au moins 8 caractères.", true);
-  try {
-    await firebaseApi.createUserWithEmailAndPassword(auth, email, password);
-    setStatus("Compte créé et connecté.");
-  } catch (error) {
-    setStatus("Création du compte impossible : " + error.message, true);
-  }
-});
-
-googleButton?.addEventListener("click", async () => {
-  if (!auth || !firebaseApi) return setStatus("Configure Firebase avant de te connecter.", true);
-  try {
-    await firebaseApi.signInWithPopup(auth, new firebaseApi.GoogleAuthProvider());
-    setStatus("Connexion Google réussie.");
-  } catch (error) {
-    setStatus("Connexion Google impossible : " + error.message, true);
-  }
-});
-
-companyForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!currentUser || !db || !firebaseApi) return setStatus("Connecte-toi avant de créer une entreprise.", true);
-  const name = document.getElementById("companyName").value.trim();
-  const countryCode = document.getElementById("companyCountry").value;
-  if (!name || name.length > 160) return setStatus("Le nom de l’entreprise doit contenir entre 1 et 160 caractères.", true);
-  try {
-    const company = await firebaseApi.addDoc(firebaseApi.collection(db, "companies"), {
-      ownerUid: currentUser.uid,
-      name,
-      countryCode,
-      email: currentUser.email || "",
-      verificationStatus: "pending",
-      createdAt: firebaseApi.serverTimestamp(),
-      updatedAt: firebaseApi.serverTimestamp()
-    });
-    localStorage.setItem("dh_company_id", company.id);
-    setStatus("Espace entreprise créé. Vérification de l’entreprise en attente.");
-    companyForm.reset();
-    const q = firebaseApi.query(firebaseApi.collection(db, "companies"), firebaseApi.where("ownerUid", "==", currentUser.uid));
-    const result = await firebaseApi.getDocs(q);
-    showAccount(currentUser, result.docs.map((d) => ({ id: d.id, ...d.data() })));
-  } catch (error) {
-    setStatus("Création de l’entreprise impossible : " + error.message, true);
-  }
-});
-
-signOutButton?.addEventListener("click", async () => {
-  if (!auth || !firebaseApi) return setStatus("Aucune session Firebase active.");
-  try {
-    await firebaseApi.signOut(auth);
-    localStorage.removeItem("dh_company_id");
-    setStatus("Déconnexion effectuée.");
-  } catch (error) {
-    setStatus("Déconnexion impossible : " + error.message, true);
-  }
-});
-
-init();
