@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup,
+  getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -22,7 +22,7 @@ if (!ready) {
   [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
 } else {
   const auth = getAuth(initializeApp(firebaseConfig));
-  const showError = error => {
+  const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);\n  const signInWithProvider = async provider => {\n    if (isMobileBrowser) return signInWithRedirect(auth, provider);\n    return signInWithPopup(auth, provider);\n  };\n  const showError = error => {
     const messages = {
       "auth/operation-not-allowed": "Ce mode de connexion n’est pas activé dans Firebase Authentication.",
       "auth/popup-closed-by-user": "Fenêtre de connexion fermée avant la fin.",
@@ -41,7 +41,7 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
-  onAuthStateChanged(auth, user => {
+  getRedirectResult(auth).catch(showError);\n\n  onAuthStateChanged(auth, user => {
     status.replaceChildren();
     if (user) {
       const label = document.createElement("span");
@@ -59,7 +59,7 @@ if (!ready) {
 
   googleButton.addEventListener("click", async () => {
     status.textContent = "Ouverture de Google…";
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    try { await signInWithProvider(new GoogleAuthProvider()); }
     catch (error) { showError(error); }
   });
   appleButton.addEventListener("click", async () => {
@@ -68,7 +68,7 @@ if (!ready) {
       const provider = new OAuthProvider("apple.com");
       provider.addScope("email");
       provider.addScope("name");
-      await signInWithPopup(auth, provider);
+      await signInWithProvider(provider);
     } catch (error) { showError(error); }
   });
   emailForm.addEventListener("submit", async event => {
