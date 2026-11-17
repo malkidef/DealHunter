@@ -229,6 +229,9 @@ function render(){
    if(x.quantity===null||x.quantity===undefined||String(x.quantity).trim()==='')warnings.push('quantité inconnue');
    if(x.high_bid_usd===null||x.high_bid_usd===undefined||String(x.high_bid_usd).trim()==='')warnings.push('enchère actuelle inconnue');
    if(x.reserve_required===true)warnings.push('prix de réserve à prendre en compte');
+   if(!x.condition&&!x.item_condition)warnings.push('état réel du bien non confirmé');
+   if(!x.shipping_cost&&!x.pickup_location)warnings.push('frais de transport et modalités d’enlèvement à vérifier');
+   warnings.push('prix final susceptible de dépasser l’enchère actuelle');
    return warnings;
   };
   const sectorNames={it:'Informatique / électronique',vehicles:'Véhicules / transport',industrial:'Machines / industrie',construction:'Construction / matériaux',furniture:'Mobilier / bureau',agri:'Agriculture / alimentation'};
@@ -266,7 +269,7 @@ function render(){
    const techBadge=sector?'<div class="muted">Secteur détecté : '+escapeHtml(sector.label)+' · confiance indicative : '+sector.score+'/100</div>':'<div class="muted">Secteur : à classer manuellement</div>';
    const scoreLabel=opportunityPriority(x);
    const warnings=opportunityWarnings(x);
-   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Priorité d’examen : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Score de tri fondé sur les données disponibles, le statut et l’échéance ; ce n’est pas une estimation de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">Points d’attention : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
+   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Priorité d’examen : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Score de tri fondé sur les données disponibles, le statut et l’échéance ; ce n’est pas une estimation de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">À vérifier avant décision : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
   }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
   $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
   $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
