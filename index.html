@@ -38,6 +38,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button class="secondary" data-tab="sellers">Stocks vendeurs</button>
 <button class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button class="secondary" data-tab="imports">Import CSV</button>
+<button class="secondary" data-tab="gsa">Annonces GSA</button>
 <button class="secondary" data-tab="sources">Sources</button>
 </div>
 <section id="matches" class="panel">
@@ -77,6 +78,16 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="importMessage" class="muted" role="status" aria-live="polite"></div>
 <div id="importList" class="cards"></div>
 </section>
+<section id="gsa" class="panel hidden">
+<h2>Annonces GSA à examiner</h2>
+<p class="muted">Importe le fichier JSON extrait de l’artefact GitHub « gsa-auctions-pending ». Ces annonces restent séparées des stocks vendeurs : les quantités et prix finaux ne sont pas confirmés. Rien n’est publié ni envoyé aux acheteurs.</p>
+<div class="field" style="margin:14px 0"><label for="gsaFile">Fichier JSON GSA (après extraction du ZIP GitHub)</label><input id="gsaFile" type="file" accept=".json,application/json"></div>
+<div id="gsaMessage" class="muted" role="status" aria-live="polite"></div>
+<div class="field" style="margin:14px 0"><label for="gsaSearch">Rechercher une annonce (titre, ville, identifiant)</label><input id="gsaSearch" type="search" placeholder="Ex. Huntsville, ordinateur…"></div>
+<div id="gsaSummary" class="muted"></div>
+<div id="gsaList" class="cards"></div>
+<button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
+</section>
 <section id="sources" class="panel hidden">
 <h2>Registre des sources</h2>
 <p class="muted">Centralise les plateformes et fournisseurs à examiner. Une source reste « À vérifier » tant que ses conditions et son mode d’accès autorisé ne sont pas confirmés.</p>
@@ -94,8 +105,9 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources');
-const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));render()};
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let gsaVisible=30;
+const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function score(s,b){
  if(s.category!==b.category)return 0;
@@ -114,6 +126,21 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function render(){
  const importList=$('importList');
  if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ const gsaList=$('gsaList');
+ if(gsaList){
+  const query=norm($('gsaSearch')?.value||'');
+  const filtered=gsaListings.filter(x=>[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query));
+  gsaList.innerHTML=filtered.length?filtered.slice(0,gsaVisible).map(x=>{
+   const place=[x.city,x.region,x.country_code].filter(Boolean).join(', ')||'Lieu non précisé';
+   const bid=x.high_bid_usd!==null&&x.high_bid_usd!==undefined?' · Enchère actuelle : '+escapeHtml(x.high_bid_usd)+' USD':'';
+   const reserve=x.reserve_required===true?'Réserve requise':x.reserve_required===false?'Sans réserve indiquée':'Réserve non précisée';
+   const dates=[x.auction_start_date?'Début : '+x.auction_start_date:'',x.auction_end_date?'Fin : '+x.auction_end_date:''].filter(Boolean).join(' · ');
+   const url=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url)?'<a href="'+escapeHtml(x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
+   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
+  }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
+  $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
+  $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
+ }
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
@@ -138,6 +165,21 @@ function parseCSV(text){
  const headers=rows.shift().map(h=>h.trim().toLowerCase().replace(/^\uFEFF/,''));
  return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||'').trim()])));
 }
+
+$('gsaFile').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ const msg=$('gsaMessage');msg.textContent='Lecture du fichier GSA…';
+ try{
+  const data=JSON.parse(await file.text());
+  if(!data||data.source!=='GSA Auctions'||!Array.isArray(data.listings))throw new Error('Ce fichier ne ressemble pas à un export GSA Auctions DealHunter.');
+  const valid=data.listings.filter(x=>x&&typeof x==='object'&&(x.source_listing_id||x.source_url)&&x.title);
+  gsaListings=valid;gsaVisible=30;save();
+  msg.textContent=valid.length+' annonce(s) importée(s) pour consultation. Elles restent non vérifiées et séparées du matching.';
+ }catch(err){msg.textContent='Import GSA impossible : '+err.message}
+ e.target.value='';
+});
+$('gsaSearch').addEventListener('input',()=>{gsaVisible=30;render()});
+$('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
 $('csvFile').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
  const msg=$('importMessage');msg.textContent='Lecture du fichier…';
@@ -170,7 +212,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
+document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
