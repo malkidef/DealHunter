@@ -52,6 +52,31 @@ class GsaAuctionsMappingTests(unittest.TestCase):
         self.assertEqual(row["auction_status"], "preview")
         self.assertIsNone(row["source_url"])
 
+    def test_maps_real_api_camel_case_fields(self):
+        row = normalize_listing(
+            {
+                "saleNo": "SALE-42",
+                "lotNo": 3,
+                "itemName": "Forklift",
+                "itemDescURL": "https://example.gov/forklift",
+                "auctionStatus": "A",
+                "propertyCity": "Austin",
+                "propertyState": "TX",
+                "aucEndDt": "2026-12-01",
+                "highBidAmount": "1200.00",
+                "lotInfo": [{"lotDescript": "Electric forklift"}],
+            },
+            "now",
+        )
+        self.assertEqual(row["source_listing_id"], "SALE-42-3")
+        self.assertEqual(row["title"], "Forklift")
+        self.assertEqual(row["source_url"], "https://example.gov/forklift")
+        self.assertEqual(row["city"], "Austin")
+        self.assertEqual(row["region"], "TX")
+        self.assertEqual(row["description"], "Electric forklift")
+        self.assertEqual(row["auction_status"], "active")
+        self.assertEqual(row["high_bid_usd"], "1200.00")
+
 
 if __name__ == "__main__":
     unittest.main()
