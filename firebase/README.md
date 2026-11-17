@@ -36,6 +36,20 @@ Le projet doit être sélectionné dans la CLI. Ne jamais ajouter de clé Admin 
 
 La fonction callable `getCompanyDashboard` renvoie, après authentification et vérification du propriétaire de l'entreprise, les ventes et achats liés à cette entreprise ainsi que les indicateurs financiers. Elle retourne au maximum les 100 transactions les plus récentes ; les totaux affichés portent donc sur cet échantillon tant qu'une pagination complète n'est pas ajoutée. Les index Firestore vendeur/acheteur sont définis dans `firestore.indexes.json`.
 
+## Connexion des utilisateurs (Google, Apple, e-mail)
+
+L'interface web contient les boutons Google, Apple et e-mail (connexion et création). Le module `auth.js` utilise Firebase Authentication et la configuration publique `firebase-web-config.js`. Ce fichier contient uniquement les paramètres Web publics du projet ; aucune clé Admin SDK ni clé privée Apple ne doit être publiée.
+
+Configuration à effectuer dans Firebase Console :
+
+1. Créer/ouvrir le projet, ajouter une application Web et recopier `apiKey`, `authDomain`, `projectId` et `appId` dans `firebase-web-config.js`.
+2. Dans Authentication > Sign-in method, activer Email/Password et Google.
+3. Activer Apple dans la même page. Apple exige un compte Apple Developer, un Services ID, un Team ID, une Key ID et une clé privée générée dans Apple Developer. Saisir ces paramètres dans la console Firebase uniquement ; ne jamais les déposer dans GitHub ni les envoyer dans une conversation.
+4. Dans Authentication > Settings > Authorized domains, ajouter le domaine exact où DealHunter est publié.
+5. Pour Apple, configurer aussi le domaine et l'URL de retour fournis par Firebase dans le portail Apple Developer. L'URL de retour Firebase est de la forme `https://<authDomain>/__/auth/handler`.
+
+Google, Apple et e-mail permettent ensuite de retrouver le même compte sur iPhone, Android et ordinateur. L'interface d'authentification est préparée, mais les connexions restent désactivées tant que la configuration Firebase et les fournisseurs ne sont pas activés. La création de compte ne crée pas encore automatiquement une fiche entreprise ni un rôle vendeur/acheteur.
+
 ## Collections
 
 - `companies` : entreprise et propriétaire authentifié.
