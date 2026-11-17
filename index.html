@@ -80,8 +80,9 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 <section id="gsa" class="panel hidden">
 <h2>Annonces GSA à examiner</h2>
-<p class="muted">Importe le fichier JSON extrait de l’artefact GitHub « gsa-auctions-pending ». Ces annonces restent séparées des stocks vendeurs : les quantités et prix finaux ne sont pas confirmés. Rien n’est publié ni envoyé aux acheteurs.</p>
-<div class="field" style="margin:14px 0"><label for="gsaFile">Fichier JSON GSA (après extraction du ZIP GitHub)</label><input id="gsaFile" type="file" accept=".json,application/json"></div>
+<p class="muted">Les annonces sont synchronisées automatiquement depuis la dernière collecte GSA publiée par DealHunter. Elles restent séparées des stocks vendeurs : les quantités et prix finaux ne sont pas confirmés. Rien n’est proposé ni envoyé aux acheteurs.</p>
+<div id="gsaSyncStatus" class="muted" role="status" aria-live="polite">Chargement de la dernière collecte automatique…</div>
+<details style="margin:14px 0"><summary class="muted">Import manuel de secours</summary><div class="field" style="margin-top:10px"><label for="gsaFile">Fichier JSON GSA (après extraction du ZIP GitHub)</label><input id="gsaFile" type="file" accept=".json,application/json"></div></details>
 <div id="gsaMessage" class="muted" role="status" aria-live="polite"></div>
 <div class="field" style="margin:14px 0"><label for="gsaSearch">Rechercher une annonce (titre, ville, identifiant)</label><input id="gsaSearch" type="search" placeholder="Ex. Huntsville, ordinateur…"></div>
 <div id="gsaSummary" class="muted"></div>
@@ -180,6 +181,22 @@ $('gsaFile').addEventListener('change',async e=>{
 });
 $('gsaSearch').addEventListener('input',()=>{gsaVisible=30;render()});
 $('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
+async function syncGsaFeed(){
+ const status=$('gsaSyncStatus');
+ try{
+  const response=await fetch('data/gsa-auctions.json',{cache:'no-store'});
+  if(!response.ok)throw new Error('Flux automatique indisponible ('+response.status+').');
+  const data=await response.json();
+  if(!data||data.source!=='GSA Auctions'||!Array.isArray(data.listings))throw new Error('Format du flux automatique invalide.');
+  const valid=data.listings.filter(x=>x&&typeof x==='object'&&(x.source_listing_id||x.source_url)&&x.title);
+  gsaListings=valid;
+  localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));
+  render();
+  status.textContent=valid.length+' annonce(s) synchronisée(s) automatiquement · collecte du '+(data.collected_at||'date inconnue')+'. Annonces non vérifiées.';
+ }catch(err){
+  status.textContent='Synchronisation automatique indisponible : '+err.message+' Tu peux utiliser l’import manuel de secours.';
+ }
+}
 $('csvFile').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
  const msg=$('importMessage');msg.textContent='Lecture du fichier…';
@@ -218,5 +235,6 @@ $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-d
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
 render();
+syncGsaFeed();
 </script>
 </body></html>
