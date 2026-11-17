@@ -53,8 +53,14 @@ function scorePair(listing, request) {
   if (text(listing.status) !== "active" || text(request.status) !== "open") return null;
   if (listing.companyId && request.companyId && listing.companyId === request.companyId) return null;
   const now = Date.now();
-  if (listing.availableUntil && Date.parse(listing.availableUntil) <= now) return null;
-  if (request.neededBy && Date.parse(request.neededBy) < now) return null;
+  if (listing.availableUntil) {
+    const availableUntil = Date.parse(listing.availableUntil);
+    if (!Number.isFinite(availableUntil) || availableUntil <= now) return null;
+  }
+  if (request.neededBy) {
+    const neededBy = Date.parse(request.neededBy);
+    if (!Number.isFinite(neededBy) || neededBy <= now) return null;
+  }
   if (!canonicalCategory(listing.category) || canonicalCategory(listing.category) !== canonicalCategory(request.category)) return null;
   if (!canonicalUnit(listing.unit) || canonicalUnit(listing.unit) !== canonicalUnit(request.unit)) return null;
   if (text(listing.currency || "EUR").toUpperCase() !== text(request.currency || "EUR").toUpperCase()) return null;
@@ -63,7 +69,7 @@ function scorePair(listing, request) {
   const wanted = Number(request.quantity);
   const price = Number(listing.unitPrice);
   const budget = request.maxUnitPrice == null || request.maxUnitPrice === "" ? null : Number(request.maxUnitPrice);
-  if (!(available > 0) || !(wanted > 0) || available < wanted || !(price >= 0)) return null;
+  if (!Number.isFinite(available) || !Number.isFinite(wanted) || !Number.isFinite(price) || !(available > 0) || !(wanted > 0) || available < wanted || !(price >= 0)) return null;
   if (budget !== null && (!Number.isFinite(budget) || price > budget)) return null;
 
   const listingWords = tokens(listing.productName);
