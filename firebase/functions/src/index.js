@@ -136,3 +136,6 @@ async function createSuggestionsFromRequest(listingDocs, requestDoc) {
   }
   return created;
 }
+
+// Marketplace payments and seller commission workflow
+Object.assign(exports, require("./payments.js"));
