@@ -25,7 +25,7 @@ Le modèle Appwrite prévoit les tables entreprises, offres vendeurs, demandes a
 
 ## Premier connecteur de source : GSA Auctions
 
-Le connecteur GSA est préparé dans `scripts/gsa_auctions.py` et peut être lancé manuellement via GitHub Actions après ajout du secret `GSA_API_KEY`. Il produit un JSON d'annonces **en attente de vérification** (artefact temporaire), sans modifier le matching ni publier de données dans le dépôt. Il n'a pas encore été exécuté avec une clé réelle. Les droits de republication commerciale doivent être confirmés avant toute diffusion. Voir [le guide GSA](docs/connectors/GSA_AUCTIONS.md).
+Le connecteur GSA est exécuté via GitHub Actions après configuration du secret `GSA_API_KEY`. Le workflow `.github/workflows/gsa-auctions-manual.yml` accepte un lancement manuel et une programmation automatique tous les deux jours. Il publie `data/gsa-auctions.json` pour alimenter l'onglet « Annonces GSA » et conserve un artefact de revue pendant 14 jours. Les annonces restent **en attente de vérification** et ne sont pas ajoutées aux stocks vendeurs ni au matching. L'interface permet de rechercher et de trier les fiches par complétude des informations, date de fin d'enchère ou titre. Quantités et prix finaux ne sont pas inventés ; les enchères en cours ne sont pas des prix de vente confirmés. Les droits de republication et d'exploitation commerciale doivent être confirmés avant tout usage commercial. Voir [le guide GSA](docs/connectors/GSA_AUCTIONS.md).
 
 ## Répertoire mondial des sources
 
