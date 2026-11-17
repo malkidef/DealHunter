@@ -186,16 +186,39 @@ function render(){
   const opportunityScore=x=>{
    let score=0;
    const hasOfficialUrl=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url);
-   if(hasOfficialUrl)score+=20;else score-=25;
-   if(x.title&&x.title!=="Lot GSA sans titre")score+=10;
-   if(x.description)score+=10;
-   if(x.city||x.region)score+=10;
-   if(x.auction_end_date){const end=Date.parse(x.auction_end_date);if(Number.isFinite(end)&&end>Date.now()){const days=(end-Date.now())/86400000;score+=days<=14?15:days<=30?12:8}else if(Number.isFinite(end))score-=30}else score-=10;
-   if(x.auction_status==="active")score+=10;else if(x.auction_status==="scheduled")score+=6;else if(x.auction_status==="preview")score+=3;else if(x.auction_status==="closed"||x.auction_status==="ended")score-=25;
-   if(x.high_bid_usd!==null&&x.high_bid_usd!==undefined&&String(x.high_bid_usd).trim()!==""&&Number.isFinite(Number(x.high_bid_usd)))score+=10;else score-=8;
-   if(Number.isFinite(Number(x.quantity))&&Number(x.quantity)>0)score+=10;else score-=8;
-   if(typeof x.reserve_required==="boolean")score+=5;
+   const hasBid=x.high_bid_usd!==null&&x.high_bid_usd!==undefined&&String(x.high_bid_usd).trim()!==""&&Number.isFinite(Number(x.high_bid_usd));
+   const hasQty=Number.isFinite(Number(x.quantity))&&Number(x.quantity)>0;
+   if(hasOfficialUrl)score+=15;else score-=25;
+   if(x.title&&x.title!=="Lot GSA sans titre")score+=5;
+   if(x.description&&String(x.description).trim().length>=40)score+=10;
+   else if(x.description)score+=4;
+   if(x.city||x.region)score+=5;
+   if(x.auction_end_date){
+    const end=Date.parse(x.auction_end_date);
+    if(Number.isFinite(end)&&end>Date.now()){
+     const hours=(end-Date.now())/3600000;
+     score+=hours<=48?20:hours<=168?15:hours<=720?8:4;
+    }else if(Number.isFinite(end))score-=35;
+    else score-=8;
+   }else score-=8;
+   if(x.auction_status==="active")score+=15;
+   else if(x.auction_status==="scheduled")score+=8;
+   else if(x.auction_status==="preview")score+=4;
+   else if(x.auction_status==="closed"||x.auction_status==="ended")score-=35;
+   if(hasBid)score+=10;else score-=6;
+   if(hasQty)score+=10;else score-=8;
+   if(x.reserve_required===false)score+=5;
+   else if(x.reserve_required===true)score-=5;
    return Math.max(0,Math.min(100,score));
+  };
+  const opportunityPriority=x=>{
+   const score=opportunityScore(x);
+   if(x.auction_status==="closed"||x.auction_status==="ended")return "Enchère terminée";
+   const end=Date.parse(x.auction_end_date||"");
+   if(Number.isFinite(end)&&end<=Date.now())return "Date dépassée";
+   if(score>=75)return "À examiner en priorité";
+   if(score>=50)return "À vérifier";
+   return "Informations insuffisantes";
   };
   const opportunityWarnings=x=>{
    const warnings=[];
@@ -214,7 +237,7 @@ function render(){
   const dashboard=$('gsaSectorDashboard');
   if(dashboard){
    const rows=Object.entries(sectorStats).sort((a,b)=>b[1].count-a[1].count);
-   dashboard.innerHTML=rows.length?rows.map(([key,v])=>'<article class="item"><span class="pill">'+v.count+' annonce(s)</span><h3>'+escapeHtml(sectorNames[key]||'À classer manuellement')+'</h3><div class="muted">Qualité moyenne des dossiers : '+Math.round(v.totalScore/v.count)+'/100</div></article>').join(''):'<div class="empty">Aucune annonce importée pour le moment.</div>';
+   dashboard.innerHTML=rows.length?rows.map(([key,v])=>'<article class="item"><span class="pill">'+v.count+' annonce(s)</span><h3>'+escapeHtml(sectorNames[key]||'À classer manuellement')+'</h3><div class="muted">Priorité moyenne d’examen : '+Math.round(v.totalScore/v.count)+'/100</div></article>').join(''):'<div class="empty">Aucune annonce importée pour le moment.</div>';
   }
   const equipmentFilter=$('gsaTechFilter')?.value||'all';
   const sectorFilter=$('gsaSectorFilter')?.value||'all';
@@ -241,9 +264,9 @@ function render(){
    const sector=classifyGsaSector(x);
    const tech=classifyGsaTech(x);
    const techBadge=sector?'<div class="muted">Secteur détecté : '+escapeHtml(sector.label)+' · confiance indicative : '+sector.score+'/100</div>':'<div class="muted">Secteur : à classer manuellement</div>';
-   const scoreLabel=score>=75?"Dossier assez complet":score>=50?"Dossier à compléter":"Dossier fragile";
+   const scoreLabel=opportunityPriority(x);
    const warnings=opportunityWarnings(x);
-   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Qualité du dossier : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Indicateur de qualité des informations, pas de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">Points d’attention : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
+   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Priorité d’examen : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Score de tri fondé sur les données disponibles, le statut et l’échéance ; ce n’est pas une estimation de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">Points d’attention : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
   }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
   $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
   $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
