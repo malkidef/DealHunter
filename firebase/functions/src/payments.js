@@ -7,7 +7,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const COMMISSION_BPS = 500;
+const COMMISSION_BPS = 800;
 
 function stripeClient() {
   const key = stripeSecret.value();
