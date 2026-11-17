@@ -158,15 +158,29 @@ let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function canonicalCategory(value){
+ const v=norm(value);
+ const aliases={
+  'high-tech':'Informatique et électronique','informatique':'Informatique et électronique','electronique':'Informatique et électronique',
+  'auto':'Véhicules et transport','automobile':'Véhicules et transport',
+  'materiaux':'Construction et matériaux','construction':'Construction et matériaux',
+  'mode':'Textile et habillement','textile':'Textile et habillement',
+  'maison':'Maison et biens de consommation',
+  'alimentaire':'Alimentation et boissons',
+  'autre':'Autre / à classer'
+ };
+ return aliases[v]||String(value||'Autre / à classer');
+}
 function score(s,b){
- if(s.category!==b.category)return 0;
+ const sellerCategory=canonicalCategory(s.category),buyerCategory=canonicalCategory(b.category);
+ if(sellerCategory!==buyerCategory)return 0;
  const words=norm(s.product).split(/\s+/).filter(w=>w.length>2);
  const buyerWords=norm(b.product).split(/\s+/).filter(w=>w.length>2);
  const productFit=norm(s.product)===norm(b.product)||words.some(w=>buyerWords.includes(w));
  const priceFit=Number(s.price)<=Number(b.budget);
  const qtyFit=Number(s.qty)>=Number(b.qty);
  const locationFit=norm(s.location)===norm(b.location);
- if(!priceFit||!qtyFit||(!productFit&&s.category==='Autre'))return 0;
+ if(!priceFit||!qtyFit||(!productFit&&sellerCategory==='Autre / à classer'))return 0;
  return 55+(productFit?20:0)+(locationFit?15:0)+(priceFit?10:0);
 }
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
