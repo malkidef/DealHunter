@@ -18,6 +18,15 @@ Le prototype actuel reste utilisable. Ce document définit le prochain incrémen
 
 ## Registre initial des connecteurs
 
+### GSA Auctions — premier connecteur candidat
+
+- **Accès technique :** API GET publique documentée par la GSA, réponses JSON/XML, clé personnelle via api.data.gov ; limites publiées : 5 000 appels/jour et 5 appels/5 secondes.
+- **Champs disponibles :** identifiants vente/lot, description, dates, statut, localisation, réserve, enchère actuelle et URL de description. La quantité n'est pas systématiquement fournie.
+- **Droits :** l'accès API est documenté, mais la permission de republication commerciale des annonces dans DealHunter reste à confirmer auprès de GSA. Ne pas confondre la licence CC0 du dépôt documentaire avec les droits sur les données de production.
+- **Statut :** connecteur préparé, non exécuté ; nécessite le secret GitHub `GSA_API_KEY` et un test réel. Les résultats sont produits en JSON `pending`, pas publiés dans le matching.
+- **Implémentation :** [guide du connecteur](connectors/GSA_AUCTIONS.md), [script](../scripts/gsa_auctions.py), [workflow manuel](../.github/workflows/gsa-auctions-manual.yml).
+
+
 Aucune des sources ci-dessous n'est déclarée connectée. Les candidats sont à examiner individuellement.
 
 | Source candidate | Famille | Première vérification | Statut |
