@@ -10,6 +10,19 @@ Cette configuration remplace Appwrite comme backend cible. Elle prépare Firesto
 4. Activer **Cloud Functions** (un moyen de paiement peut être exigé pour le déploiement des fonctions selon les conditions Firebase en vigueur).
 5. Installer Firebase CLI, puis lancer `firebase login` et `firebase use --add`.
 
+## Connexion des utilisateurs et création d'entreprise
+
+Le frontend utilise Firebase Authentication (e-mail/mot de passe et Google) et Firestore.
+
+1. Dans Firebase Console > Authentication > Sign-in method, active **E-mail/Mot de passe** et **Google**.
+2. Dans Authentication > Settings > Authorized domains, ajoute le domaine où DealHunter est publié (par exemple le domaine GitHub Pages réel du dépôt).
+3. Dans les paramètres du projet, crée une application Web et récupère sa configuration Firebase.
+4. Copie `firebase-config.example.js` à la racine sous le nom `firebase-config.js`, puis remplace les valeurs d'exemple par la configuration Web de ton projet.
+5. Publie le fichier `firebase-config.js` dans le dépôt seulement si tu acceptes que la configuration Web soit visible publiquement. Les clés de configuration Web Firebase ne sont pas des secrets d'administration ; la sécurité repose sur Authentication et les règles Firestore. Ne publie jamais de clé Admin SDK, de secret Stripe ou de mot de passe.
+6. Ouvre l'onglet « Connexion / Compte », crée ton compte, puis crée l'espace entreprise.
+
+Le code gère la connexion e-mail, la création de compte, la connexion Google et la création du document entreprise avec le statut initial `pending`. Le propriétaire peut lire son entreprise ; les données de paiement et les transactions restent gérées côté serveur.
+
 ## Déploiement depuis le dépôt
 
 À la racine du dépôt :
