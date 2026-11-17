@@ -113,6 +113,14 @@ service cloud.firestore {
         || ownsCompany(resource.data.buyerCompanyId)
       );
       allow write: if false;
+
+      match /disputes/{disputeId} {
+        allow read: if signedIn() && (
+          ownsCompany(get(/databases/$(database)/documents/deals/$(dealId)).data.sellerCompanyId)
+          || ownsCompany(get(/databases/$(database)/documents/deals/$(dealId)).data.buyerCompanyId)
+        );
+        allow write: if false;
+      }
     }
   }
 }
