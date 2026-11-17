@@ -86,7 +86,8 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="gsaMessage" class="muted" role="status" aria-live="polite"></div>
 <div class="field" style="margin:14px 0"><label for="gsaSearch">Rechercher une annonce (titre, ville, identifiant)</label><input id="gsaSearch" type="search" placeholder="Ex. Huntsville, ordinateur…"></div>
 <div class="field"><label for="gsaSort">Trier les annonces</label><select id="gsaSort"><option value="opportunity">Potentiel d’opportunité</option><option value="complete">Fiches les plus renseignées</option><option value="ending">Fin d’enchère la plus proche</option><option value="title">Titre (A à Z)</option></select></div>
-<div class="field"><label for="gsaTechFilter">Filtre spécialisé matériel informatique</label><select id="gsaTechFilter"><option value="it" selected>Matériel informatique uniquement</option><option value="computers">Ordinateurs et portables</option><option value="screens">Écrans informatiques</option><option value="servers">Serveurs et stockage</option><option value="network">Réseaux et connectivité</option><option value="printers">Imprimantes et scanners bureautiques</option><option value="accessories">Périphériques et accessoires</option><option value="all">Toutes les annonces GSA</option></select></div>
+<div class="field"><label for="gsaSectorFilter">Secteur d’activité</label><select id="gsaSectorFilter"><option value="all" selected>Tous les secteurs</option><option value="it">Informatique et électronique</option><option value="vehicles">Véhicules et transport</option><option value="industrial">Machines et équipements industriels</option><option value="construction">Construction et matériaux</option><option value="furniture">Mobilier et équipements de bureau</option><option value="agri">Agriculture et alimentation</option><option value="other">Autres / non classés</option></select></div>
+<div class="field"><label for="gsaTechFilter">Filtre spécialisé matériel informatique (facultatif)</label><select id="gsaTechFilter"><option value="all" selected>Tous les équipements</option><option value="it">Matériel informatique uniquement</option><option value="computers">Ordinateurs et portables</option><option value="screens">Écrans informatiques</option><option value="servers">Serveurs et stockage</option><option value="network">Réseaux et connectivité</option><option value="printers">Imprimantes et scanners bureautiques</option><option value="accessories">Périphériques et accessoires</option><option value="all">Toutes les annonces GSA</option></select></div>
 <div id="gsaSummary" class="muted"></div>
 <div id="gsaList" class="cards"></div>
 <button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
@@ -147,6 +148,19 @@ function score(s,b){
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta){return '<article class="item"><span class="pill">'+meta+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div></article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function classifyGsaSector(x){
+ const t=norm([x.title,x.description].filter(Boolean).join(' '));
+ const rules=[
+  ['vehicles',/\\b(vehicle|vehicles|car|cars|truck|trucks|van|vans|bus|buses|motorcycle|motorcycles|trailer|trailers|tractor|tractors|forklift|forklifts|ambulance|boat|boats)\\b/],
+  ['industrial',/\\b(generator|generators|compressor|compressors|pump|pumps|lathe|lathes|milling|welding|industrial machine|machine tools|conveyor|conveyors|crane|cranes|hydraulic|diesel engine|turbine|turbines)\\b/],
+  ['construction',/\\b(construction|building materials|lumber|timber|steel beams|scaffolding|excavator|excavators|bulldozer|bulldozers|concrete mixer|cement|pipes|roofing|asphalt)\\b/],
+  ['furniture',/\\b(desk|desks|chair|chairs|office furniture|file cabinet|filing cabinet|bookcase|bookshelf|conference table|cubicle|workstation furniture)\\b/],
+  ['agri',/\\b(agricultural|agriculture|farm equipment|harvester|harvesters|irrigation|grain|feed|livestock|food processing|refrigerated storage)\\b/]
+ ];
+ for(const [category,re] of rules)if(re.test(t))return {category,label:({vehicles:'Véhicules / transport',industrial:'Machines / industrie',construction:'Construction / matériaux',furniture:'Mobilier / bureau',agri:'Agriculture / alimentation'})[category],score:Math.min(95,70+(re.test(norm(x.title))?20:0)+(x.description?5:0))};
+ if(classifyGsaTech(x))return {category:'it',label:'Informatique / électronique',score:classifyGsaTech(x).score};
+ return null;
+}
 function classifyGsaTech(x){
  const title=norm(x.title),desc=norm(x.description),t=title+' '+desc;
  if(/\b(ultrasound|ultrasounds|bladder scanner|holter|medtech|medical|patient monitor|vital signs|transducer|mri|ct scanner)\b/.test(t))return null;
@@ -193,8 +207,9 @@ function render(){
    if(x.reserve_required===true)warnings.push('prix de réserve à prendre en compte');
    return warnings;
   };
-  const techFilter=$('gsaTechFilter')?.value||'it';
-  const filtered=gsaListings.filter(x=>{const textMatch=[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query);if(!textMatch)return false;const tech=classifyGsaTech(x);if(techFilter==='all')return true;if(!tech)return false;return techFilter==='it'||tech.category===techFilter;});
+  const techFilter=$('gsaTechFilter')?.value||'all';
+  const sectorFilter=$('gsaSectorFilter')?.value||'all';
+  const filtered=gsaListings.filter(x=>{const textMatch=[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query);if(!textMatch)return false;const sector=classifyGsaSector(x);if(sectorFilter==='other'?!!sector:sectorFilter!=='all'&&(!sector||sector.category!==sectorFilter))return false;const tech=classifyGsaTech(x);if(techFilter==='all')return true;if(!tech)return false;return techFilter==='it'||tech.category===techFilter;});
   const sort=$('gsaSort')?.value||'complete';
   filtered.sort((a,b)=>{
    if(sort==='opportunity')return opportunityScore(b)-opportunityScore(a)||completeness(b)-completeness(a);
@@ -214,8 +229,9 @@ function render(){
    const dates=[x.auction_start_date?'Début : '+x.auction_start_date:'',x.auction_end_date?'Fin : '+x.auction_end_date:''].filter(Boolean).join(' · ');
    const url=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url)?'<a href="'+escapeHtml(x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
    const score=opportunityScore(x);
+   const sector=classifyGsaSector(x);
    const tech=classifyGsaTech(x);
-   const techBadge=tech?'<div class="muted">Catégorie informatique : '+escapeHtml(tech.label)+' · confiance du classement : '+tech.score+'/100</div>':'';
+   const techBadge=sector?'<div class="muted">Secteur détecté : '+escapeHtml(sector.label)+' · confiance indicative : '+sector.score+'/100</div>':'<div class="muted">Secteur : à classer manuellement</div>';
    const scoreLabel=score>=75?"Dossier assez complet":score>=50?"Dossier à compléter":"Dossier fragile";
    const warnings=opportunityWarnings(x);
    return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Qualité du dossier : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Indicateur de qualité des informations, pas de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">Points d’attention : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
@@ -298,6 +314,7 @@ $('gsaFile').addEventListener('change',async e=>{
 $('gsaSearch').addEventListener('input',()=>{gsaVisible=30;render()});
 $('gsaSort').addEventListener('change',()=>{gsaVisible=30;render()});
 $('gsaTechFilter').addEventListener('change',()=>{gsaVisible=30;render()});
+$('gsaSectorFilter').addEventListener('change',()=>{gsaVisible=30;render()});
 $('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
 $('marginForm').addEventListener('submit',e=>{
  e.preventDefault();
