@@ -180,13 +180,8 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret]
     return res.status(400).send("Invalid signature");
   }
   const eventRef = db.collection("processed_stripe_events").doc(event.id);
-  const already = await db.runTransaction(async (tx) => {
-    const existing = await tx.get(eventRef);
-    if (existing.exists) return true;
-    tx.create(eventRef, { type: event.type, receivedAt: FieldValue.serverTimestamp() });
-    return false;
-  });
-  if (already) return res.status(200).send("Already processed");
+  const already = await eventRef.get();
+  if (already.exists) return res.status(200).send("Already processed");
 
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object;
@@ -229,6 +224,17 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret]
       const matches = await db.collection("deals").where("stripePaymentIntentId", "==", paymentIntentId).limit(1).get();
       for (const doc of matches.docs) {
         const deal = doc.data();
+        const refundedAmount = Number(charge.amount_refunded || 0);
+        const chargedAmount = Number(charge.amount || 0);
+        if (chargedAmount > 0 && refundedAmount < chargedAmount) {
+          await doc.ref.update({
+            refundStatus: "partial_refund_manual_review",
+            refundedAmountCents: refundedAmount,
+            updatedAt: FieldValue.serverTimestamp()
+          });
+          console.warn("Partial refund requires reconciliation", doc.id, refundedAmount, chargedAmount);
+          continue;
+        }
         if (deal.stripeTransferId) {
           try {
             await stripeClient().transfers.createReversal(deal.stripeTransferId, {}, { idempotencyKey: `dh-refund-reversal-${doc.id}` });
@@ -242,5 +248,7 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret]
       }
     }
   }
+  // Record only after successful handling so Stripe can retry if processing fails.
+  await eventRef.create({ type: event.type, receivedAt: FieldValue.serverTimestamp() });
   return res.status(200).send("ok");
 });
