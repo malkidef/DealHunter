@@ -109,3 +109,13 @@ test("accepte un stock et un besoin avec alias de catégorie et unité", () => {
     { ...request, category: "Emballage", unit: "pcs" }
   ), null);
 });
+
+test("rejette les dates de validité mal formées", () => {
+  assert.equal(scorePair({ ...listing, availableUntil: "pas-une-date" }, request), null);
+  assert.equal(scorePair(listing, { ...request, neededBy: "pas-une-date" }), null);
+});
+test("rejette les quantités et prix non finis", () => {
+  assert.equal(scorePair({ ...listing, quantity: Infinity }, request), null);
+  assert.equal(scorePair({ ...listing, unitPrice: Infinity }, request), null);
+  assert.equal(scorePair({ ...listing, quantity: NaN }, request), null);
+});
