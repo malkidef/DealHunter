@@ -7,10 +7,11 @@ DealHunter est un projet de plateforme B2B visant à détecter des stocks excéd
 Le fichier `index.html` contient un prototype responsive utilisable sur mobile et ordinateur :
 - saisie locale d'offres de stocks vendeurs ;
 - saisie locale de besoins acheteurs ;
+- registre local des sources (plateformes/fournisseurs, type d’accès envisagé et statut de vérification) ;
 - calcul automatique de correspondances selon catégorie, produit, quantité, budget et zone ;
 - données de démonstration conservées dans le navigateur via `localStorage`.
 
-**Limite importante :** ce prototype ne découvre pas encore des entreprises sur Internet, ne collecte pas de données externes, n'envoie aucun message, ne crée aucune commande et n'encaisse aucun paiement. Les correspondances affichées sont des suggestions locales de démonstration.
+**Limite importante :** le registre des sources et les données restent locaux à ce navigateur. Le prototype ne découvre pas encore des entreprises sur Internet, ne collecte pas de données externes automatiquement, n'envoie aucun message, ne crée aucune commande et n'encaisse aucun paiement. Les correspondances affichées sont des suggestions locales de démonstration.
 
 ## Backend choisi : Appwrite
 
