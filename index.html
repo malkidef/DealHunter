@@ -151,11 +151,11 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function classifyGsaSector(x){
  const t=norm([x.title,x.description].filter(Boolean).join(' '));
  const rules=[
-  ['vehicles',/\\b(vehicle|vehicles|car|cars|truck|trucks|van|vans|bus|buses|motorcycle|motorcycles|trailer|trailers|tractor|tractors|forklift|forklifts|ambulance|boat|boats)\\b/],
-  ['industrial',/\\b(generator|generators|compressor|compressors|pump|pumps|lathe|lathes|milling|welding|industrial machine|machine tools|conveyor|conveyors|crane|cranes|hydraulic|diesel engine|turbine|turbines)\\b/],
-  ['construction',/\\b(construction|building materials|lumber|timber|steel beams|scaffolding|excavator|excavators|bulldozer|bulldozers|concrete mixer|cement|pipes|roofing|asphalt)\\b/],
-  ['furniture',/\\b(desk|desks|chair|chairs|office furniture|file cabinet|filing cabinet|bookcase|bookshelf|conference table|cubicle|workstation furniture)\\b/],
-  ['agri',/\\b(agricultural|agriculture|farm equipment|harvester|harvesters|irrigation|grain|feed|livestock|food processing|refrigerated storage)\\b/]
+  ['vehicles',/\b(vehicle|vehicles|car|cars|truck|trucks|van|vans|bus|buses|motorcycle|motorcycles|trailer|trailers|tractor|tractors|forklift|forklifts|ambulance|boat|boats)\b/],
+  ['industrial',/\b(generator|generators|compressor|compressors|pump|pumps|lathe|lathes|milling|welding|industrial machine|machine tools|conveyor|conveyors|crane|cranes|hydraulic|diesel engine|turbine|turbines)\b/],
+  ['construction',/\b(construction|building materials|lumber|timber|steel beams|scaffolding|excavator|excavators|bulldozer|bulldozers|concrete mixer|cement|pipes|roofing|asphalt)\b/],
+  ['furniture',/\b(desk|desks|chair|chairs|office furniture|file cabinet|filing cabinet|bookcase|bookshelf|conference table|cubicle|workstation furniture)\b/],
+  ['agri',/\b(agricultural|agriculture|farm equipment|harvester|harvesters|irrigation|grain|feed|livestock|food processing|refrigerated storage)\b/]
  ];
  for(const [category,re] of rules)if(re.test(t))return {category,label:({vehicles:'Véhicules / transport',industrial:'Machines / industrie',construction:'Construction / matériaux',furniture:'Mobilier / bureau',agri:'Agriculture / alimentation'})[category],score:Math.min(95,70+(re.test(norm(x.title))?20:0)+(x.description?5:0))};
  if(classifyGsaTech(x))return {category:'it',label:'Informatique / électronique',score:classifyGsaTech(x).score};
