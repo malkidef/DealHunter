@@ -25,6 +25,11 @@ form{display:grid;gap:10px;margin-top:14px}label{font-size:12px;color:var(--mute
 .dashboard-section h3{font-size:16px;margin:0 0 8px}
 .dashboard-role{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .status-note{padding:12px;border:1px solid #66552a;background:#2a2415;color:#f3d99b;border-radius:10px;font-size:13px;line-height:1.5}
+.auth-layout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.auth-actions button{flex:1;min-width:140px}
+.auth-account{padding:12px;border:1px solid #30425c;border-radius:10px;background:#15243a;margin-top:12px}
+@media(max-width:680px){.auth-layout{grid-template-columns:1fr}}
 @media(max-width:680px){.dashboard-grid{grid-template-columns:1fr 1fr}.dashboard-role{grid-template-columns:1fr}}
 footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 @media(max-width:680px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.stat:last-child{grid-column:1/-1}main{padding-top:18px}}
@@ -44,12 +49,40 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="tabs" id="mainTabs">
 <button type="button" class="active" data-tab="matches">Correspondances</button>
 <button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
+<button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
 <button type="button" class="secondary" data-tab="sellers">Stocks vendeurs</button>
 <button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
 <button type="button" class="secondary" data-tab="sources">Sources</button>
 </div>
+<section id="account" class="panel hidden">
+<h2>Compte entreprise</h2>
+<p class="muted">Crée un compte ou connecte-toi pour préparer ton espace DealHunter. L’authentification sera active après configuration du projet Firebase.</p>
+<div class="status-note" id="authStatus" role="status" aria-live="polite">Firebase n’est pas encore configuré. Aucun compte ne peut être créé pour le moment.</div>
+<div class="auth-layout">
+<section class="item">
+<h3>Connexion / création par e-mail</h3>
+<form id="emailAuthForm">
+<div class="field"><label for="authEmail">Adresse e-mail</label><input id="authEmail" type="email" autocomplete="email" required placeholder="nom@entreprise.fr"></div>
+<div class="field"><label for="authPassword">Mot de passe (8 caractères minimum)</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="Mot de passe"></div>
+<div class="auth-actions"><button type="submit" id="emailSignIn">Se connecter</button><button type="button" class="secondary" id="emailSignUp">Créer un compte</button></div>
+</form>
+<div class="auth-actions"><button type="button" class="secondary" id="googleSignIn">Continuer avec Google</button></div>
+</section>
+<section class="item">
+<h3>Entreprise</h3>
+<p class="muted">Après connexion, renseigne le nom et le pays de ton entreprise pour créer son espace sécurisé.</p>
+<form id="companyForm">
+<div class="field"><label for="companyName">Nom de l’entreprise</label><input id="companyName" required maxlength="160" placeholder="Mon entreprise"></div>
+<div class="field"><label for="companyCountry">Pays</label><select id="companyCountry"><option value="FR">France</option><option value="BE">Belgique</option><option value="LU">Luxembourg</option><option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option><option value="NL">Pays-Bas</option><option value="GB">Royaume-Uni</option><option value="US">États-Unis</option><option value="CA">Canada</option><option value="CH">Suisse</option></select></div>
+<button type="submit" id="createCompany">Créer mon espace entreprise</button>
+</form>
+<div class="auth-account" id="authAccount"><div class="muted">Aucun utilisateur connecté.</div></div>
+<div class="auth-actions"><button type="button" class="secondary" id="signOut">Se déconnecter</button></div>
+</section>
+</div>
+</section>
 <section id="dashboard" class="panel hidden">
 <h2>Tableau de bord DealHunter</h2>
 <p class="muted">Suivi des activités vendeur et acheteur. Les chiffres ci-dessous proviennent uniquement de ce navigateur tant que Firebase n’est pas connecté.</p>
@@ -614,7 +647,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','dashboard','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','dashboard','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','dashboard','account','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','dashboard','account','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
@@ -624,4 +657,6 @@ syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 </script>
+<script src="firebase-config.js"></script>
+<script type="module" src="auth.js"></script>
 </body></html>
