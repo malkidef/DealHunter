@@ -23,6 +23,10 @@ DealHunter utilisera **Appwrite Cloud**, en commençant par le plan Free à 0 �
 
 Le modèle Appwrite prévoit les tables entreprises, offres vendeurs, demandes acheteurs, correspondances et ventes. Les tables de correspondances et de ventes doivent être modifiées uniquement par des fonctions serveur de confiance.
 
+## Premier connecteur de source : GSA Auctions
+
+Le connecteur GSA est préparé dans `scripts/gsa_auctions.py` et peut être lancé manuellement via GitHub Actions après ajout du secret `GSA_API_KEY`. Il produit un JSON d'annonces **en attente de vérification** (artefact temporaire), sans modifier le matching ni publier de données dans le dépôt. Il n'a pas encore été exécuté avec une clé réelle. Les droits de republication commerciale doivent être confirmés avant toute diffusion. Voir [le guide GSA](docs/connectors/GSA_AUCTIONS.md).
+
 ## Répertoire mondial des sources
 
 Un premier répertoire multi-secteurs de plateformes de surplus, enchères industrielles, liquidations, ventes publiques et annuaires B2B est disponible dans [docs/SOURCES.md](docs/SOURCES.md). Il s'agit de pistes de sourcing à vérifier : aucune source n'est réputée connectée tant qu'une intégration autorisée n'a pas été développée et testée.
