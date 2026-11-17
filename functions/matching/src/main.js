@@ -12,6 +12,42 @@ const REQUIRED = [
 const text = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const tokens = (v) => [...new Set(text(v).split(/[^a-z0-9]+/).filter((w) => w.length > 2))];
 
+// Canonical sector IDs keep old records compatible while allowing broader labels.
+const CATEGORY_ALIASES = new Map([
+  ["high-tech", "it"], ["informatique", "it"], ["informatique et electronique", "it"],
+  ["electronique", "it"], ["electronics", "it"], ["it", "it"],
+  ["auto", "vehicles"], ["automobile", "vehicles"], ["vehicules", "vehicles"],
+  ["vehicules et transport", "vehicles"], ["transport", "vehicles"],
+  ["industrie", "industrial"], ["machines", "industrial"],
+  ["machines et equipements industriels", "industrial"], ["materiel industriel", "industrial"],
+  ["materiaux", "construction"], ["construction", "construction"],
+  ["construction et materiaux", "construction"], ["batiment", "construction"],
+  ["mobilier", "furniture"], ["maison", "consumer"], ["mobilier et bureau", "furniture"],
+  ["mode", "textile"], ["textile", "textile"], ["textile et habillement", "textile"],
+  ["alimentaire", "food"], ["alimentation", "food"], ["alimentation et boissons", "food"],
+  ["agriculture", "agri"], ["agricole", "agri"],
+  ["sante", "medical"], ["medical", "medical"], ["materiel medical", "medical"],
+  ["chimie", "chemicals"], ["chimie et consommables", "chemicals"],
+  ["energie", "energy"], ["energie et environnement", "energy"],
+  ["emballage", "packaging"], ["logistique", "packaging"], ["emballage et logistique", "packaging"],
+  ["autre", "other"], ["autres", "other"], ["autre / a classer", "other"]
+]);
+const canonicalCategory = (value) => {
+  const key = text(value).replace(/\\s+/g, " ");
+  return CATEGORY_ALIASES.get(key) || key;
+};
+const UNIT_ALIASES = new Map([
+  ["piece", "unit"], ["pieces", "unit"], ["unite", "unit"], ["unites", "unit"],
+  ["unit", "unit"], ["units", "unit"], ["pcs", "unit"], ["pc", "unit"],
+  ["kg", "kg"], ["kilogramme", "kg"], ["kilogrammes", "kg"],
+  ["tonne", "t"], ["tonnes", "t"], ["metric ton", "t"], ["t", "t"],
+  ["litre", "l"], ["litres", "l"], ["liter", "l"], ["liters", "l"], ["l", "l"],
+  ["metre", "m"], ["metres", "m"], ["meter", "m"], ["meters", "m"], ["m", "m"],
+  ["m2", "m2"], ["m²", "m2"], ["m3", "m3"], ["m³", "m3"],
+  ["carton", "carton"], ["cartons", "carton"], ["palette", "pallet"], ["palettes", "pallet"], ["pallet", "pallet"], ["pallets", "pallet"]
+]);
+const canonicalUnit = (value) => UNIT_ALIASES.get(text(value)) || text(value);
+
 function scorePair(listing, request) {
   if (!listing || !request) return null;
   if (text(listing.status) !== "active" || text(request.status) !== "open") return null;
@@ -19,9 +55,9 @@ function scorePair(listing, request) {
   const now = Date.now();
   if (listing.availableUntil && Date.parse(listing.availableUntil) <= now) return null;
   if (request.neededBy && Date.parse(request.neededBy) < now) return null;
-  if (text(listing.category) !== text(request.category)) return null;
-  if (text(listing.unit) !== text(request.unit)) return null;
-  if (text(listing.currency || "EUR") !== text(request.currency || "EUR")) return null;
+  if (!canonicalCategory(listing.category) || canonicalCategory(listing.category) !== canonicalCategory(request.category)) return null;
+  if (!canonicalUnit(listing.unit) || canonicalUnit(listing.unit) !== canonicalUnit(request.unit)) return null;
+  if (text(listing.currency || "EUR").toUpperCase() !== text(request.currency || "EUR").toUpperCase()) return null;
 
   const available = Number(listing.quantity);
   const wanted = Number(request.quantity);
@@ -166,5 +202,7 @@ async function handler({ req, res, log = () => {}, error = () => {} }) {
 }
 
 handler.scorePair = scorePair;
+handler.canonicalCategory = canonicalCategory;
+handler.canonicalUnit = canonicalUnit;
 handler.makeCandidates = makeCandidates;
 module.exports = handler;
