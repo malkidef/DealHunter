@@ -76,3 +76,36 @@ test("ne rapproche jamais deux familles sectorielles différentes", () => {
     { ...request, category: "Véhicules et transport" }
   ), null);
 });
+
+test("normalise les anciennes et nouvelles catégories", () => {
+  assert.equal(canonicalCategory("Informatique et électronique"), "it");
+  assert.equal(canonicalCategory("high-tech"), "it");
+  assert.equal(canonicalCategory("Véhicules et transport"), "vehicles");
+  assert.equal(canonicalCategory("Automobile"), "vehicles");
+  assert.equal(canonicalCategory("Machines et équipements industriels"), "industrial");
+  assert.equal(canonicalCategory("Construction et matériaux"), "construction");
+  assert.equal(canonicalCategory("Mobilier et bureau"), "furniture");
+  assert.equal(canonicalCategory("Textile et habillement"), "textile");
+  assert.equal(canonicalCategory("Alimentation et boissons"), "food");
+  assert.equal(canonicalCategory("Agriculture"), "agri");
+  assert.equal(canonicalCategory("Santé et matériel médical"), "medical");
+  assert.equal(canonicalCategory("Chimie et consommables"), "chemicals");
+  assert.equal(canonicalCategory("Énergie et environnement"), "energy");
+  assert.equal(canonicalCategory("Emballage et logistique"), "packaging");
+  assert.equal(canonicalCategory("Maison et biens de consommation"), "consumer");
+});
+test("normalise les unités usuelles", () => {
+  assert.equal(canonicalUnit("pièces"), "unit");
+  assert.equal(canonicalUnit("pcs"), "unit");
+  assert.equal(canonicalUnit("kilogrammes"), "kg");
+  assert.equal(canonicalUnit("tonnes"), "t");
+  assert.equal(canonicalUnit("litres"), "l");
+  assert.equal(canonicalUnit("m²"), "m2");
+  assert.equal(canonicalUnit("palettes"), "pallet");
+});
+test("accepte un stock et un besoin avec alias de catégorie et unité", () => {
+  assert.notEqual(scorePair(
+    { ...listing, category: "Emballage et logistique", unit: "pièces" },
+    { ...request, category: "Emballage", unit: "pcs" }
+  ), null);
+});
