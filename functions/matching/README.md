@@ -28,11 +28,12 @@ Les champs doivent correspondre à `docs/APPWRITE_SCHEMA.md`. Créer un index un
 
 ## Règles de matching de cette première version
 
-- catégorie, unité et devise identiques ;
+- catégories sectorielles et unités normalisées (anciens libellés conservés, accents et variantes usuelles reconnus), puis devise identique ;
 - stock actif et besoin ouvert ;
 - quantité disponible suffisante ;
 - prix vendeur inférieur ou égal au budget maximum lorsqu'il est renseigné ;
 - au moins un mot produit commun ;
+- dates invalides ou expirées rejetées, quantités et prix non finis refusés ;
 - score indicatif basé sur la proximité produit, la quantité, le budget et la localisation.
 
 La fonction lit les stocks actifs et besoins ouverts par pages de 100 documents, avec un plafond de sécurité de 10 000 documents par type et par exécution. Elle exclut les offres et besoins expirés ainsi que les rapprochements entre deux annonces de la même entreprise. Pour éviter les doublons en cas d'exécutions simultanées, créer l'index unique décrit ci-dessus ; les conflits 409 sont traités comme des correspondances déjà existantes.
