@@ -85,6 +85,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <details style="margin:14px 0"><summary class="muted">Import manuel de secours</summary><div class="field" style="margin-top:10px"><label for="gsaFile">Fichier JSON GSA (après extraction du ZIP GitHub)</label><input id="gsaFile" type="file" accept=".json,application/json"></div></details>
 <div id="gsaMessage" class="muted" role="status" aria-live="polite"></div>
 <div class="field" style="margin:14px 0"><label for="gsaSearch">Rechercher une annonce (titre, ville, identifiant)</label><input id="gsaSearch" type="search" placeholder="Ex. Huntsville, ordinateur…"></div>
+<div class="field"><label for="gsaSort">Trier les annonces</label><select id="gsaSort"><option value="complete">Fiches les plus renseignées</option><option value="ending">Fin d’enchère la plus proche</option><option value="title">Titre (A à Z)</option></select></div>
 <div id="gsaSummary" class="muted"></div>
 <div id="gsaList" class="cards"></div>
 <button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
@@ -130,14 +131,26 @@ function render(){
  const gsaList=$('gsaList');
  if(gsaList){
   const query=norm($('gsaSearch')?.value||'');
+  const completeness=x=>[x.title,x.description,x.city||x.region,x.auction_end_date,x.high_bid_usd,x.quantity,x.source_url].filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='').length;
   const filtered=gsaListings.filter(x=>[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query));
+  const sort=$('gsaSort')?.value||'complete';
+  filtered.sort((a,b)=>{
+   if(sort==='ending'){
+    const da=Date.parse(a.auction_end_date||'')||Number.MAX_SAFE_INTEGER;
+    const db=Date.parse(b.auction_end_date||'')||Number.MAX_SAFE_INTEGER;
+    return da-db||completeness(b)-completeness(a);
+   }
+   if(sort==='title')return String(a.title||'').localeCompare(String(b.title||''),'fr');
+   return completeness(b)-completeness(a)||String(a.title||'').localeCompare(String(b.title||''),'fr');
+  });
   gsaList.innerHTML=filtered.length?filtered.slice(0,gsaVisible).map(x=>{
    const place=[x.city,x.region,x.country_code].filter(Boolean).join(', ')||'Lieu non précisé';
+   const dataCount=completeness(x);
    const bid=x.high_bid_usd!==null&&x.high_bid_usd!==undefined?' · Enchère actuelle : '+escapeHtml(x.high_bid_usd)+' USD':'';
    const reserve=x.reserve_required===true?'Réserve requise':x.reserve_required===false?'Sans réserve indiquée':'Réserve non précisée';
    const dates=[x.auction_start_date?'Début : '+x.auction_start_date:'',x.auction_end_date?'Fin : '+x.auction_end_date:''].filter(Boolean).join(' · ');
    const url=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url)?'<a href="'+escapeHtml(x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
-   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
+   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div><div class="muted">Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
   }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
   $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
   $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
@@ -180,6 +193,7 @@ $('gsaFile').addEventListener('change',async e=>{
  e.target.value='';
 });
 $('gsaSearch').addEventListener('input',()=>{gsaVisible=30;render()});
+$('gsaSort').addEventListener('change',()=>{gsaVisible=30;render()});
 $('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
 async function syncGsaFeed(){
  const status=$('gsaSyncStatus');
