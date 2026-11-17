@@ -22,7 +22,7 @@ const CATEGORY_ALIASES = new Map([
   ["machines et equipements industriels", "industrial"], ["materiel industriel", "industrial"],
   ["materiaux", "construction"], ["construction", "construction"],
   ["construction et materiaux", "construction"], ["batiment", "construction"],
-  ["mobilier", "furniture"], ["maison", "consumer"], ["mobilier et bureau", "furniture"],
+  ["mobilier", "furniture"], ["maison", "consumer"], ["maison et biens de consommation", "consumer"], ["mobilier et bureau", "furniture"],
   ["mode", "textile"], ["textile", "textile"], ["textile et habillement", "textile"],
   ["alimentaire", "food"], ["alimentation", "food"], ["alimentation et boissons", "food"],
   ["agriculture", "agri"], ["agricole", "agri"],
