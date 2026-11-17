@@ -169,16 +169,28 @@ function render(){
   const completeness=x=>[x.title,x.description,x.city||x.region,x.auction_end_date,x.high_bid_usd,x.quantity,x.source_url].filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='').length;
   const opportunityScore=x=>{
    let score=0;
-   if(x.source_url)score+=15;
+   const hasOfficialUrl=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url);
+   if(hasOfficialUrl)score+=20;else score-=25;
    if(x.title&&x.title!=="Lot GSA sans titre")score+=10;
    if(x.description)score+=10;
    if(x.city||x.region)score+=10;
-   if(x.auction_end_date){const end=Date.parse(x.auction_end_date);if(Number.isFinite(end)&&end>Date.now()){const days=(end-Date.now())/86400000;score+=days<=14?15:days<=30?12:8}}
-   if(x.auction_status==="active")score+=15;else if(x.auction_status==="scheduled")score+=8;else if(x.auction_status==="preview")score+=5;
-   if(x.high_bid_usd!==null&&x.high_bid_usd!==undefined&&String(x.high_bid_usd).trim()!==""&&Number.isFinite(Number(x.high_bid_usd)))score+=10;
-   if(Number.isFinite(Number(x.quantity))&&Number(x.quantity)>0)score+=10;
+   if(x.auction_end_date){const end=Date.parse(x.auction_end_date);if(Number.isFinite(end)&&end>Date.now()){const days=(end-Date.now())/86400000;score+=days<=14?15:days<=30?12:8}else if(Number.isFinite(end))score-=30}else score-=10;
+   if(x.auction_status==="active")score+=10;else if(x.auction_status==="scheduled")score+=6;else if(x.auction_status==="preview")score+=3;else if(x.auction_status==="closed"||x.auction_status==="ended")score-=25;
+   if(x.high_bid_usd!==null&&x.high_bid_usd!==undefined&&String(x.high_bid_usd).trim()!==""&&Number.isFinite(Number(x.high_bid_usd)))score+=10;else score-=8;
+   if(Number.isFinite(Number(x.quantity))&&Number(x.quantity)>0)score+=10;else score-=8;
    if(typeof x.reserve_required==="boolean")score+=5;
-   return score;
+   return Math.max(0,Math.min(100,score));
+  };
+  const opportunityWarnings=x=>{
+   const warnings=[];
+   if(!(typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url)))warnings.push('lien officiel à vérifier');
+   const end=Date.parse(x.auction_end_date||'');
+   if(Number.isFinite(end)&&end<=Date.now())warnings.push('enchère terminée ou date passée');
+   else if(!Number.isFinite(end))warnings.push('date de fin inconnue');
+   if(x.quantity===null||x.quantity===undefined||String(x.quantity).trim()==='')warnings.push('quantité inconnue');
+   if(x.high_bid_usd===null||x.high_bid_usd===undefined||String(x.high_bid_usd).trim()==='')warnings.push('enchère actuelle inconnue');
+   if(x.reserve_required===true)warnings.push('prix de réserve à prendre en compte');
+   return warnings;
   };
   const techFilter=$('gsaTechFilter')?.value||'it';
   const filtered=gsaListings.filter(x=>{const textMatch=[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query);if(!textMatch)return false;const tech=classifyGsaTech(x);if(techFilter==='all')return true;if(!tech)return false;return techFilter==='it'||tech.category===techFilter;});
@@ -203,8 +215,9 @@ function render(){
    const score=opportunityScore(x);
    const tech=classifyGsaTech(x);
    const techBadge=tech?'<div class="muted">Catégorie informatique : '+escapeHtml(tech.label)+' · confiance du classement : '+tech.score+'/100</div>':'';
-   const scoreLabel=score>=75?"À examiner en priorité":score>=50?"À approfondir":"Informations insuffisantes";
-   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Score de piste : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Score fondé sur les données disponibles, pas sur une rentabilité démontrée. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
+   const scoreLabel=score>=75?"Dossier assez complet":score>=50?"Dossier à compléter":"Dossier fragile";
+   const warnings=opportunityWarnings(x);
+   return '<article class="item"><span class="pill">À examiner · non vérifiée</span><h3>'+escapeHtml(x.title||'Lot GSA sans titre')+'</h3><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(x.source_listing_id||'Identifiant absent')+'</div>'+techBadge+'<div class="match-score">Qualité du dossier : '+score+'/100 · '+scoreLabel+'</div><div class="muted">Indicateur de qualité des informations, pas de rentabilité. Champs utiles renseignés : '+dataCount+'/7</div><div class="muted">Points d’attention : '+(warnings.length?escapeHtml(warnings.join(' · ')):'aucun signal de manque détecté')+'</div><div class="muted">'+escapeHtml(reserve)+bid+'</div><div class="muted">'+escapeHtml(dates)+'</div><p class="muted">'+url+'</p></article>';
   }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
   $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
   $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
@@ -239,7 +252,7 @@ function render(){
     matchBox.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
      const place=[m.x.city,m.x.region,m.x.country_code].filter(Boolean).join(', ')||'Lieu non précisé';
      const link=typeof m.x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\\//i.test(m.x.source_url)?'<a href="'+escapeHtml(m.x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
-     return '<article class="item"><span class="pill">Piste à vérifier</span><h3>'+escapeHtml(m.b.company)+' · recherche : '+escapeHtml(m.b.product)+'</h3><div><strong>'+escapeHtml(m.x.title||'Lot GSA sans titre')+'</strong></div><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(m.x.source_listing_id||'Identifiant absent')+'</div><div class="match-score">Pertinence des mots-clés : '+m.score+'/100</div><div class="muted">Mots communs : '+escapeHtml(m.common.join(', '))+(m.locationFit?' · lieu identique':'')+'</div><div class="muted">Quantité : '+(m.x.quantity!==null&&m.x.quantity!==undefined?escapeHtml(m.x.quantity):'non renseignée')+' · Enchère actuelle : '+(m.x.high_bid_usd!==null&&m.x.high_bid_usd!==undefined?escapeHtml(m.x.high_bid_usd)+' USD':'non renseignée')+'</div><p class="muted">'+link+'</p></article>';
+     return '<article class="item"><span class="pill">Piste à vérifier</span><h3>'+escapeHtml(m.b.company)+' · recherche : '+escapeHtml(m.b.product)+'</h3><div><strong>'+escapeHtml(m.x.title||'Lot GSA sans titre')+'</strong></div><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(m.x.source_listing_id||'Identifiant absent')+'</div><div class="match-score">Pertinence indicative des mots-clés : '+m.score+'/100</div><div class="muted">Mots communs : '+escapeHtml(m.common.join(', '))+(m.locationFit?' · lieu identique':'')+'</div><div class="muted">Quantité : '+(m.x.quantity!==null&&m.x.quantity!==undefined?escapeHtml(m.x.quantity):'non renseignée')+' · Enchère actuelle : '+(m.x.high_bid_usd!==null&&m.x.high_bid_usd!==undefined?escapeHtml(m.x.high_bid_usd)+' USD':'non renseignée')+'</div><p class="muted">'+link+'</p></article>';
     }).join(''):'<div class="empty">Aucune correspondance par mots-clés pour le moment. Enrichis les besoins acheteurs avec des termes précis ou attends de nouvelles annonces.</div>';
    }
   }
