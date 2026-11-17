@@ -1,9 +1,15 @@
 import unittest
 
-from scripts.gsa_auctions import normalize_listing
+from scripts.gsa_auctions import extract_results, normalize_listing
 
 
 class GsaAuctionsMappingTests(unittest.TestCase):
+    def test_extracts_uppercase_api_results_key(self):
+        self.assertEqual(extract_results({"Results": [{"SaleNo": "1"}]}), [{"SaleNo": "1"}])
+
+    def test_extracts_lowercase_results_key(self):
+        self.assertEqual(extract_results({"results": [{"SaleNo": "2"}]}), [{"SaleNo": "2"}])
+
     def test_maps_listing_without_inventing_quantity_or_final_price(self):
         row = normalize_listing(
             {
@@ -24,8 +30,8 @@ class GsaAuctionsMappingTests(unittest.TestCase):
         )
         self.assertEqual(row["source_listing_id"], "12345678901-7")
         self.assertEqual(row["title"], "Used office desks")
-        self.assertEqual(row["quantity"], None)
-        self.assertEqual(row["unit_price"], None)
+        self.assertIsNone(row["quantity"])
+        self.assertIsNone(row["unit_price"])
         self.assertEqual(row["reserve_price_usd"], 250.0)
         self.assertEqual(row["auction_status"], "active")
         self.assertEqual(row["review_status"], "pending")
