@@ -52,7 +52,7 @@ Créer une base nommée `dealhunter`, puis les tables suivantes.
 - `status` : enum `suggested | seller_notified | buyer_notified | accepted | declined | expired | converted`
 - `createdAt` : datetime
 
-Créer une contrainte unique sur la paire `listingId + requestId` si l'interface Appwrite utilisée le permet.
+Créer une contrainte unique sur la paire `listingId + requestId` (index unique composé) avant les essais en production. La fonction traite un conflit 409 comme un doublon déjà créé.
 
 ### 5. `deals`
 - `matchId` : string, obligatoire, indexé et unique
