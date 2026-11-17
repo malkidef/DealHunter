@@ -55,6 +55,8 @@ Ce répertoire est une **liste de pistes de sourcing à examiner**, pas une list
 
 ## 3. Surplus publics, saisies et ventes administratives
 
+| [GSA Auctions API](https://gsa.github.io/auctions_api/) | États-Unis fédéral; annonces de biens mobiliers publics | API GET officielle JSON/XML ; clé API ; connecteur DealHunter préparé, réutilisation commerciale à confirmer avant republication |
+
 | Source | Couverture / spécialités | Accès et notes |
 |---|---|---|
 | [GSA Auctions](https://www.gsaauctions.gov/) | États-Unis fédéral; biens excédentaires, véhicules, équipements et mobilier | Portail officiel; règles d'enchères publiques |
