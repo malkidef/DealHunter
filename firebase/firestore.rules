@@ -71,7 +71,9 @@ service cloud.firestore {
       allow update: if signedIn()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.verificationStatus == resource.data.verificationStatus;
+        && request.resource.data.verificationStatus == resource.data.verificationStatus
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'countryCode', 'email', 'updatedAt']);
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
