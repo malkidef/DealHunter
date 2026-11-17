@@ -89,6 +89,21 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="gsaSummary" class="muted"></div>
 <div id="gsaList" class="cards"></div>
 <button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
+<section class="item" style="margin-top:18px">
+<h3>Simulateur de marge (estimation manuelle)</h3>
+<p class="muted">Renseigne toi-même un prix d’achat confirmé et un prix de revente réaliste. L’enchère actuelle GSA n’est jamais utilisée comme prix d’achat final. Aucun taux de change ni frais cachés ne sont supposés.</p>
+<form id="marginForm">
+<div class="field"><label for="marginCurrency">Devise commune aux montants</label><select id="marginCurrency"><option value="EUR">EUR (€)</option><option value="USD">USD ($)</option><option value="GBP">GBP (£)</option><option value="CHF">CHF</option><option value="CAD">CAD</option></select></div>
+<div class="field"><label for="marginBuy">Prix d’achat unitaire confirmé</label><input id="marginBuy" type="number" min="0" step="0.01" placeholder="Ex. 12.50" required></div>
+<div class="field"><label for="marginSell">Prix de revente unitaire estimé</label><input id="marginSell" type="number" min="0" step="0.01" placeholder="Ex. 25.00" required></div>
+<div class="field"><label for="marginQty">Quantité réellement achetable et revendable</label><input id="marginQty" type="number" min="1" step="1" placeholder="Ex. 100" required></div>
+<div class="field"><label for="marginTransport">Transport total estimé</label><input id="marginTransport" type="number" min="0" step="0.01" value="0"></div>
+<div class="field"><label for="marginOther">Autres frais totaux (douane, remise en état…)</label><input id="marginOther" type="number" min="0" step="0.01" value="0"></div>
+<div class="field"><label for="marginFee">Commission DealHunter (%) — 5 % par défaut</label><input id="marginFee" type="number" min="0" max="100" step="0.1" value="5"></div>
+<button type="submit">Calculer la marge estimée</button>
+</form>
+<div id="marginResult" class="muted" role="status" aria-live="polite" style="margin-top:12px">Complète les montants pour obtenir une simulation. Les taxes, frais non saisis et risques de revente ne sont pas inclus.</div>
+</section>
 </section>
 <section id="sources" class="panel hidden">
 <h2>Registre des sources</h2>
@@ -211,6 +226,20 @@ $('gsaFile').addEventListener('change',async e=>{
 $('gsaSearch').addEventListener('input',()=>{gsaVisible=30;render()});
 $('gsaSort').addEventListener('change',()=>{gsaVisible=30;render()});
 $('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
+$('marginForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const buy=Number($('marginBuy').value),sell=Number($('marginSell').value),qty=Number($('marginQty').value);
+ const transport=Number($('marginTransport').value||0),other=Number($('marginOther').value||0),fee=Number($('marginFee').value);
+ const values=[buy,sell,qty,transport,other,fee];
+ const out=$('marginResult'),currency=$('marginCurrency').value;
+ if(values.some(v=>!Number.isFinite(v))||buy<0||sell<0||qty<=0||!Number.isInteger(qty)||transport<0||other<0||fee<0||fee>100){
+  out.textContent='Vérifie les montants : quantité entière positive, coûts positifs ou nuls, commission entre 0 et 100 %.';
+  return;
+ }
+ const revenue=sell*qty,purchase=buy*qty,commission=revenue*fee/100,totalCosts=purchase+transport+other+commission,profit=revenue-totalCosts,margin=revenue>0?profit/revenue*100:0;
+ const fmt=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency,maximumFractionDigits:2}).format(n);
+ out.textContent='Simulation · Chiffre d’affaires : '+fmt(revenue)+' · Achat : '+fmt(purchase)+' · Transport et autres frais : '+fmt(transport+other)+' · Commission estimée : '+fmt(commission)+' · Coûts totaux : '+fmt(totalCosts)+' · Marge estimée : '+fmt(profit)+' ('+(revenue>0?margin.toFixed(1):'0.0')+' % du chiffre d’affaires). '+(profit>=0?'Marge positive sur les hypothèses saisies.':'Marge négative : opération à revoir.')+' Commission indicative calculée uniquement sur une vente réalisée ; estimation hors taxes et frais non renseignés.';
+});
 async function syncGsaFeed(){
  const status=$('gsaSyncStatus');
  try{
