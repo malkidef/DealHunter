@@ -12,14 +12,14 @@ Cette configuration remplace Appwrite comme backend cible. Elle prépare Firesto
 
 ## Connexion des utilisateurs et création d'entreprise
 
-Le frontend utilise Firebase Authentication (e-mail/mot de passe et Google) et Firestore.
+Le frontend utilise Firebase Authentication (e-mail/mot de passe, Google et Apple). Le formulaire d'authentification est chargé une seule fois depuis `auth.js`.
 
 1. Dans Firebase Console > Authentication > Sign-in method, active **E-mail/Mot de passe** et **Google**.
 2. Dans Authentication > Settings > Authorized domains, ajoute le domaine où DealHunter est publié (par exemple le domaine GitHub Pages réel du dépôt).
 3. Dans les paramètres du projet, crée une application Web et récupère sa configuration Firebase.
-4. Copie `firebase-config.example.js` à la racine sous le nom `firebase-config.js`, puis remplace les valeurs d'exemple par la configuration Web de ton projet.
-5. Publie le fichier `firebase-config.js` dans le dépôt seulement si tu acceptes que la configuration Web soit visible publiquement. Les clés de configuration Web Firebase ne sont pas des secrets d'administration ; la sécurité repose sur Authentication et les règles Firestore. Ne publie jamais de clé Admin SDK, de secret Stripe ou de mot de passe.
-6. Ouvre l'onglet « Connexion / Compte », crée ton compte, puis crée l'espace entreprise.
+4. À la racine du dépôt, ouvre `firebase-web-config.js` et remplace `A_REMPLACER` par `apiKey`, `authDomain`, `projectId` et `appId` de l'application Web Firebase.
+5. Cette configuration Web est destinée au navigateur et peut être visible publiquement. La sécurité repose sur Authentication et les règles Firestore. Ne publie jamais de clé Admin SDK, de secret Stripe, de clé privée Apple ou de mot de passe.
+6. Dans DealHunter, ouvre l'onglet « Connexion / Compte » et teste d'abord la connexion e-mail. Google et Apple fonctionneront uniquement après activation de leurs fournisseurs dans Firebase.
 
 Le code gère la connexion e-mail, la création de compte, la connexion Google et la création du document entreprise avec le statut initial `pending`. Le propriétaire peut lire son entreprise ; les données de paiement et les transactions restent gérées côté serveur.
 
@@ -74,3 +74,15 @@ Google, Apple et e-mail permettent ensuite de retrouver le même compte sur iPho
 - Les remboursements partiels sont placés en revue manuelle afin d'éviter un reversement automatique erroné ; les remboursements complets déclenchent une tentative de reversal du transfert.
 - Les événements Stripe ne sont marqués comme traités qu'après exécution réussie du traitement, afin de permettre les nouvelles tentatives webhook en cas d'erreur.
 - Les suggestions ne contactent aucune entreprise, ne réservent aucun stock et ne déclenchent aucun paiement.
+
+
+## Contrôle avant activation
+
+- [ ] Projet Firebase créé et application Web enregistrée.
+- [ ] `firebase-web-config.js` renseigné avec les quatre valeurs de l'application Web.
+- [ ] E-mail/Mot de passe activé dans Authentication.
+- [ ] Google activé et domaine DealHunter autorisé.
+- [ ] Apple activé avec Services ID, Team ID, Key ID, clé privée et URL de retour configurés dans les consoles Apple/Firebase.
+- [ ] Test de création de compte et de reconnexion effectué sur navigateur mobile et ordinateur.
+
+Le dépôt ne peut pas créer le projet Firebase ni saisir ces paramètres à ta place : ils doivent provenir de ton propre compte Firebase et, pour Apple, de ton compte Apple Developer. Ne partage aucune clé privée ni aucun secret dans GitHub ou dans le chat.
