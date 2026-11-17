@@ -22,7 +22,12 @@ if (!ready) {
   [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
 } else {
   const auth = getAuth(initializeApp(firebaseConfig));
-  const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);\n  const signInWithProvider = async provider => {\n    if (isMobileBrowser) return signInWithRedirect(auth, provider);\n    return signInWithPopup(auth, provider);\n  };\n  const showError = error => {
+  const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const signInWithProvider = async provider => {
+    if (isMobileBrowser) return signInWithRedirect(auth, provider);
+    return signInWithPopup(auth, provider);
+  };
+  const showError = error => {
     const messages = {
       "auth/operation-not-allowed": "Ce mode de connexion n’est pas activé dans Firebase Authentication.",
       "auth/popup-closed-by-user": "Fenêtre de connexion fermée avant la fin.",
@@ -41,7 +46,9 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
-  getRedirectResult(auth).catch(showError);\n\n  onAuthStateChanged(auth, user => {
+  getRedirectResult(auth).catch(showError);
+
+  onAuthStateChanged(auth, user => {
     status.replaceChildren();
     if (user) {
       const label = document.createElement("span");
