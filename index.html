@@ -38,6 +38,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button class="secondary" data-tab="sellers">Stocks vendeurs</button>
 <button class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button class="secondary" data-tab="imports">Import CSV</button>
+<button class="secondary" data-tab="sources">Sources</button>
 </div>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
@@ -76,13 +77,25 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="importMessage" class="muted" role="status" aria-live="polite"></div>
 <div id="importList" class="cards"></div>
 </section>
+<section id="sources" class="panel hidden">
+<h2>Registre des sources</h2>
+<p class="muted">Centralise les plateformes et fournisseurs à examiner. Une source reste « À vérifier » tant que ses conditions et son mode d’accès autorisé ne sont pas confirmés.</p>
+<form id="sourceForm">
+<div class="field"><label for="srcName">Nom de la source</label><input id="srcName" required placeholder="Ex. Portail officiel d’enchères"></div>
+<div class="field"><label for="srcUrl">Site officiel</label><input id="srcUrl" type="url" required placeholder="https://..."></div>
+<div class="field"><label for="srcType">Type d’accès envisagé</label><select id="srcType"><option>API officielle</option><option>Flux RSS / Atom</option><option>Export CSV</option><option>Partenariat</option><option>Import manuel</option><option>À déterminer</option></select></div>
+<div class="field"><label for="srcScope">Pays / secteurs</label><input id="srcScope" placeholder="Ex. Europe · machines industrielles"></div>
+<div class="field"><label for="srcStatus">Statut</label><select id="srcStatus"><option>À vérifier</option><option>Accès autorisé</option><option>Accès restreint</option><option>Refusé</option></select></div>
+<button type="submit">Ajouter la source</button></form>
+<div id="sourceList" class="cards"></div>
+</section>
 </main>
 <footer>DEALHUNTER © 2026 — Prototype fonctionnel de matching local.</footer>
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports');
-const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));render()};
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources');
+const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function score(s,b){
  if(s.category!==b.category)return 0;
@@ -101,6 +114,7 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function render(){
  const importList=$('importList');
  if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
  $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category)).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
@@ -156,7 +170,9 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
+document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','sellers','buyers','imports','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==btn.dataset.tab))}));
+$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
+$('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
 render();
