@@ -17,7 +17,7 @@ main{max-width:1100px;margin:auto;padding:24px 18px 50px}h1{font-size:clamp(26px
 button{cursor:pointer;border:0;border-radius:9px;padding:11px 14px;background:var(--green);color:#071b16;font-weight:750}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.panel h2{font-size:18px;margin:0 0 7px}.panel p{line-height:1.5}
 form{display:grid;gap:10px;margin-top:14px}label{font-size:12px;color:var(--muted)}input,select{width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit}
-.field{display:grid;gap:5px}.cards{display:grid;gap:10px;margin-top:14px}.item{padding:13px;border:1px solid #30425c;background:#15243a;border-radius:11px}.item h3{margin:5px 0;font-size:16px}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#173d35;color:var(--green);font-size:11px;font-weight:700}.match{border-color:#2d725e}.match-score{color:var(--green);font-weight:800}.hidden{display:none}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed #354761;border-radius:10px}
+.field{display:grid;gap:5px}.sam-feed{grid-column:1/-1}.cards{display:grid;gap:10px;margin-top:14px}.item{padding:13px;border:1px solid #30425c;background:#15243a;border-radius:11px}.item h3{margin:5px 0;font-size:16px}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#173d35;color:var(--green);font-size:11px;font-weight:700}.match{border-color:#2d725e}.match-score{color:var(--green);font-weight:800}.hidden{display:none}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed #354761;border-radius:10px}
 footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 @media(max-width:680px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.stat:last-child{grid-column:1/-1}main{padding-top:18px}}
 </style>
@@ -68,6 +68,14 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="bLocation">Ville / zone souhaitée</label><input id="bLocation" required placeholder="Lille"></div>
 <button type="submit">Enregistrer le besoin</button></form></section>
 <section class="panel"><h2>Besoins enregistrés</h2><div id="buyerList" class="cards"></div></section>
+<section class="item sam-feed" aria-labelledby="samFeedTitle">
+<h2 id="samFeedTitle">Opportunités d’achat publiques — SAM.gov (États-Unis)</h2>
+<p class="muted">Flux officiel synchronisé depuis GitHub. Ces avis signalent des marchés potentiels, pas des commandes confirmées ni des acheteurs déjà qualifiés. Ils restent séparés des besoins privés saisis ci-dessus et ne sont pas ajoutés automatiquement au matching.</p>
+<div id="samFeedStatus" class="muted" role="status" aria-live="polite">Chargement des opportunités SAM.gov…</div>
+<div class="field" style="margin:12px 0"><label for="samSearch">Rechercher un avis (titre, organisme, code NAICS, lieu)</label><input id="samSearch" type="search" placeholder="Ex. construction, Department of Defense…"></div>
+<div id="samFeedSummary" class="muted"></div>
+<div id="samFeedList" class="cards"></div>
+</section>
 </div>
 <section id="imports" class="panel hidden">
 <h2>Importer des opportunités CSV</h2>
@@ -132,6 +140,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
 let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let samNotices=[],samFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -309,6 +318,21 @@ function render(){
    }
   }
  }
+ const samList=$('samFeedList');
+ if(samList){
+  const q=norm($('samSearch')?.value||'');
+  const filtered=samNotices.filter(n=>[n.title,n.buyer_organization,n.buyer_office,n.naics_code,n.classification_code,n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country,n.solicitation_number].join(' ').toLowerCase().includes(q));
+  const shown=filtered.slice(0,50);
+  $('samFeedSummary').textContent=filtered.length+' avis correspondant(s) · '+samNotices.length+' avis chargés sur '+(samFeedMeta?.total_matching_notices??'—')+' avis disponibles dans SAM.gov pour la période collectée.';
+  samList.innerHTML=shown.length?shown.map(n=>{
+   const p=n.place_of_performance||{};
+   const place=[p.city,p.state,p.country].filter(Boolean).join(', ')||'Lieu d’exécution non précisé';
+   const link=typeof n.source_url==='string'&&/^https:\/\//i.test(n.source_url)?'<a href="'+escapeHtml(n.source_url)+'" target="_blank" rel="noopener noreferrer">Consulter l’avis sur SAM.gov</a>':'Lien officiel indisponible';
+   const details=[n.notice_type?'Type : '+n.notice_type:'',n.naics_code?'NAICS : '+n.naics_code:'',n.classification_code?'Code : '+n.classification_code:'',n.posted_date?'Publié : '+n.posted_date:'',n.deadline_date?'Réponse avant : '+n.deadline_date:''].filter(Boolean).join(' · ');
+   return '<article class="item"><span class="pill">Signal public · à vérifier</span><h3>'+escapeHtml(n.title||'Avis SAM.gov sans titre')+'</h3><div class="muted">'+escapeHtml(n.buyer_organization||'Organisme acheteur non précisé')+(n.buyer_office?' · '+escapeHtml(n.buyer_office):'')+'</div><div class="muted">'+escapeHtml(place)+'</div><div class="muted">'+escapeHtml(details)+'</div><p class="muted">'+link+'</p></article>';
+  }).join(''):'<div class="empty">Aucun avis ne correspond à cette recherche.</div>';
+  if(filtered.length>50)samList.insertAdjacentHTML('beforeend','<div class="muted">Affichage des 50 premiers avis. Affine ta recherche pour trouver les suivants.</div>');
+ }
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category)).join(''):'<div class="empty">Aucun stock enregistré.</div>';
@@ -367,6 +391,22 @@ $('marginForm').addEventListener('submit',e=>{
  const fmt=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency,maximumFractionDigits:2}).format(n);
  out.textContent='Simulation · Chiffre d’affaires : '+fmt(revenue)+' · Achat : '+fmt(purchase)+' · Transport et autres frais : '+fmt(transport+other)+' · Commission estimée : '+fmt(commission)+' · Coûts totaux : '+fmt(totalCosts)+' · Marge estimée : '+fmt(profit)+' ('+(revenue>0?margin.toFixed(1):'0.0')+' % du chiffre d’affaires). Prix d’achat unitaire maximum pour ne pas perdre d’argent : '+fmt(Math.max(0,breakEvenBuy))+'. Prix d’achat unitaire maximum pour atteindre '+target.toFixed(1)+' % de marge : '+fmt(Math.max(0,targetBuy))+'. '+(profit>=0?'Marge positive sur les hypothèses saisies.':'Marge négative : opération à revoir.')+' Calcul indicatif hors taxes, frais non renseignés, douane et risques de revente ; si le prix maximum calculé est nul, la cible n’est pas atteignable avec ces hypothèses.';
 });
+async function syncSamFeed(){
+ const status=$('samFeedStatus');
+ try{
+  const response=await fetch('data/sam-buyer-opportunities.json',{cache:'no-store'});
+  if(!response.ok)throw new Error('Flux SAM.gov indisponible ('+response.status+').');
+  const data=await response.json();
+  if(!data||data.source!=='SAM.gov — Get Opportunities API'||!Array.isArray(data.notices))throw new Error('Format du flux SAM.gov invalide.');
+  samNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.title);
+  samFeedMeta=data;
+  render();
+  status.textContent=samNotices.length+' avis publics chargés · collecte du '+(data.collected_at||'date inconnue')+' · période du '+(data.posted_from||'—')+' au '+(data.posted_to||'—')+'. Tous les avis restent à vérifier.';
+ }catch(err){
+  status.textContent='Synchronisation SAM.gov indisponible : '+err.message+' Le flux sera réessayé au prochain chargement.';
+ }
+}
+$('samSearch').addEventListener('input',render);
 async function syncGsaFeed(){
  const status=$('gsaSyncStatus');
  try{
@@ -422,5 +462,6 @@ $('sellerForm').addEventListener('submit',e=>{e.preventDefault();sellers.push({c
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
 render();
 syncGsaFeed();
+syncSamFeed();
 </script>
 </body></html>
