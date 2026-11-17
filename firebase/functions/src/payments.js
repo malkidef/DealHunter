@@ -32,6 +32,51 @@ function money(amount) {
   return amount;
 }
 
+exports.getCompanyDashboard = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const companyId = String(request.data?.companyId || "");
+  if (!companyId || companyId.length > 160) {
+    throw new HttpsError("invalid-argument", "Identifiant entreprise invalide.");
+  }
+  await ownedCompany(uid, companyId);
+  const [asSeller, asBuyer] = await Promise.all([
+    db.collection("deals").where("sellerCompanyId", "==", companyId).orderBy("updatedAt", "desc").limit(100).get(),
+    db.collection("deals").where("buyerCompanyId", "==", companyId).orderBy("updatedAt", "desc").limit(100).get()
+  ]);
+  const byId = new Map();
+  for (const doc of [...asSeller.docs, ...asBuyer.docs]) {
+    byId.set(doc.id, { id: doc.id, ...doc.data() });
+  }
+  const deals = [...byId.values()].sort((a, b) => {
+    const at = a.updatedAt?.toMillis?.() || 0;
+    const bt = b.updatedAt?.toMillis?.() || 0;
+    return bt - at;
+  }).slice(0, 100);
+  const summary = deals.reduce((acc, deal) => {
+    acc.totalDeals += 1;
+    if (deal.paymentStatus === "paid") acc.paidDeals += 1;
+    if (deal.disputeStatus === "open") acc.openDisputes += 1;
+    if (deal.sellerCompanyId === companyId) {
+      acc.sellerSalesCents += Number(deal.amountTotalCents || 0);
+      acc.commissionCents += Number(deal.commissionCents || 0);
+      acc.sellerNetCents += Number(deal.sellerNetCents || 0);
+    }
+    return acc;
+  }, { totalDeals: 0, paidDeals: 0, openDisputes: 0, sellerSalesCents: 0, commissionCents: 0, sellerNetCents: 0 });
+  return {
+    companyId,
+    summary,
+    deals: deals.map(({ id, sellerCompanyId, buyerCompanyId, productName, amountTotalCents, currency, status, paymentStatus, transferStatus, commissionCents, sellerNetCents, disputeStatus, updatedAt }) => ({
+      id, sellerCompanyId, buyerCompanyId, productName: String(productName || "Transaction DealHunter").slice(0, 160),
+      amountTotalCents: Number(amountTotalCents || 0), currency: String(currency || "eur").toLowerCase(),
+      status: status || "pending", paymentStatus: paymentStatus || "pending",
+      transferStatus: transferStatus || "none", commissionCents: Number(commissionCents || 0),
+      sellerNetCents: Number(sellerNetCents || 0), disputeStatus: disputeStatus || "none",
+      updatedAt: updatedAt?.toMillis?.() || null
+    }))
+  };
+});
+
 exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (request) => {
   const uid = requireAuth(request);
   const companyId = String(request.data?.companyId || "");
