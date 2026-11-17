@@ -126,12 +126,53 @@ exports.confirmDealCompletion = onCall(async (request) => {
   return { accepted: true, message: "Confirmation enregistrée. Le versement sera traité lorsque les deux parties auront confirmé et que les fonds seront disponibles." };
 });
 
+exports.openDealDispute = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const dealId = String(request.data?.dealId || "");
+  const reason = String(request.data?.reason || "").trim();
+  const description = String(request.data?.description || "").trim();
+  const role = String(request.data?.role || "");
+  if (!["seller", "buyer"].includes(role)) throw new HttpsError("invalid-argument", "Rôle invalide.");
+  if (!reason || reason.length > 80 || !description || description.length > 2000) {
+    throw new HttpsError("invalid-argument", "Motif ou description invalide.");
+  }
+  const ref = db.collection("deals").doc(dealId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+  const deal = snap.data();
+  const companyId = role === "seller" ? deal.sellerCompanyId : deal.buyerCompanyId;
+  await ownedCompany(uid, companyId);
+  if (deal.paymentStatus !== "paid") throw new HttpsError("failed-precondition", "Un litige ne peut être ouvert que sur une vente payée.");
+  if (["resolved", "cancelled"].includes(deal.status)) throw new HttpsError("failed-precondition", "Cette vente est déjà clôturée.");
+  const disputeRef = ref.collection("disputes").doc();
+  await db.runTransaction(async (tx) => {
+    const fresh = await tx.get(ref);
+    if (fresh.data()?.disputeStatus === "open") throw new HttpsError("already-exists", "Un litige est déjà ouvert pour cette vente.");
+    tx.create(disputeRef, {
+      openedByUid: uid,
+      companyId,
+      role,
+      reason,
+      description,
+      status: "open",
+      createdAt: FieldValue.serverTimestamp()
+    });
+    tx.update(ref, {
+      disputeStatus: "open",
+      disputeOpenedAt: FieldValue.serverTimestamp(),
+      transferStatus: "blocked_dispute",
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  });
+  return { accepted: true, message: "Litige enregistré. Le versement vendeur est suspendu pendant son examen." };
+});
+
 async function tryReleaseDeal(dealId) {
   const ref = db.collection("deals").doc(dealId);
   const snap = await ref.get();
   if (!snap.exists) return;
   const deal = snap.data();
-  if (deal.paymentStatus !== "paid" || !deal.sellerConfirmedAt || !deal.buyerConfirmedAt || deal.transferStatus === "paid" || deal.transferStatus === "processing" || deal.refundStatus === "refunded") return;
+  if (deal.paymentStatus !== "paid" || !deal.sellerConfirmedAt || !deal.buyerConfirmedAt || deal.disputeStatus === "open" || deal.disputeStatus === "lost" || deal.transferStatus === "paid" || deal.transferStatus === "processing" || deal.refundStatus === "refunded") return;
   const seller = await db.collection("companies").doc(deal.sellerCompanyId).get();
   const accountId = seller.data()?.stripeAccountId;
   if (!accountId || seller.data()?.stripeOnboardingStatus !== "complete") {
@@ -145,7 +186,7 @@ async function tryReleaseDeal(dealId) {
     const fresh = await tx.get(ref);
     const d = fresh.data();
     if (d.transferStatus === "paid" || d.transferStatus === "processing") return;
-    if (d.paymentStatus !== "paid" || !d.sellerConfirmedAt || !d.buyerConfirmedAt) return;
+    if (d.paymentStatus !== "paid" || !d.sellerConfirmedAt || !d.buyerConfirmedAt || d.disputeStatus === "open" || d.disputeStatus === "lost") return;
     tx.update(ref, { transferStatus: "processing", commissionCents: commission, sellerNetCents: sellerNet, updatedAt: FieldValue.serverTimestamp() });
   });
   const locked = (await ref.get()).data();
@@ -216,6 +257,32 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret]
     for (const doc of pending.docs) {
       await doc.ref.update({ transferStatus: "pending", updatedAt: FieldValue.serverTimestamp() });
       await tryReleaseDeal(doc.id);
+    }
+  } else if (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed") {
+    const dispute = event.data.object;
+    const paymentIntentId = dispute.payment_intent;
+    if (paymentIntentId) {
+      const matches = await db.collection("deals").where("stripePaymentIntentId", "==", paymentIntentId).limit(1).get();
+      for (const doc of matches.docs) {
+        if (event.type === "charge.dispute.created") {
+          await doc.ref.update({
+            disputeStatus: "open",
+            stripeDisputeId: dispute.id,
+            transferStatus: "blocked_dispute",
+            disputeOpenedAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        } else {
+          const won = dispute.status === "won";
+          await doc.ref.update({
+            disputeStatus: won ? "won" : "lost",
+            stripeDisputeClosedAt: FieldValue.serverTimestamp(),
+            transferStatus: won ? "pending" : "blocked_dispute_lost",
+            updatedAt: FieldValue.serverTimestamp()
+          });
+          if (won) await tryReleaseDeal(doc.id);
+        }
+      }
     }
   } else if (event.type === "charge.refunded") {
     const charge = event.data.object;
