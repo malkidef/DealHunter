@@ -48,21 +48,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <h1>Les bonnes affaires trouvent leur acheteur.</h1>
 <p class="intro">DealHunter rapproche les entreprises qui ont des stocks excédentaires de celles qui recherchent ces produits. Le moteur compare automatiquement les catégories, quantités, budgets et zones.</p>
 <div class="notice"><strong>Prototype de démonstration :</strong> les données sont enregistrées uniquement dans ce navigateur. Les correspondances sont calculées automatiquement ici, mais aucune entreprise réelle n'est recherchée ou contactée et aucun paiement n'est déclenché. Les connexions aux sources de stocks, aux acheteurs et au paiement seront ajoutées après validation des partenaires et des autorisations.</div>
-<section class="auth-panel" aria-labelledby="authTitle">
-<h2 id="authTitle">Connexion à DealHunter</h2>
-<p class="muted">Un même compte pourra être utilisé sur iPhone, Android et ordinateur.</p>
-<div class="auth-actions">
-<button type="button" id="googleSignIn" class="secondary">Continuer avec Google</button>
-<button type="button" id="appleSignIn" class="secondary">Continuer avec Apple</button>
-</div>
-<form id="emailAuthForm" class="auth-form">
-<div class="field"><label for="authEmail">Adresse e-mail</label><input id="authEmail" type="email" autocomplete="email" required placeholder="nom@entreprise.fr"></div>
-<div class="field"><label for="authPassword">Mot de passe</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="8 caractères minimum"></div>
-<button type="submit" id="emailSignIn">Se connecter</button><button type="button" id="emailCreate" class="secondary">Créer un compte</button>
-</form>
-<div class="muted" id="authStatus" role="status" aria-live="polite">Connexion non activée : le projet Firebase doit d’abord être configuré.</div>
-<button type="button" id="signOut" class="secondary hidden">Se déconnecter</button>
-</section>
+
 <section class="stats">
 <div class="stat"><strong id="sellerCount">0</strong><span>Offres vendeurs</span></div>
 <div class="stat"><strong id="buyerCount">0</strong><span>Besoins acheteurs</span></div>
@@ -88,9 +74,9 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <form id="emailAuthForm">
 <div class="field"><label for="authEmail">Adresse e-mail</label><input id="authEmail" type="email" autocomplete="email" required placeholder="nom@entreprise.fr"></div>
 <div class="field"><label for="authPassword">Mot de passe (8 caractères minimum)</label><input id="authPassword" type="password" autocomplete="current-password" minlength="8" required placeholder="Mot de passe"></div>
-<div class="auth-actions"><button type="submit" id="emailSignIn">Se connecter</button><button type="button" class="secondary" id="emailSignUp">Créer un compte</button></div>
+<div class="auth-actions"><button type="submit" id="emailSignIn">Se connecter</button><button type="button" class="secondary" id="emailCreate">Créer un compte</button></div>
 </form>
-<div class="auth-actions"><button type="button" class="secondary" id="googleSignIn">Continuer avec Google</button></div>
+<div class="auth-actions"><button type="button" class="secondary" id="googleSignIn">Continuer avec Google</button><button type="button" class="secondary" id="appleSignIn">Continuer avec Apple</button></div>
 </section>
 <section class="item">
 <h3>Entreprise</h3>
@@ -679,7 +665,5 @@ syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 </script>
-<script src="firebase-config.js"></script>
-<script type="module" src="auth.js"></script>
 <script type="module" src="auth.js"></script>
 </body></html>
