@@ -88,6 +88,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="gsaSort">Trier les annonces</label><select id="gsaSort"><option value="opportunity">Potentiel d’opportunité</option><option value="complete">Fiches les plus renseignées</option><option value="ending">Fin d’enchère la plus proche</option><option value="title">Titre (A à Z)</option></select></div>
 <div class="field"><label for="gsaSectorFilter">Secteur d’activité</label><select id="gsaSectorFilter"><option value="all" selected>Tous les secteurs</option><option value="it">Informatique et électronique</option><option value="vehicles">Véhicules et transport</option><option value="industrial">Machines et équipements industriels</option><option value="construction">Construction et matériaux</option><option value="furniture">Mobilier et équipements de bureau</option><option value="agri">Agriculture et alimentation</option><option value="other">Autres / non classés</option></select></div>
 <div class="field"><label for="gsaTechFilter">Filtre spécialisé matériel informatique (facultatif)</label><select id="gsaTechFilter"><option value="all" selected>Tous les équipements</option><option value="it">Matériel informatique uniquement</option><option value="computers">Ordinateurs et portables</option><option value="screens">Écrans informatiques</option><option value="servers">Serveurs et stockage</option><option value="network">Réseaux et connectivité</option><option value="printers">Imprimantes et scanners bureautiques</option><option value="accessories">Périphériques et accessoires</option><option value="all">Toutes les annonces GSA</option></select></div>
+<section class="item" style="margin:14px 0"><h3>Comparateur des secteurs</h3><p class="muted">Vue globale des annonces importées, indépendante des filtres de recherche. Le score mesure la qualité des informations disponibles, pas la rentabilité.</p><div id="gsaSectorDashboard" class="cards"></div></section>
 <div id="gsaSummary" class="muted"></div>
 <div id="gsaList" class="cards"></div>
 <button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
@@ -207,6 +208,14 @@ function render(){
    if(x.reserve_required===true)warnings.push('prix de réserve à prendre en compte');
    return warnings;
   };
+  const sectorNames={it:'Informatique / électronique',vehicles:'Véhicules / transport',industrial:'Machines / industrie',construction:'Construction / matériaux',furniture:'Mobilier / bureau',agri:'Agriculture / alimentation'};
+  const sectorStats={};
+  gsaListings.forEach(x=>{const s=classifyGsaSector(x);const key=s?s.category:'other';if(!sectorStats[key])sectorStats[key]={count:0,totalScore:0};sectorStats[key].count++;sectorStats[key].totalScore+=opportunityScore(x)});
+  const dashboard=$('gsaSectorDashboard');
+  if(dashboard){
+   const rows=Object.entries(sectorStats).sort((a,b)=>b[1].count-a[1].count);
+   dashboard.innerHTML=rows.length?rows.map(([key,v])=>'<article class="item"><span class="pill">'+v.count+' annonce(s)</span><h3>'+escapeHtml(sectorNames[key]||'À classer manuellement')+'</h3><div class="muted">Qualité moyenne des dossiers : '+Math.round(v.totalScore/v.count)+'/100</div></article>').join(''):'<div class="empty">Aucune annonce importée pour le moment.</div>';
+  }
   const techFilter=$('gsaTechFilter')?.value||'all';
   const sectorFilter=$('gsaSectorFilter')?.value||'all';
   const filtered=gsaListings.filter(x=>{const textMatch=[x.title,x.description,x.city,x.region,x.source_listing_id].join(' ').toLowerCase().includes(query);if(!textMatch)return false;const sector=classifyGsaSector(x);if(sectorFilter==='other'?!!sector:sectorFilter!=='all'&&(!sector||sector.category!==sectorFilter))return false;const tech=classifyGsaTech(x);if(techFilter==='all')return true;if(!tech)return false;return techFilter==='it'||tech.category===techFilter;});
