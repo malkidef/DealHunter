@@ -58,12 +58,13 @@ def normalize_listing(item: dict, collected_at: str) -> dict:
 
 
 def fetch_listings(api_key: str) -> list[dict]:
-    query = urlencode({"format": "JSON"})
+    # GSA's official examples pass the api.data.gov key as the api_key
+    # query parameter (not as an X-API-KEY header).
+    query = urlencode({"api_key": api_key, "format": "JSON"})
     request = Request(
         f"{API_URL}?{query}",
         headers={
             "Accept": "application/json",
-            "X-API-KEY": api_key,
             "User-Agent": "DealHunter/0.1 (GSA Auctions public API connector)",
         },
     )
@@ -77,9 +78,16 @@ def fetch_listings(api_key: str) -> list[dict]:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RuntimeError("La réponse GSA n'est pas un JSON valide.") from exc
 
+    if isinstance(payload, dict) and payload.get("error"):
+        detail = str(payload.get("message") or payload.get("error")).strip()
+        raise RuntimeError(f"GSA API a refusé la requête : {detail}")
     results = payload.get("results") if isinstance(payload, dict) else None
     if not isinstance(results, list):
-        raise RuntimeError("Format GSA inattendu : le tableau 'results' est absent.")
+        keys = ", ".join(sorted(str(key) for key in payload.keys())) if isinstance(payload, dict) else type(payload).__name__
+        raise RuntimeError(
+            f"Format GSA inattendu (éléments reçus : {keys or 'aucun'}). "
+            "Vérifier la réponse réelle de l'API avant de modifier le mapping."
+        )
     return results
 
 
