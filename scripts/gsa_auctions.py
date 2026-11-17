@@ -134,14 +134,26 @@ def main() -> int:
         for item in results
         if isinstance(item, dict)
     ]
-    # Keep only minimal listing data; never import officer email/phone fields.
+    # Do not present empty placeholder records as usable opportunities.
+    usable = [
+        row for row in normalized
+        if row["source_listing_id"] or row["source_url"] or row["title"] != "Lot GSA sans titre"
+    ]
+    sample = next((item for item in results if isinstance(item, dict)), {})
     output = {
         "source": "GSA Auctions",
         "source_url": "https://www.gsaauctions.gov/",
         "collected_at": collected_at,
-        "count": len(normalized),
+        "raw_count": len(results),
+        "count": len(usable),
+        "api_field_names": sorted(str(key) for key in sample.keys()),
         "review_status": "pending",
-        "listings": normalized,
+        "listings": usable,
+        "diagnostic": (
+            "Aucun champ exploitable reconnu. Les noms de champs API sont fournis "
+            "pour ajuster le mapping sans inventer de données."
+            if results and not usable else None
+        ),
     }
     destination = Path(args.output)
     destination.parent.mkdir(parents=True, exist_ok=True)
