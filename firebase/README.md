@@ -19,6 +19,10 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 
 Le projet doit être sélectionné dans la CLI. Ne jamais ajouter de clé Admin SDK dans le dépôt ou dans le navigateur.
 
+## Tableau de bord entreprise
+
+La fonction callable `getCompanyDashboard` renvoie, après authentification et vérification du propriétaire de l'entreprise, les ventes et achats liés à cette entreprise ainsi que les indicateurs financiers. Elle retourne au maximum les 100 transactions les plus récentes ; les totaux affichés portent donc sur cet échantillon tant qu'une pagination complète n'est pas ajoutée. Les index Firestore vendeur/acheteur sont définis dans `firestore.indexes.json`.
+
 ## Collections
 
 - `companies` : entreprise et propriétaire authentifié.
