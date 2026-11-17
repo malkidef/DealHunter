@@ -33,10 +33,24 @@ class GsaAuctionsMappingTests(unittest.TestCase):
         self.assertIsNone(row["quantity"])
         self.assertIsNone(row["unit_price"])
         self.assertEqual(row["reserve_price_usd"], 250.0)
+        self.assertIsNone(row["reserve_required"])
         self.assertEqual(row["auction_status"], "active")
         self.assertEqual(row["review_status"], "pending")
         self.assertNotIn("COEmail", row)
         self.assertNotIn("COPhone", row)
+
+    def test_boolean_reserve_flag_is_not_treated_as_a_dollar_amount(self):
+        row = normalize_listing(
+            {
+                "saleNo": "SALE-BOOL",
+                "lotNo": 1,
+                "itemName": "Wireless access points",
+                "reserve": True,
+            },
+            "now",
+        )
+        self.assertTrue(row["reserve_required"])
+        self.assertIsNone(row["reserve_price_usd"])
 
     def test_handles_nested_lot_descriptions(self):
         row = normalize_listing(
