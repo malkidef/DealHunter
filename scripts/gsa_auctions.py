@@ -26,25 +26,34 @@ def extract_results(payload):
     return None
 
 
+def field(item: dict, name: str, default=None):
+    """Read API fields without depending on camelCase/PascalCase spelling."""
+    wanted = name.casefold()
+    for key, value in item.items():
+        if str(key).casefold() == wanted:
+            return value
+    return default
+
+
 def normalize_listing(item: dict, collected_at: str) -> dict:
-    sale_no = str(item.get("SaleNo") or "").strip()
-    lot_no = str(item.get("LotNo") or "").strip()
+    sale_no = str(field(item, "saleNo") or "").strip()
+    lot_no = str(field(item, "lotNo") or "").strip()
     listing_id = "-".join(part for part in (sale_no, lot_no) if part)
-    item_name = str(item.get("ItemName") or "").strip()
-    lot_info = item.get("LotInfo") or []
+    item_name = str(field(item, "itemName") or "").strip()
+    lot_info = field(item, "lotInfo") or []
     lot_descriptions = [
-        str(row.get("LotDescript") or "").strip()
+        str(field(row, "lotDescript") or "").strip()
         for row in lot_info
-        if isinstance(row, dict) and row.get("LotDescript")
+        if isinstance(row, dict) and field(row, "lotDescript")
     ]
     description = " | ".join(lot_descriptions)
-    status_code = str(item.get("AuctionStatus") or "").strip()
+    status_code = str(field(item, "auctionStatus") or "").strip()
     status = {"A": "active", "P": "preview"}.get(status_code, "scheduled")
 
     return {
         "source_id": "gsa_auctions",
         "source_listing_id": listing_id or None,
-        "source_url": str(item.get("ItemDescURL") or "").strip() or None,
+        "source_url": str(field(item, "itemDescURL") or "").strip() or None,
         "title": item_name or description or "Lot GSA sans titre",
         "description": description or None,
         "category": "À classer",
@@ -52,13 +61,13 @@ def normalize_listing(item: dict, collected_at: str) -> dict:
         "unit": "lot",
         "unit_price": None,
         "currency": "USD",
-        "reserve_price_usd": item.get("Reserve"),
-        "high_bid_usd": item.get("HighBidAmount"),
+        "reserve_price_usd": field(item, "reserve"),
+        "high_bid_usd": field(item, "highBidAmount"),
         "country_code": "US",
-        "city": str(item.get("PropertyCity") or item.get("LocationCity") or "").strip() or None,
-        "region": str(item.get("PropertyState") or item.get("LocationST") or "").strip() or None,
-        "auction_start_date": item.get("AucStartDt"),
-        "auction_end_date": item.get("AucEndDt"),
+        "city": str(field(item, "propertyCity") or field(item, "locationCity") or "").strip() or None,
+        "region": str(field(item, "propertyState") or field(item, "locationST") or "").strip() or None,
+        "auction_start_date": field(item, "aucStartDt"),
+        "auction_end_date": field(item, "aucEndDt"),
         "auction_status": status,
         "availability_status": "unverified",
         "review_status": "pending",
