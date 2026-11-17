@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fetch-gsa-auctions:
@@ -25,6 +25,20 @@ jobs:
         env:
           GSA_API_KEY: ${{ secrets.GSA_API_KEY }}
         run: python scripts/gsa_auctions.py --output output/gsa-auctions-pending.json
+
+      - name: Publier le flux public de consultation
+        run: |
+          mkdir -p data
+          cp output/gsa-auctions-pending.json data/gsa-auctions.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gsa-auctions.json
+          if git diff --cached --quiet; then
+            echo "Le flux public est déjà à jour."
+          else
+            git commit -m "Update published GSA listings feed"
+            git push
+          fi
 
       - name: Joindre le fichier de revue
         uses: actions/upload-artifact@v4
