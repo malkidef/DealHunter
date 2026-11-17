@@ -90,6 +90,11 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="gsaList" class="cards"></div>
 <button type="button" id="gsaMore" class="secondary hidden">Afficher 30 annonces supplémentaires</button>
 <section class="item" style="margin-top:18px">
+<h3>Détection d’acheteurs potentiels</h3>
+<p class="muted">Le moteur compare les mots-clés des besoins acheteurs enregistrés dans ce navigateur avec les titres et descriptions des annonces GSA. Il ne contacte personne et ne confirme ni disponibilité, ni quantité, ni prix final.</p>
+<div id="gsaBuyerMatches" class="cards"></div>
+</section>
+<section class="item" style="margin-top:18px">
 <h3>Simulateur de marge (estimation manuelle)</h3>
 <p class="muted">Renseigne toi-même un prix d’achat confirmé et un prix de revente réaliste. L’enchère actuelle GSA n’est jamais utilisée comme prix d’achat final. Aucun taux de change ni frais cachés ne sont supposés.</p>
 <form id="marginForm">
@@ -185,6 +190,41 @@ function render(){
   }).join(''):'<div class="empty">Aucune annonce à afficher. Importe le JSON GSA ou modifie ta recherche.</div>';
   $('gsaSummary').textContent=filtered.length+' annonce(s) trouvée(s) · '+gsaListings.length+' importée(s) au total.';
   $('gsaMore').classList.toggle('hidden',filtered.length<=gsaVisible);
+  const matchBox=$('gsaBuyerMatches');
+  if(matchBox){
+   if(!buyers.length){
+    matchBox.innerHTML='<div class="empty">Aucun besoin acheteur enregistré. Ajoute un besoin dans l’onglet « Besoins acheteurs » pour lancer la détection.</div>';
+   }else{
+    const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all']);
+    const tokens=value=>[...new Set(norm(value).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!stop.has(w)))];
+    const candidates=[];
+    buyers.forEach(b=>{
+     const wanted=tokens(b.product);
+     if(!wanted.length)return;
+     gsaListings.forEach(x=>{
+      const listingText=[x.title,x.description].filter(Boolean).join(' ');
+      const available=new Set(tokens(listingText));
+      const common=wanted.filter(w=>available.has(w));
+      if(!common.length)return;
+      const place=[x.city,x.region,x.country_code].filter(Boolean).map(norm);
+      const buyerPlace=norm(b.location);
+      const locationFit=!!buyerPlace&&place.some(p=>p===buyerPlace);
+      const keywordPoints=Math.round(70*common.length/wanted.length);
+      const descriptionPoints=x.description?5:0;
+      const sourcePoints=typeof x.source_url==='string'&&/^https:\/\/www\\.gsaauctions\\.gov\\//i.test(x.source_url)?5:0;
+      const statusPoints=['active','scheduled'].includes(norm(x.auction_status))?5:0;
+      const score=Math.min(100,keywordPoints+(locationFit?15:0)+descriptionPoints+sourcePoints+statusPoints);
+      candidates.push({b,x,common,score,locationFit});
+     });
+    });
+    candidates.sort((a,b)=>b.score-a.score);
+    matchBox.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
+     const place=[m.x.city,m.x.region,m.x.country_code].filter(Boolean).join(', ')||'Lieu non précisé';
+     const link=typeof m.x.source_url==='string'&&/^https:\/\/www\\.gsaauctions\\.gov\\//i.test(m.x.source_url)?'<a href="'+escapeHtml(m.x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
+     return '<article class="item"><span class="pill">Piste à vérifier</span><h3>'+escapeHtml(m.b.company)+' · recherche : '+escapeHtml(m.b.product)+'</h3><div><strong>'+escapeHtml(m.x.title||'Lot GSA sans titre')+'</strong></div><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(m.x.source_listing_id||'Identifiant absent')+'</div><div class="match-score">Pertinence des mots-clés : '+m.score+'/100</div><div class="muted">Mots communs : '+escapeHtml(m.common.join(', '))+(m.locationFit?' · lieu identique':'')+'</div><div class="muted">Quantité : '+(m.x.quantity!==null&&m.x.quantity!==undefined?escapeHtml(m.x.quantity):'non renseignée')+' · Enchère actuelle : '+(m.x.high_bid_usd!==null&&m.x.high_bid_usd!==undefined?escapeHtml(m.x.high_bid_usd)+' USD':'non renseignée')+'</div><p class="muted">'+link+'</p></article>';
+    }).join(''):'<div class="empty">Aucune correspondance par mots-clés pour le moment. Enrichis les besoins acheteurs avec des termes précis ou attends de nouvelles annonces.</div>';
+   }
+  }
  }
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();$('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
