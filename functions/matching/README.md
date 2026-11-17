@@ -1,0 +1,38 @@
+# Fonction Appwrite — matching serveur
+
+Cette fonction calcule les correspondances entre stocks actifs et besoins ouverts, puis crée uniquement des suggestions dans la collection `matches`. Elle ne contacte aucune entreprise, ne réserve aucun stock et ne déclenche aucun paiement.
+
+## Variables d'environnement de la fonction
+
+Définir dans Appwrite (jamais dans le site web) :
+
+- `APPWRITE_ENDPOINT` : endpoint de l'instance Appwrite
+- `APPWRITE_PROJECT_ID` : identifiant du projet
+- `APPWRITE_API_KEY` : clé serveur limitée aux permissions nécessaires de lecture/écriture des collections concernées
+- `APPWRITE_DATABASE_ID`
+- `APPWRITE_LISTINGS_COLLECTION_ID`
+- `APPWRITE_REQUESTS_COLLECTION_ID`
+- `APPWRITE_MATCHES_COLLECTION_ID`
+
+## Déploiement
+
+1. Créer une fonction Appwrite avec runtime Node.js 18 ou supérieur.
+2. Définir le point d'entrée sur `src/main.js` et copier ce dossier comme source de la fonction.
+3. Ajouter les variables d'environnement ci-dessus dans les paramètres de la fonction.
+4. Donner à la clé serveur uniquement les droits nécessaires sur les trois collections.
+5. Exécuter manuellement pour un premier essai, puis planifier l'exécution après validation.
+
+## Schéma requis
+
+Les champs doivent correspondre à `docs/APPWRITE_SCHEMA.md`. Créer un index unique composé de `listingId` et `requestId` dans `matches` pour empêcher les doublons concurrents. Les permissions de création de `matches` doivent être réservées au serveur ; ne jamais donner la clé API au navigateur.
+
+## Règles de matching de cette première version
+
+- catégorie, unité et devise identiques ;
+- stock actif et besoin ouvert ;
+- quantité disponible suffisante ;
+- prix vendeur inférieur ou égal au budget maximum lorsqu'il est renseigné ;
+- au moins un mot produit commun ;
+- score indicatif basé sur la proximité produit, la quantité, le budget et la localisation.
+
+La fonction lit au maximum 500 stocks actifs et 500 besoins ouverts par exécution. Une version paginée sera nécessaire avant une montée en charge importante.
