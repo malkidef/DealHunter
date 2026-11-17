@@ -35,4 +35,4 @@ Les champs doivent correspondre à `docs/APPWRITE_SCHEMA.md`. Créer un index un
 - au moins un mot produit commun ;
 - score indicatif basé sur la proximité produit, la quantité, le budget et la localisation.
 
-La fonction lit au maximum 500 stocks actifs et 500 besoins ouverts par exécution. Une version paginée sera nécessaire avant une montée en charge importante.
+La fonction lit les stocks actifs et besoins ouverts par pages de 100 documents, avec un plafond de sécurité de 10 000 documents par type et par exécution. Elle exclut les offres et besoins expirés ainsi que les rapprochements entre deux annonces de la même entreprise. Pour éviter les doublons en cas d'exécutions simultanées, créer l'index unique décrit ci-dessus ; les conflits 409 sont traités comme des correspondances déjà existantes.
