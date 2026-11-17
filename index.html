@@ -242,7 +242,7 @@ function render(){
       const locationFit=!!buyerPlace&&place.some(p=>p===buyerPlace);
       const keywordPoints=Math.round(70*common.length/wanted.length);
       const descriptionPoints=x.description?5:0;
-      const sourcePoints=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\\//i.test(x.source_url)?5:0;
+      const sourcePoints=typeof x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(x.source_url)?5:0;
       const statusPoints=['active','scheduled'].includes(norm(x.auction_status))?5:0;
       const score=Math.min(100,keywordPoints+(locationFit?15:0)+descriptionPoints+sourcePoints+statusPoints);
       candidates.push({b,x,common,score,locationFit});
@@ -251,7 +251,7 @@ function render(){
     candidates.sort((a,b)=>b.score-a.score);
     matchBox.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
      const place=[m.x.city,m.x.region,m.x.country_code].filter(Boolean).join(', ')||'Lieu non précisé';
-     const link=typeof m.x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\\//i.test(m.x.source_url)?'<a href="'+escapeHtml(m.x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
+     const link=typeof m.x.source_url==='string'&&/^https:\/\/www\.gsaauctions\.gov\//i.test(m.x.source_url)?'<a href="'+escapeHtml(m.x.source_url)+'" target="_blank" rel="noopener noreferrer">Voir l’annonce officielle</a>':'Lien source indisponible';
      return '<article class="item"><span class="pill">Piste à vérifier</span><h3>'+escapeHtml(m.b.company)+' · recherche : '+escapeHtml(m.b.product)+'</h3><div><strong>'+escapeHtml(m.x.title||'Lot GSA sans titre')+'</strong></div><div class="muted">'+escapeHtml(place)+' · '+escapeHtml(m.x.source_listing_id||'Identifiant absent')+'</div><div class="match-score">Pertinence indicative des mots-clés : '+m.score+'/100</div><div class="muted">Mots communs : '+escapeHtml(m.common.join(', '))+(m.locationFit?' · lieu identique':'')+'</div><div class="muted">Quantité : '+(m.x.quantity!==null&&m.x.quantity!==undefined?escapeHtml(m.x.quantity):'non renseignée')+' · Enchère actuelle : '+(m.x.high_bid_usd!==null&&m.x.high_bid_usd!==undefined?escapeHtml(m.x.high_bid_usd)+' USD':'non renseignée')+'</div><p class="muted">'+link+'</p></article>';
     }).join(''):'<div class="empty">Aucune correspondance par mots-clés pour le moment. Enrichis les besoins acheteurs avec des termes précis ou attends de nouvelles annonces.</div>';
    }
