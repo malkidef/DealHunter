@@ -106,7 +106,8 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="marginTransport">Transport total estimé</label><input id="marginTransport" type="number" min="0" step="0.01" value="0"></div>
 <div class="field"><label for="marginOther">Autres frais totaux (douane, remise en état…)</label><input id="marginOther" type="number" min="0" step="0.01" value="0"></div>
 <div class="field"><label for="marginFee">Commission DealHunter (%) — 5 % par défaut</label><input id="marginFee" type="number" min="0" max="100" step="0.1" value="5"></div>
-<button type="submit">Calculer la marge estimée</button>
+<div class="field"><label for="marginTarget">Marge nette cible souhaitée (%)</label><input id="marginTarget" type="number" min="0" max="99" step="0.5" value="20"></div>
+<button type="submit">Calculer la marge et le prix d’achat maximum</button>
 </form>
 <div id="marginResult" class="muted" role="status" aria-live="polite" style="margin-top:12px">Complète les montants pour obtenir une simulation. Les taxes, frais non saisis et risques de revente ne sont pas inclus.</div>
 </section>
@@ -301,16 +302,18 @@ $('gsaMore').addEventListener('click',()=>{gsaVisible+=30;render()});
 $('marginForm').addEventListener('submit',e=>{
  e.preventDefault();
  const buy=Number($('marginBuy').value),sell=Number($('marginSell').value),qty=Number($('marginQty').value);
- const transport=Number($('marginTransport').value||0),other=Number($('marginOther').value||0),fee=Number($('marginFee').value);
- const values=[buy,sell,qty,transport,other,fee];
+ const transport=Number($('marginTransport').value||0),other=Number($('marginOther').value||0),fee=Number($('marginFee').value),target=Number($('marginTarget').value);
+ const values=[buy,sell,qty,transport,other,fee,target];
  const out=$('marginResult'),currency=$('marginCurrency').value;
- if(values.some(v=>!Number.isFinite(v))||buy<0||sell<0||qty<=0||!Number.isInteger(qty)||transport<0||other<0||fee<0||fee>100){
+ if(values.some(v=>!Number.isFinite(v))||buy<0||sell<0||qty<=0||!Number.isInteger(qty)||transport<0||other<0||fee<0||fee>100||target<0||target>=100){
   out.textContent='Vérifie les montants : quantité entière positive, coûts positifs ou nuls, commission entre 0 et 100 %.';
   return;
  }
  const revenue=sell*qty,purchase=buy*qty,commission=revenue*fee/100,totalCosts=purchase+transport+other+commission,profit=revenue-totalCosts,margin=revenue>0?profit/revenue*100:0;
+ const breakEvenBuy=sell*(1-fee/100)-(transport+other)/qty;
+ const targetBuy=sell*(1-(fee+target)/100)-(transport+other)/qty;
  const fmt=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency,maximumFractionDigits:2}).format(n);
- out.textContent='Simulation · Chiffre d’affaires : '+fmt(revenue)+' · Achat : '+fmt(purchase)+' · Transport et autres frais : '+fmt(transport+other)+' · Commission estimée : '+fmt(commission)+' · Coûts totaux : '+fmt(totalCosts)+' · Marge estimée : '+fmt(profit)+' ('+(revenue>0?margin.toFixed(1):'0.0')+' % du chiffre d’affaires). '+(profit>=0?'Marge positive sur les hypothèses saisies.':'Marge négative : opération à revoir.')+' Commission indicative calculée uniquement sur une vente réalisée ; estimation hors taxes et frais non renseignés.';
+ out.textContent='Simulation · Chiffre d’affaires : '+fmt(revenue)+' · Achat : '+fmt(purchase)+' · Transport et autres frais : '+fmt(transport+other)+' · Commission estimée : '+fmt(commission)+' · Coûts totaux : '+fmt(totalCosts)+' · Marge estimée : '+fmt(profit)+' ('+(revenue>0?margin.toFixed(1):'0.0')+' % du chiffre d’affaires). Prix d’achat unitaire maximum pour ne pas perdre d’argent : '+fmt(Math.max(0,breakEvenBuy))+'. Prix d’achat unitaire maximum pour atteindre '+target.toFixed(1)+' % de marge : '+fmt(Math.max(0,targetBuy))+'. '+(profit>=0?'Marge positive sur les hypothèses saisies.':'Marge négative : opération à revoir.')+' Calcul indicatif hors taxes, frais non renseignés, douane et risques de revente ; si le prix maximum calculé est nul, la cible n’est pas atteignable avec ces hypothèses.';
 });
 async function syncGsaFeed(){
  const status=$('gsaSyncStatus');
