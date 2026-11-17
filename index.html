@@ -369,7 +369,7 @@ function render(){
    'mode':['clothing','textile','garment','uniform','apparel','vetement','habillement'],
    'auto':['vehicle','vehicles','automotive','car','truck','transport','vehicule','automobile'],
    'alimentaire':['food','catering','meal','agri','agriculture','alimentaire','restauration'],
-   'matériaux':['construction','building','material','materials','works','materiaux','batiment']
+   'materiaux':['construction','building','material','materials','works','materiaux','batiment']
   };
   const publicSignals=[
    ...samNotices.map(n=>({...n,_source:'SAM.gov',_buyer:n.buyer_organization,_date:n.deadline_date,_url:n.source_url,_place:[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(' '),_sector:[n.naics_code,n.classification_code].filter(Boolean).join(' ')})),
@@ -380,7 +380,7 @@ function render(){
    const wanted=tokens(s.product);
    if(!wanted.length)return;
    publicSignals.forEach(n=>{
-    const available=new Set(tokens([n.title,n._buyer,n.notes].join(' ')));
+    const available=new Set(tokens(n.title||''));
     const common=wanted.filter(w=>available.has(w));
     const productRatio=common.length/Math.max(1,wanted.length);
     if(productRatio<0.25)return;
