@@ -1,0 +1,59 @@
+name: SAM.gov — opportunités acheteurs US (automatique + manuel)
+on:
+  workflow_dispatch:
+    inputs:
+      posted_from:
+        description: "Date début MM/DD/YYYY (vide = 30 jours)"
+        required: false
+        type: string
+      posted_to:
+        description: "Date fin MM/DD/YYYY (vide = aujourd'hui)"
+        required: false
+        type: string
+      max_records:
+        description: "Nombre maximal d'avis"
+        required: false
+        default: "5000"
+        type: string
+  schedule:
+    - cron: "0 12 */2 * *"
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+      - name: Collecte SAM.gov
+        env:
+          SAM_API_KEY: ${{ secrets.SAM_API_KEY }}
+          POSTED_FROM: ${{ inputs.posted_from }}
+          POSTED_TO: ${{ inputs.posted_to }}
+          MAX_RECORDS: ${{ inputs.max_records }}
+        run: |
+          ARGS=(--output output/sam-buyer-opportunities.json)
+          if [ -n "$POSTED_FROM" ]; then ARGS+=(--posted-from "$POSTED_FROM"); fi
+          if [ -n "$POSTED_TO" ]; then ARGS+=(--posted-to "$POSTED_TO"); fi
+          if [ -n "$MAX_RECORDS" ]; then ARGS+=(--max-records "$MAX_RECORDS"); fi
+          python scripts/sam_opportunities.py "${ARGS[@]}"
+      - name: Publier le flux
+        run: |
+          mkdir -p data
+          cp output/sam-buyer-opportunities.json data/sam-buyer-opportunities.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/sam-buyer-opportunities.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update SAM.gov buyer opportunities feed"
+            git push
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sam-buyer-opportunities
+          path: output/sam-buyer-opportunities.json
+          retention-days: 14

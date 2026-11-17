@@ -63,7 +63,7 @@
       "integrationStatus": "catalogued",
       "endpoint": "https://api.sam.gov/opportunities/v2/search",
       "documentation": "https://open.gsa.gov/api/get-opportunities-public-api/",
-      "notes": "Federal opportunity notices; API key and rate limits apply. Treat notices as buyer demand, not confirmed orders."
+      "notes": "Connecteur DealHunter prêt ; nécessite le secret GitHub SAM_API_KEY. Avis publics = signaux de demande non confirmés."
     },
     {
       "id": "ocds_registry",

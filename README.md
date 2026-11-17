@@ -49,3 +49,8 @@ Un premier répertoire multi-secteurs de plateformes de surplus, enchères indus
 - Construire le matching côté serveur, puis les notifications et la validation des ventes.
 
 Aucun accès à des comptes tiers, aucune collecte non autorisée, aucun contact externe et aucun paiement ne doivent être activés sans les autorisations, les contrôles et les intégrations appropriés.
+
+## Connecteurs acheteurs publics
+
+- **TED (Union européenne)** : recherche publique sans clé, flux `data/ted-buyer-opportunities.json`, collecte tous les deux jours.
+- **SAM.gov (États-Unis)** : connecteur prêt, nécessite le secret GitHub `SAM_API_KEY`. Voir [le guide SAM.gov](docs/connectors/SAM_GOV.md).
