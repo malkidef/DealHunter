@@ -49,6 +49,20 @@ def normalize_listing(item: dict, collected_at: str) -> dict:
     description = " | ".join(lot_descriptions)
     status_code = str(field(item, "auctionStatus") or "").strip()
     status = {"A": "active", "P": "preview"}.get(status_code, "scheduled")
+    reserve_value = field(item, "reserve")
+    # In the live GSA response, `reserve` is a boolean flag, not a dollar amount.
+    # Keep the flag separately and only expose a price when the value is numeric.
+    reserve_required = reserve_value if isinstance(reserve_value, bool) else None
+    reserve_price = (
+        reserve_value
+        if isinstance(reserve_value, (int, float)) and not isinstance(reserve_value, bool)
+        else None
+    )
+    if isinstance(reserve_value, str):
+        try:
+            reserve_price = float(reserve_value.strip())
+        except ValueError:
+            reserve_price = None
 
     return {
         "source_id": "gsa_auctions",
@@ -61,7 +75,8 @@ def normalize_listing(item: dict, collected_at: str) -> dict:
         "unit": "lot",
         "unit_price": None,
         "currency": "USD",
-        "reserve_price_usd": field(item, "reserve"),
+        "reserve_required": reserve_required,
+        "reserve_price_usd": reserve_price,
         "high_bid_usd": field(item, "highBidAmount"),
         "country_code": "US",
         "city": str(field(item, "propertyCity") or field(item, "locationCity") or "").strip() or None,
@@ -72,7 +87,7 @@ def normalize_listing(item: dict, collected_at: str) -> dict:
         "availability_status": "unverified",
         "review_status": "pending",
         "collected_at": collected_at,
-        "notes": "Quantité non fournie. La réserve et l'enchère actuelle ne sont pas un prix final. Vérifier l'annonce originale et les conditions du lot.",
+        "notes": "Quantité non fournie. Le champ réserve peut être un indicateur, pas un montant ; l'enchère actuelle ne constitue pas un prix final. Vérifier l'annonce originale et les conditions du lot.",
     }
 
 
