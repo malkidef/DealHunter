@@ -27,6 +27,10 @@ jobs:
           node-version: "20"
       - name: Exécuter les tests du moteur de matching
         run: node --test tests/test_matching.js
+      - name: Vérifier les fonctions Firebase
+        run: |
+          node --check firebase/functions/src/index.js
+          node --check firebase/functions/src/payments.js
       - name: Vérifier le JavaScript de l’application
         run: |
           python - <<'PY'
