@@ -41,10 +41,10 @@
       ],
       "access": "public_api",
       "authentication": "none_for_search",
-      "integrationStatus": "catalogued",
+      "integrationStatus": "active",
       "endpoint": "https://api.ted.europa.eu/",
       "documentation": "https://docs.ted.europa.eu/api/latest/search.html",
-      "notes": "Public procurement notices and demand signals. A tender is not a confirmed purchase order or available stock."
+      "notes": "Connecteur officiel TED v3 intégré ; avis publics collectés automatiquement tous les deux jours et affichés comme signaux acheteurs non vérifiés."
     },
     {
       "id": "sam_gov",
@@ -60,10 +60,10 @@
       ],
       "access": "public_api",
       "authentication": "api_key_required",
-      "integrationStatus": "catalogued",
+      "integrationStatus": "active",
       "endpoint": "https://api.sam.gov/opportunities/v2/search",
       "documentation": "https://open.gsa.gov/api/get-opportunities-public-api/",
-      "notes": "Connecteur DealHunter prêt ; nécessite le secret GitHub SAM_API_KEY. Avis publics = signaux de demande non confirmés."
+      "notes": "Connecteur officiel SAM.gov intégré ; collecte automatique tous les deux jours via le secret GitHub SAM_API_KEY. Avis publics = signaux de demande non confirmés."
     },
     {
       "id": "ocds_registry",
