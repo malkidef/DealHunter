@@ -197,15 +197,18 @@ if (!ready) {
       status.append(label);
       signOutButton.classList.remove("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
+      let firestoreStep = "profil";
       try {
         await saveUserProfile(user);
+        firestoreStep = "annonces privées et catalogues partagés";
         await loadCloudRecords(user);
+        firestoreStep = "demandes de mise en relation";
         await loadMatchRequests(user);
         status.dataset.firestore = "saved";
       } catch (error) {
-        console.error("Enregistrement du profil Firestore impossible :", error);
+        console.error("Erreur Firestore (" + firestoreStep + ") :", error);
         status.dataset.firestore = "error";
-        status.append(document.createTextNode(" · Profil non enregistré dans la base : vérifie les règles Firestore."));
+        status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
       }
     } else {
       status.textContent = "Aucun compte connecté.";
