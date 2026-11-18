@@ -61,6 +61,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Messagerie privée : uniquement entre participants d'une mise en relation acceptée.
+    match /matchMessages/{messageId} {
+      function acceptedParticipant(requestId) {
+        return exists(/databases/$(database)/documents/matchRequests/$(requestId))
+          && get(/databases/$(database)/documents/matchRequests/$(requestId)).data.status == "accepted"
+          && request.auth.uid in get(/databases/$(database)/documents/matchRequests/$(requestId)).data.participantUids;
+      }
+      allow read: if request.auth != null
+        && acceptedParticipant(resource.data.requestId);
+      allow create: if request.auth != null
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && acceptedParticipant(request.resource.data.requestId);
+      allow update, delete: if false;
+    }
+
     match /matchContacts/{contactId} {
       function acceptedRequest(requestId) {
         return exists(/databases/$(database)/documents/matchRequests/$(requestId))
