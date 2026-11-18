@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -169,7 +169,25 @@ if (!ready) {
       getDocs(collection(db, "publicOffers")),
       getDocs(collection(db, "publicNeeds"))
     ]);
-    const sellers = publicSellerSnapshot.docs.map(item => {
+
+    // Nettoie uniquement les copies publiques orphelines appartenant à ce compte.
+    const activeOfferIds = new Set(sellerSnapshot.docs.map(item => item.id));
+    const activeNeedIds = new Set(buyerSnapshot.docs.map(item => item.id));
+    const staleOfferIds = new Set(publicSellerSnapshot.docs
+      .filter(item => item.data().ownerUid === user.uid && !activeOfferIds.has(item.id)).map(item => item.id));
+    const staleNeedIds = new Set(publicBuyerSnapshot.docs
+      .filter(item => item.data().ownerUid === user.uid && !activeNeedIds.has(item.id)).map(item => item.id));
+    const stalePublicDocs = [
+      ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
+      ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
+    ];
+    for (let i = 0; i < stalePublicDocs.length; i += 400) {
+      const batch = writeBatch(db);
+      stalePublicDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+
+    const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
         id: item.id, ownerUid: data.ownerUid || "",
@@ -179,7 +197,7 @@ if (!ready) {
         location: data.location || ""
       };
     });
-    const buyers = publicBuyerSnapshot.docs.map(item => {
+    const buyers = publicBuyerSnapshot.docs.filter(item => !staleNeedIds.has(item.id)).map(item => {
       const data = item.data();
       return {
         id: item.id, ownerUid: data.ownerUid || "",
@@ -193,6 +211,35 @@ if (!ready) {
       detail: { sellers, buyers }
     }));
   };
+
+  window.addEventListener("dealhunter-remove-business-record", async event => {
+    const user = auth.currentUser;
+    const { collectionName, recordId } = event.detail || {};
+    if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName) || typeof recordId !== "string" || !recordId) {
+      status.textContent = "Retrait impossible : annonce ou compte non valide.";
+      return;
+    }
+    const privateRef = doc(db, "users", user.uid, collectionName, recordId);
+    const isSeller = collectionName === "sellerOffers";
+    const publicRef = doc(db, isSeller ? "publicOffers" : "publicNeeds", recordId);
+    try {
+      const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
+      if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
+        throw new Error("La copie du catalogue n'appartient pas à ce compte ; aucune annonce n'a été supprimée.");
+      }
+      const batch = writeBatch(db);
+      if (privateSnap.exists()) batch.delete(privateRef);
+      if (publicSnap.exists()) batch.delete(publicRef);
+      await batch.commit();
+      await loadCloudRecords(user);
+      status.textContent = isSeller
+        ? "Stock retiré de tes annonces et du catalogue partagé."
+        : "Besoin retiré de tes annonces et du catalogue partagé.";
+    } catch (error) {
+      console.error("Retrait de l'annonce impossible :", error);
+      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
 
   const saveUserProfile = async user => {
     const userRef = doc(db, "users", user.uid);
