@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -138,6 +138,48 @@ if (!ready) {
     try { await createUserWithEmailAndPassword(auth, email, password); }
     catch (error) { showError(error); }
   });
+  const sellerForm = document.getElementById("sellerForm");
+  const buyerForm = document.getElementById("buyerForm");
+  const saveBusinessRecord = async (event, form, collectionName, fields) => {
+    if (event.target !== form) return;
+    const user = auth.currentUser;
+    if (!user) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      status.textContent = "Connecte-toi avant d’enregistrer une offre ou un besoin.";
+      return;
+    }
+    const record = Object.fromEntries(fields.map(([key, id, type]) => [
+      key, type === "number" ? Number(document.getElementById(id).value) : document.getElementById(id).value.trim()
+    ]));
+    try {
+      await addDoc(collection(db, "users", user.uid, collectionName), {
+        ...record,
+        createdAt: serverTimestamp(),
+        status: "active"
+      });
+      status.textContent = collectionName === "sellerOffers"
+        ? "Stock enregistré dans ton compte DealHunter."
+        : "Besoin acheteur enregistré dans ton compte DealHunter.";
+    } catch (error) {
+      console.error("Enregistrement Firestore impossible :", error);
+      status.textContent = "Enregistrement cloud impossible : " + (error.message || error.code);
+    }
+  };
+  document.addEventListener("submit", event => {
+    if (event.target === sellerForm) {
+      saveBusinessRecord(event, sellerForm, "sellerOffers", [
+        ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
+        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["location", "sLocation"]
+      ]);
+    } else if (event.target === buyerForm) {
+      saveBusinessRecord(event, buyerForm, "buyerNeeds", [
+        ["company", "bCompany"], ["product", "bProduct"], ["category", "bCategory"],
+        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["location", "bLocation"]
+      ]);
+    }
+  }, true);
+
   const companyForm = document.getElementById("companyForm");
   companyForm.addEventListener("submit", async event => {
     event.preventDefault();
