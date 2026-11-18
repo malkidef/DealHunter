@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -51,6 +51,29 @@ if (!ready) {
   const credentials = () => ({
     email: document.getElementById("authEmail").value.trim(),
     password: document.getElementById("authPassword").value
+  });
+
+  const loadMatchRequests = async user => {
+    const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
+    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests:snap.docs.map(d=>({id:d.id,...d.data()}))}}));
+  };
+  window.addEventListener("dealhunter-create-match-request",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
+    if(![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){status.textContent="Cette demande n’est pas autorisée pour ce compte.";return;}
+    try{
+      const isSeller=user.uid===d.sellerUid;
+      await addDoc(collection(db,"matchRequests"),{sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,recipientUid:isSeller?d.buyerUid:d.sellerUid,requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,product:d.product||"",status:"pending",createdAt:serverTimestamp()});
+      await loadMatchRequests(user);status.textContent="Demande de mise en relation envoyée.";
+    }catch(err){console.error(err);status.textContent="Envoi impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-update-match-request",async e=>{
+    const user=auth.currentUser,{requestId,status:decision}=e.detail||{};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    try{const ref=doc(db,"matchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending"){status.textContent="Cette demande ne peut plus être modifiée.";return;}
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
+    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
 
   const loadCloudRecords = async user => {
@@ -132,6 +155,7 @@ if (!ready) {
   getRedirectResult(auth).catch(showError);
 
   onAuthStateChanged(auth, async user => {
+    window.dealhunterUserUid = user?.uid || ''; 
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
@@ -146,6 +170,7 @@ if (!ready) {
       try {
         await saveUserProfile(user);
         await loadCloudRecords(user);
+        await loadMatchRequests(user);
         status.dataset.firestore = "saved";
       } catch (error) {
         console.error("Enregistrement du profil Firestore impossible :", error);
@@ -155,6 +180,7 @@ if (!ready) {
     } else {
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
+      window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       signOutButton.classList.add("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = false);
     }
