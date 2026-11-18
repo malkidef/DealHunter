@@ -48,7 +48,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <main>
 <h1>Les bonnes affaires trouvent leur acheteur.</h1>
 <p class="intro">DealHunter rapproche les entreprises qui ont des stocks excédentaires de celles qui recherchent ces produits. Le moteur compare automatiquement les catégories, quantités, budgets et zones.</p>
-<div class="notice"><strong>Prototype de démonstration :</strong> les données sont enregistrées uniquement dans ce navigateur. Les correspondances sont calculées automatiquement ici, mais aucune entreprise réelle n'est recherchée ou contactée et aucun paiement n'est déclenché. Les connexions aux sources de stocks, aux acheteurs et au paiement seront ajoutées après validation des partenaires et des autorisations.</div>
+<div class="notice"><strong>Prototype en cours de validation :</strong> les offres et besoins publiés sont partagés dans les catalogues DealHunter entre utilisateurs connectés. Ne saisis aucune donnée confidentielle ni coordonnée personnelle dans les annonces. Les correspondances sont indicatives : aucune entreprise n'est contactée et aucun paiement n'est déclenché.</div>
 
 <section class="stats">
 <div class="stat"><strong id="sellerCount">0</strong><span>Offres vendeurs</span></div>
@@ -229,7 +229,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="sourceList" class="cards"></div>
 </section>
 </main>
-<footer>DEALHUNTER © 2026 — Prototype fonctionnel de matching local.</footer>
+<footer>DEALHUNTER © 2026 — Matching multi-entreprises en phase de test.</footer>
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
@@ -676,5 +676,5 @@ syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 </script>
-<script type="module" src="auth.js?v=20261118-3"></script>
+<script type="module" src="auth.js?v=20261118-4"></script>
 </body></html>
