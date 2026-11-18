@@ -118,7 +118,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </div>
 <section class="dashboard-section">
 <h3>Transactions et litiges</h3>
-<p class="muted">Les statuts seront alimentés par le serveur sécurisé : paiement en attente, payé, confirmations vendeur/acheteur, versement, litige ou remboursement.</p>
+<p class="muted">Suivi des accords et confirmations des deux entreprises. La commission de 5 % est calculée à titre indicatif uniquement : aucun paiement ni prélèvement n’est activé.</p>
 <div id="dealDashboardList" class="empty">Aucune transaction réelle à afficher.</div>
 </section>
 </section>
@@ -697,6 +697,22 @@ window.addEventListener('dealhunter-match-requests',e=>{
         : '<p><button type="button" data-share-contact="'+escapeHtml(r.id)+'">Partager mon e-mail et mon téléphone professionnels</button></p>';
       const messages=Array.isArray(r.messages)?r.messages:[];
       details+='<section class="item" style="margin-top:12px"><h3>Messagerie entre entreprises</h3><div class="cards">'+(messages.length?messages.map(m=>'<div class="item"><strong>'+((m.senderUid||'')===(window.dealhunterUserUid||'')?'Moi':'Entreprise participante')+'</strong><p>'+escapeHtml(m.text||'')+'</p></div>').join(''):'<div class="empty">Aucun message pour le moment. Tu peux commencer la conversation.</div>')+'</div><form data-message-form="'+escapeHtml(r.id)+'"><div class="field"><label>Ton message</label><textarea name="message" required maxlength="2000" rows="3" placeholder="Écris ton message à cette entreprise…" style="width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit"></textarea></div><p data-message-status role="status" aria-live="polite" class="muted"></p><button type="submit">Envoyer le message</button></form></section>';
+      const dealList=Array.isArray(r.deals)?r.deals:[];
+      details+='<section class="item" style="margin-top:12px"><h3>Accord de vente</h3>'+(dealList.length?dealList.map(d=>{
+        const amount=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+        const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+        const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
+        let actions='';
+        if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button></p>';
+        if(d.status==='agreed'){
+          const seller=(window.dealhunterUserUid||'')===d.sellerUid;
+          const confirmed=seller?d.sellerConfirmed:d.buyerConfirmed;
+          if(!confirmed)actions='<p><button type="button" data-deal-confirm="'+escapeHtml(d.id)+'">'+(seller?'Confirmer la réalisation (vendeur)':'Confirmer la réception (acheteur)')+'</button></p>';
+          else actions='<div class="muted">Ta confirmation est enregistrée. En attente de l’autre entreprise.</div>';
+        }
+        return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' unités × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+actions+'</article>';
+      }).join(''):'<div class="muted">Aucun accord de vente proposé pour cette mise en relation.</div>')+
+      '<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p class="muted">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form></section>';
     }else{
       details=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
         ? '<p><button type="button" data-match-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button> <button type="button" class="secondary" data-match-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button></p>'
@@ -707,6 +723,32 @@ window.addEventListener('dealhunter-match-requests',e=>{
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));b.disabled=true;});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
+document.addEventListener('submit',e=>{
+ const form=e.target.closest('form[data-deal-proposal]');if(!form)return;
+ e.preventDefault();
+ const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Envoi…';
+ window.dispatchEvent(new CustomEvent('dealhunter-propose-deal',{detail:{requestId:form.dataset.dealProposal,quantity:form.elements.quantity.value,unitPrice:form.elements.unitPrice.value}}));
+ setTimeout(()=>{button.disabled=false;button.textContent='Proposer les conditions de vente';},1200);
+});
+document.addEventListener('click',e=>{
+ const accept=e.target.closest('[data-deal-accept]');
+ if(accept){accept.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
+ const confirm=e.target.closest('[data-deal-confirm]');
+ if(confirm){confirm.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+});
+window.addEventListener('dealhunter-deals',e=>{
+ const deals=Array.isArray(e.detail?.deals)?e.detail.deals:[];
+ const list=$('dealDashboardList');
+ if(!list)return;
+ list.className=deals.length?'cards':'empty';
+ list.innerHTML=deals.length?deals.map(d=>{
+  const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+  const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'En attente des confirmations':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
+  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div></article>';
+ }).join(''):'Aucune vente proposée pour le moment.';
+});
+
  document.addEventListener('submit',e=>{
   const form=e.target.closest('form[data-message-form]');
   if(!form)return;
