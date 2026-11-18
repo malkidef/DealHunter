@@ -54,10 +54,17 @@ if (!ready) {
   });
 
   const loadMatchRequests = async user => {
-    // Charger d'abord les demandes : une erreur sur les coordonnées ne doit pas masquer la liste.
+    // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
     const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
-    const requests = snap.docs.map(item => ({id:item.id,...item.data()}));
-    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
+    const dealSnap = await getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid)));
+    const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
+    window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
+    const dealsByRequest = new Map();
+    deals.forEach(deal => {
+      const list=dealsByRequest.get(deal.requestId)||[];
+      list.push(deal);dealsByRequest.set(deal.requestId,list);
+    });
+    const requests = snap.docs.map(item => ({id:item.id,...item.data(),deals:dealsByRequest.get(item.id)||[]}));
     for (const r of requests) {
       if (r.status !== "accepted") continue;
       const otherUid = (r.participantUids || []).find(uid => uid !== user.uid);
@@ -102,6 +109,64 @@ if (!ready) {
       if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending"){status.textContent="Cette demande ne peut plus être modifiée.";return;}
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-propose-deal",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
+    const quantity=Number(d.quantity),unitPrice=Number(d.unitPrice);
+    if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<=0){status.textContent="Saisis une quantité entière et un prix unitaire positif.";return;}
+    try{
+      const requestSnap=await getDoc(doc(db,"matchRequests",d.requestId));
+      if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
+      const match=requestSnap.data();
+      if(match.status!=="accepted"||!(match.participantUids||[]).includes(user.uid))throw new Error("Une mise en relation acceptée est nécessaire.");
+      const totalAmount=Math.round(quantity*unitPrice*100)/100;
+      const isSeller=user.uid===match.sellerUid;
+      await addDoc(collection(db,"deals"),{
+        requestId:d.requestId,sellerUid:match.sellerUid,buyerUid:match.buyerUid,
+        participantUids:[match.sellerUid,match.buyerUid],proposerUid:user.uid,
+        accepterUid:isSeller?match.buyerUid:match.sellerUid,
+        product:String(match.product||"Produit").slice(0,160),quantity,unitPrice,
+        totalAmount,commissionRate:5,commissionAmount:Math.round(totalAmount*0.05*100)/100,
+        status:"proposed",sellerConfirmed:false,buyerConfirmed:false,
+        createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Proposition envoyée. Elle devra être acceptée par l’autre entreprise.";
+    }catch(err){console.error(err);status.textContent="Proposition impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-accept-deal",async e=>{
+    const user=auth.currentUser,{dealId}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().status!=="proposed"||snap.data().accepterUid!==user.uid)throw new Error("Cette proposition ne peut pas être acceptée par ce compte.");
+      await updateDoc(ref,{status:"agreed",agreedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+      await loadMatchRequests(user);
+      status.textContent="Accord enregistré : les deux entreprises ont validé les conditions.";
+    }catch(err){console.error(err);status.textContent="Acceptation impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-confirm-deal",async e=>{
+    const user=auth.currentUser,{dealId}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
+      if(!snap.exists())throw new Error("Vente introuvable.");
+      const deal=snap.data();
+      if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
+      const isSeller=user.uid===deal.sellerUid;
+      const field=isSeller?"sellerConfirmed":"buyerConfirmed";
+      if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
+      const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
+      await updateDoc(ref,{
+        [field]:true,
+        [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
+        status:otherConfirmed?"completed":"agreed",
+        updatedAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent=otherConfirmed?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
+    }catch(err){console.error(err);status.textContent="Confirmation impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-send-message",async e=>{
     const user=auth.currentUser,{requestId,text:messageText,onResult}=e.detail||{};
@@ -302,6 +367,7 @@ if (!ready) {
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
+      window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
       signOutButton.classList.add("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = false);
     }
