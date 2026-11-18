@@ -94,12 +94,15 @@ if (!ready) {
       const requestData=requestSnap.data();
       if(requestData.status!=="accepted"||!(requestData.participantUids||[]).includes(user.uid)){status.textContent="Le partage est disponible uniquement après acceptation.";return;}
       const profileSnap=await getDoc(doc(db,"users",user.uid));
-      const company=profileSnap.exists()?profileSnap.data().company?.name||"Entreprise":"Entreprise";
+      const profile=profileSnap.exists()?profileSnap.data().company||{}:{};
+      const company=profile.name||"Entreprise";
+      const phone=String(profile.phone||"").trim();
+      if(!phone){status.textContent="Ajoute d’abord ton téléphone professionnel dans Connexion / Compte, puis réessaie.";return;}
       await setDoc(doc(db,"matchContacts",requestId+"_"+user.uid),{
-        requestId,ownerUid:user.uid,email:user.email,company,sharedAt:serverTimestamp()
+        requestId,ownerUid:user.uid,email:user.email,phone,company,sharedAt:serverTimestamp()
       });
       await loadMatchRequests(user);
-      status.textContent="Ton e-mail professionnel est partagé uniquement avec l’autre entreprise de cette mise en relation.";
+      status.textContent="Ton e-mail et ton téléphone professionnels sont partagés uniquement avec l’autre entreprise de cette mise en relation.";
     }catch(err){console.error(err);status.textContent="Partage impossible : "+(err.message||err.code);}
   });
 
@@ -317,6 +320,7 @@ if (!ready) {
     }
     const companyName = document.getElementById("companyName").value.trim();
     const companyCountry = document.getElementById("companyCountry").value;
+    const companyPhone = document.getElementById("companyPhone").value.trim();
     if (!companyName) {
       status.textContent = "Saisis le nom de ton entreprise.";
       return;
@@ -329,6 +333,7 @@ if (!ready) {
         company: {
           name: companyName,
           country: companyCountry,
+          phone: companyPhone,
           updatedAt: serverTimestamp()
         },
         updatedAt: serverTimestamp()
