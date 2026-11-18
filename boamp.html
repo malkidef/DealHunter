@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>DealHunter — Opportunités BOAMP</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#111c30;--line:#263852;--muted:#9eabc0;--green:#43e0a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f7fb;font:15px system-ui,Arial,sans-serif}
+header,main{max-width:1000px;margin:auto;padding:20px}header{border-bottom:1px solid var(--line)}
+h1{font-size:clamp(24px,4vw,34px)}p,.muted{color:var(--muted);line-height:1.5}
+input{width:100%;padding:13px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit;margin:12px 0}
+.card{padding:15px;margin:12px 0;border:1px solid var(--line);background:var(--panel);border-radius:12px}
+.card h2{font-size:17px;margin:8px 0}.pill{color:var(--green);font-size:12px;font-weight:700}
+a{color:#9ec5ff}.warning{padding:12px;border:1px solid #66552a;background:#2a2415;color:#f3d99b;border-radius:10px}
+</style>
+</head>
+<body>
+<header><strong>DEALHUNTER ⚡</strong><div class="muted">Prospection — opportunités publiques françaises</div></header>
+<main>
+<h1>Appels d’offres BOAMP</h1>
+<p>Flux issu de l’API open data de la DILA. Ces avis indiquent des besoins potentiels d’acheteurs publics, pas des commandes garanties. Chaque piste doit être vérifiée avant toute démarche.</p>
+<div class="warning">Les avis BOAMP ne représentent pas des vendeurs privés de surplus. Ils servent à détecter des acheteurs publics potentiels et leurs besoins.</div>
+<div id="status" class="muted">Chargement du flux BOAMP…</div>
+<input id="search" type="search" placeholder="Rechercher un produit, un acheteur ou une ville…">
+<div id="results"></div>
+<p class="muted">Source : <a href="https://boamp-datadila.opendatasoft.com/explore/dataset/boamp/api/" target="_blank" rel="noopener">API officielle BOAMP / DILA</a> — Licence Ouverte.</p>
+</main>
+<script>
+const statusEl=document.getElementById('status'),resultsEl=document.getElementById('results'),searchEl=document.getElementById('search');
+let notices=[];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+ const q=searchEl.value.trim().toLocaleLowerCase('fr');
+ const rows=notices.filter(n=>[n.title,n.buyer,n.place,n.deadline].join(' ').toLocaleLowerCase('fr').includes(q));
+ resultsEl.innerHTML=rows.length?rows.map(n=>'<article class="card"><span class="pill">Piste publique à qualifier</span><h2>'+esc(n.title)+'</h2><div class="muted">Acheteur : '+esc(n.buyer||'Non précisé')+'</div><div class="muted">Lieu : '+esc(n.place||'Non précisé')+' · Échéance : '+esc(n.deadline||'À vérifier')+'</div><p><a href="'+esc(n.url||'https://www.boamp.fr/')+'" target="_blank" rel="noopener">Consulter l’avis officiel</a></p></article>').join(''):'<div class="card">Aucun avis ne correspond à cette recherche.</div>';
+}
+searchEl.addEventListener('input',render);
+fetch('data/boamp-buyer-opportunities.json?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Le flux n’a pas encore été publié (HTTP '+r.status+').');return r.json()}).then(data=>{
+ if(data.source!=='BOAMP — API open data DILA'||!Array.isArray(data.notices))throw new Error('Format du flux BOAMP invalide.');
+ notices=data.notices;
+ statusEl.textContent=notices.length+' avis chargés · collecte : '+data.collected_at+' · tous à vérifier.';
+ render();
+}).catch(err=>{statusEl.textContent=err.message+' Lance d’abord la collecte BOAMP dans GitHub Actions.';resultsEl.innerHTML='';});
+</script>
+</body>
+</html>
