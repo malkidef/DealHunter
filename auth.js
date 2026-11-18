@@ -55,8 +55,8 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Charger d'abord les demandes : une erreur sur les coordonnées ne doit pas masquer la liste.
-    const snap = await getDocs(collection(db,"matchRequests"));
-    const requests = snap.docs.map(item => ({id:item.id,...item.data()})).filter(item => Array.isArray(item.participantUids) && item.participantUids.includes(user.uid));
+    const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
+    const requests = snap.docs.map(item => ({id:item.id,...item.data()}));
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
     for (const r of requests) {
       if (r.status !== "accepted") continue;
