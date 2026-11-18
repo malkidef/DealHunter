@@ -17,7 +17,7 @@ def get_json(url):
     with urllib.request.urlopen(req, timeout=40) as response:
         raw = response.read()
         # Certains serveurs renvoient du gzip même sans négociation explicite.
-        if raw.startswith(b"\\x1f\\x8b"):
+        if raw[:2] == bytes((0x1f, 0x8b)):
             raw = gzip.decompress(raw)
         return json.loads(raw.decode("utf-8-sig"))
 
