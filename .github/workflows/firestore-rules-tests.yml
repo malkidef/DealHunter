@@ -1,0 +1,38 @@
+name: Tests des règles Firestore
+
+on:
+  push:
+    paths:
+      - "firestore.rules"
+      - "firebase/firestore.rules"
+      - "firebase/rules-tests/**"
+      - "firebase.json"
+      - ".github/workflows/firestore-rules-tests.yml"
+  pull_request:
+    paths:
+      - "firestore.rules"
+      - "firebase/firestore.rules"
+      - "firebase/rules-tests/**"
+      - "firebase.json"
+      - ".github/workflows/firestore-rules-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Installer les dépendances de test
+        working-directory: firebase/rules-tests
+        run: npm install
+      - name: Lancer les tests dans l'émulateur Firestore
+        working-directory: firebase/rules-tests
+        run: npx --yes firebase-tools@14 emulators:exec --config ../../firebase.json --only firestore --project demo-dealhunter "npm test"
