@@ -55,7 +55,17 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
-    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests:snap.docs.map(d=>({id:d.id,...d.data()}))}}));
+    const requests = await Promise.all(snap.docs.map(async item => {
+      const r = {id:item.id,...item.data()};
+      if (r.status !== "accepted") return r;
+      const otherUid = (r.participantUids || []).find(uid => uid !== user.uid);
+      const [mine, other] = await Promise.all([
+        getDoc(doc(db,"matchContacts",r.id+"_"+user.uid)),
+        otherUid ? getDoc(doc(db,"matchContacts",r.id+"_"+otherUid)) : Promise.resolve(null)
+      ]);
+      return {...r,myContact:mine?.exists()?mine.data():null,otherContact:other?.exists()?other.data():null};
+    }));
+    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
   };
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
@@ -74,6 +84,23 @@ if (!ready) {
       if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending"){status.textContent="Cette demande ne peut plus être modifiée.";return;}
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-share-contact",async e=>{
+    const user=auth.currentUser,{requestId}=e.detail||{};
+    if(!user||!requestId||!user.email){status.textContent="Connecte-toi avec une adresse e-mail pour la partager.";return;}
+    try{
+      const requestRef=doc(db,"matchRequests",requestId),requestSnap=await getDoc(requestRef);
+      if(!requestSnap.exists()){status.textContent="Demande introuvable.";return;}
+      const requestData=requestSnap.data();
+      if(requestData.status!=="accepted"||!(requestData.participantUids||[]).includes(user.uid)){status.textContent="Le partage est disponible uniquement après acceptation.";return;}
+      const profileSnap=await getDoc(doc(db,"users",user.uid));
+      const company=profileSnap.exists()?profileSnap.data().company?.name||"Entreprise":"Entreprise";
+      await setDoc(doc(db,"matchContacts",requestId+"_"+user.uid),{
+        requestId,ownerUid:user.uid,email:user.email,company,sharedAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Ton e-mail professionnel est partagé uniquement avec l’autre entreprise de cette mise en relation.";
+    }catch(err){console.error(err);status.textContent="Partage impossible : "+(err.message||err.code);}
   });
 
   const loadCloudRecords = async user => {
