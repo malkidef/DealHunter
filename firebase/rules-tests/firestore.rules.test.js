@@ -26,7 +26,13 @@ const requestData = (requesterUid, recipientUid, status = "pending") => ({
   participantUids: [requesterUid, recipientUid],
   sellerUid: requesterUid,
   buyerUid: recipientUid,
-  status
+  status,
+  sellerId: "seller-record-1",
+  buyerId: "buyer-record-1",
+  requesterCompany: "Entreprise A",
+  recipientCompany: "Entreprise B",
+  product: "Cartons",
+  createdAt: new Date()
 });
 
 before(async () => {
@@ -81,6 +87,14 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
     await assertFails(setDoc(doc(alice, "matchRequests", "request-2"), requestData("bob", "alice")));
+    const extraParticipant = requestData("alice", "bob");
+    extraParticipant.participantUids.push("charlie");
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-3"), extraParticipant));
+    const wrongRecipient = requestData("alice", "bob");
+    wrongRecipient.recipientUid = "charlie";
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-4"), wrongRecipient));
+    const unexpectedField = { ...requestData("alice", "bob"), privateEmail: "intrus@example.test" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-5"), unexpectedField));
   });
 
   it("réserve la décision au destinataire et protège les participants", async () => {
