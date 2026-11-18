@@ -151,20 +151,23 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = testEnv.authenticatedContext("alice").firestore();
     const outsider = testEnv.authenticatedContext("charlie").firestore();
     await assertSucceeds(addDoc(collection(alice, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Bonjour", createdAt: new Date()
+      requestId: "accepted-1", senderUid: "alice", text: "Bonjour", createdAt: new Date()
     }));
     await assertFails(addDoc(collection(alice, "matchMessages"), {
-      requestId: "pending-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Trop tôt", createdAt: new Date()
+      requestId: "accepted-1", senderUid: "alice", text: "E-mail interdit", senderEmail: "alice@example.test", createdAt: new Date()
+    }));
+    await assertFails(addDoc(collection(alice, "matchMessages"), {
+      requestId: "pending-1", senderUid: "alice", text: "Trop tôt", createdAt: new Date()
     }));
     await assertFails(addDoc(collection(outsider, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "charlie", senderEmail: "charlie@example.test", text: "Intrus", createdAt: new Date()
+      requestId: "accepted-1", senderUid: "charlie", text: "Intrus", createdAt: new Date()
     }));
     await assertFails(addDoc(collection(alice, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test",
+      requestId: "accepted-1", senderUid: "alice",
       text: "Champ interdit", createdAt: new Date(), privatePhone: "0600000000"
     }));
     await assertFails(addDoc(collection(alice, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Sans date"
+      requestId: "accepted-1", senderUid: "alice", text: "Sans date"
     }));
   });
 
