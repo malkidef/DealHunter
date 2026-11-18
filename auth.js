@@ -96,19 +96,26 @@ if (!ready) {
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-send-message",async e=>{
-    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
+    const user=auth.currentUser,{requestId,text:messageText,onResult}=e.detail||{};
     const message=String(messageText||"").trim();
-    if(!user||!requestId||!message)return;
-    if(message.length>2000){status.textContent="Message limité à 2 000 caractères.";return;}
+    const finish=(ok,label)=>{if(typeof onResult==="function")onResult(ok,label);};
+    if(!user||!requestId||!message){finish(false,"Compte, demande ou message manquant.");return;}
+    if(message.length>2000){finish(false,"Message limité à 2 000 caractères.");return;}
     try{
       const requestSnap=await getDoc(doc(db,"matchRequests",requestId));
       if(!requestSnap.exists()||requestSnap.data().status!=="accepted"||!(requestSnap.data().participantUids||[]).includes(user.uid)){
-        status.textContent="La messagerie est disponible uniquement entre entreprises ayant accepté la mise en relation.";return;
+        finish(false,"La messagerie est disponible uniquement après acceptation par les deux entreprises.");return;
       }
       await addDoc(collection(db,"matchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});
+      finish(true,"Message envoyé.");
       await loadMatchRequests(user);
       status.textContent="Message envoyé.";
-    }catch(err){console.error("Envoi du message impossible :",err);status.textContent="Message non envoyé : "+(err.code||err.message||"erreur inconnue");}
+    }catch(err){
+      console.error("Envoi du message impossible :",err);
+      const reason=err.code||err.message||"erreur inconnue";
+      finish(false,"Message non envoyé : "+reason);
+      status.textContent="Message non envoyé : "+reason;
+    }
   });
 
   window.addEventListener("dealhunter-share-contact",async e=>{
