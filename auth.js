@@ -58,27 +58,55 @@ if (!ready) {
       getDocs(collection(db, "users", user.uid, "sellerOffers")),
       getDocs(collection(db, "users", user.uid, "buyerNeeds"))
     ]);
-    const sellers = sellerSnapshot.docs.map(item => {
+
+    // Publie les annonces existantes dans les catalogues partagés, sans coordonnées personnelles.
+    await Promise.all([
+      ...sellerSnapshot.docs.map(item => {
+        const data = item.data();
+        return setDoc(doc(db, "publicOffers", item.id), {
+          ownerUid: user.uid, company: data.company || "", product: data.product || "",
+          category: data.category || "Autre / à classer",
+          quantity: Number(data.quantity ?? data.qty ?? 0),
+          unitPrice: Number(data.unitPrice ?? data.price ?? 0),
+          location: data.location || "", status: "active",
+          createdAt: data.createdAt || serverTimestamp()
+        }, { merge: true });
+      }),
+      ...buyerSnapshot.docs.map(item => {
+        const data = item.data();
+        return setDoc(doc(db, "publicNeeds", item.id), {
+          ownerUid: user.uid, company: data.company || "", product: data.product || "",
+          category: data.category || "Autre / à classer",
+          quantity: Number(data.quantity ?? data.qty ?? 0),
+          maxUnitBudget: Number(data.maxUnitBudget ?? data.budget ?? 0),
+          location: data.location || "", status: "active",
+          createdAt: data.createdAt || serverTimestamp()
+        }, { merge: true });
+      })
+    ]);
+
+    // Charge les annonces de tous les comptes connectés.
+    const [publicSellerSnapshot, publicBuyerSnapshot] = await Promise.all([
+      getDocs(collection(db, "publicOffers")),
+      getDocs(collection(db, "publicNeeds"))
+    ]);
+    const sellers = publicSellerSnapshot.docs.map(item => {
       const data = item.data();
       return {
-        id: item.id,
-        company: data.company || "",
-        product: data.product || "",
+        id: item.id, ownerUid: data.ownerUid || "",
+        company: data.company || "", product: data.product || "",
         category: data.category || "Autre / à classer",
-        qty: Number(data.quantity ?? data.qty ?? 0),
-        price: Number(data.unitPrice ?? data.price ?? 0),
+        qty: Number(data.quantity ?? 0), price: Number(data.unitPrice ?? 0),
         location: data.location || ""
       };
     });
-    const buyers = buyerSnapshot.docs.map(item => {
+    const buyers = publicBuyerSnapshot.docs.map(item => {
       const data = item.data();
       return {
-        id: item.id,
-        company: data.company || "",
-        product: data.product || "",
+        id: item.id, ownerUid: data.ownerUid || "",
+        company: data.company || "", product: data.product || "",
         category: data.category || "Autre / à classer",
-        qty: Number(data.quantity ?? data.qty ?? 0),
-        budget: Number(data.maxUnitBudget ?? data.budget ?? 0),
+        qty: Number(data.quantity ?? 0), budget: Number(data.maxUnitBudget ?? 0),
         location: data.location || ""
       };
     });
@@ -192,11 +220,17 @@ if (!ready) {
       key, type === "number" ? Number(document.getElementById(id).value) : document.getElementById(id).value.trim()
     ]));
     try {
-      await addDoc(collection(db, "users", user.uid, collectionName), {
+      const privateRef = await addDoc(collection(db, "users", user.uid, collectionName), {
         ...record,
         createdAt: serverTimestamp(),
         status: "active"
       });
+      const isSeller = collectionName === "sellerOffers";
+      const publicCollection = isSeller ? "publicOffers" : "publicNeeds";
+      const publicRecord = isSeller
+        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, location: record.location, status: "active", createdAt: serverTimestamp() }
+        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, location: record.location, status: "active", createdAt: serverTimestamp() };
+      await setDoc(doc(db, publicCollection, privateRef.id), publicRecord);
       await loadCloudRecords(user);
       status.textContent = collectionName === "sellerOffers"
         ? "Stock enregistré et synchronisé depuis Firebase."
