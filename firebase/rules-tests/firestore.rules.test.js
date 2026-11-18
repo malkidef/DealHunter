@@ -74,13 +74,38 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "users", "bob"), { displayName: "Usurpation" }));
   });
 
-  it("autorise la lecture connectée des catalogues et réserve l'écriture au propriétaire", async () => {
+  it("verrouille les champs des catalogues publics et réserve l'écriture au propriétaire", async () => {
     const alice = testEnv.authenticatedContext("alice").firestore();
     const bob = testEnv.authenticatedContext("bob").firestore();
-    await assertSucceeds(setDoc(doc(alice, "publicOffers", "offer-1"), { ownerUid: "alice", product: "Cartons" }));
+    const offer = {
+      ownerUid: "alice", company: "Entreprise A", product: "Cartons",
+      category: "Emballage", quantity: 50, unitPrice: 2.5,
+      location: "Lille", status: "active", createdAt: new Date()
+    };
+    const need = {
+      ownerUid: "alice", company: "Entreprise A", product: "Palettes",
+      category: "Logistique", quantity: 20, maxUnitBudget: 15,
+      location: "Lille", status: "active", createdAt: new Date()
+    };
+    await assertSucceeds(setDoc(doc(alice, "publicOffers", "offer-1"), offer));
+    await assertSucceeds(setDoc(doc(alice, "publicNeeds", "need-1"), need));
     await assertSucceeds(getDoc(doc(bob, "publicOffers", "offer-1")));
-    await assertFails(setDoc(doc(bob, "publicOffers", "offer-1"), { ownerUid: "bob", product: "Modifié" }));
-    await assertFails(setDoc(doc(bob, "publicNeeds", "need-1"), { ownerUid: "alice", product: "Besoin" }));
+    await assertSucceeds(getDoc(doc(bob, "publicNeeds", "need-1")));
+
+    await assertFails(setDoc(doc(bob, "publicOffers", "offer-1"), { ...offer, ownerUid: "bob" }));
+    await assertFails(setDoc(doc(bob, "publicNeeds", "need-1"), { ...need, ownerUid: "bob" }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-private"), {
+      ...offer, privateEmail: "confidentiel@example.test"
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-private"), {
+      ...need, privatePhone: "0600000000"
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-invalid"), {
+      ...offer, quantity: "cinquante"
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-invalid"), {
+      ...need, status: "draft"
+    }));
   });
 
   it("autorise une demande valide et refuse l'usurpation du demandeur", async () => {
