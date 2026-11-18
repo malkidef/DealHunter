@@ -1,56 +1,67 @@
 # DealHunter
 
-DealHunter est un projet de plateforme B2B visant à détecter des stocks excédentaires, rapprocher automatiquement vendeurs et acheteurs, puis percevoir une commission uniquement sur les ventes effectivement réalisées.
+DealHunter vise à rapprocher des entreprises qui disposent de stocks excédentaires et des acheteurs qui recherchent des produits, avec une commission envisagée uniquement après une vente réellement conclue.
 
-## État actuel
+## État réel du dépôt — 18 novembre 2026
 
-Le fichier `index.html` contient un prototype responsive utilisable sur mobile et ordinateur :
-- saisie locale d'offres de stocks vendeurs ;
-- saisie locale de besoins acheteurs ;
-- registre local des sources (plateformes/fournisseurs, type d’accès envisagé et statut de vérification) ;
-- calcul automatique de correspondances selon catégorie, produit, quantité, budget et zone ;
-- données de démonstration conservées dans le navigateur via `localStorage`.
+- `index.html` : interface responsive pour mobile et ordinateur, offres vendeurs, besoins acheteurs, matching indicatif, import CSV et registre local des sources.
+- **Firebase Authentication et Firestore** : le code d'authentification et de synchronisation des profils, offres, besoins et demandes de mise en relation est présent dans `auth.js`, `firebase-web-config.js` et `firebase/firestore.rules`. Le déploiement effectif des règles et le parcours complet doivent encore être vérifiés dans le projet Firebase.
+- **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
+- Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
 
-**Limite importante :** le registre des sources et les données restent locaux à ce navigateur. Le prototype ne découvre pas encore des entreprises sur Internet, ne collecte pas de données externes automatiquement, n'envoie aucun message, ne crée aucune commande et n'encaisse aucun paiement. Les correspondances affichées sont des suggestions locales de démonstration.
+Le dépôt contient aussi du code de lecture des flux TED et SAM.gov, mais au moment de cette vérification le fichier SAM attendu est vide et le fichier TED attendu n'est pas présent sur la branche principale. Ces deux flux ne sont donc **pas comptés comme opérationnels** ici.
 
-## Backend choisi : Appwrite
+## Backend actuel : Firebase
 
-DealHunter utilisera **Appwrite Cloud**, en commençant par le plan Free à 0 € et en respectant ses quotas. Les projets gratuits peuvent être mis en pause après 7 jours sans activité ; ce plan convient donc au développement et aux premiers essais, pas à une garantie de disponibilité permanente.
+Le backend en cours est **Firebase Authentication + Cloud Firestore** :
+- configuration web : `firebase-web-config.js` ;
+- authentification et synchronisation : `auth.js` ;
+- règles de sécurité : `firebase/firestore.rules` ;
+- index Firestore : `firebase/firestore.indexes.json`.
 
-- Site officiel : https://appwrite.io/
-- Tarifs et limites : https://appwrite.io/pricing
-- Modèle de données et règles de sécurité à configurer : [docs/APPWRITE_SCHEMA.md](docs/APPWRITE_SCHEMA.md)
+Les offres et besoins privés sont associés au compte connecté. Le code publie également des fiches minimales dans les catalogues partagés, sans coordonnées personnelles. Les demandes de mise en relation sont gérées dans Firestore ; le partage de coordonnées est conditionné à l'acceptation et à une action explicite. Vérifier dans Firebase Console que les règles et index du dépôt sont bien déployés.
 
-Le modèle Appwrite prévoit les tables entreprises, offres vendeurs, demandes acheteurs, correspondances et ventes. Les tables de correspondances et de ventes doivent être modifiées uniquement par des fonctions serveur de confiance.
+`docs/APPWRITE_SCHEMA.md` est un ancien schéma de conception : Appwrite n'est pas le backend actuellement utilisé par le code.
 
-## Premier connecteur de source : GSA Auctions
+## Premier connecteur de collecte : GSA Auctions
 
-Le connecteur GSA est exécuté via GitHub Actions après configuration du secret `GSA_API_KEY`. Le workflow `.github/workflows/gsa-auctions-manual.yml` accepte un lancement manuel et une programmation automatique tous les deux jours. Il publie `data/gsa-auctions.json` pour alimenter l'onglet « Annonces GSA » et conserve un artefact de revue pendant 14 jours. Les annonces restent **en attente de vérification** et ne sont pas ajoutées aux stocks vendeurs ni au matching. L'interface permet de rechercher et de trier les fiches par complétude des informations, date de fin d'enchère ou titre. Quantités et prix finaux ne sont pas inventés ; les enchères en cours ne sont pas des prix de vente confirmés. Les droits de republication et d'exploitation commerciale doivent être confirmés avant tout usage commercial. Voir [le guide GSA](docs/connectors/GSA_AUCTIONS.md).
+Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
+- documentation : https://gsa.github.io/auctions_api/ ;
+- limites publiées : 5 000 appels/jour et 5 appels par 5 secondes ;
+- clé personnelle : https://api.data.gov/signup/ ;
+- contact API GSA : api.ciss@gsa.gov.
 
-## Répertoire mondial des sources
+Le workflow `.github/workflows/gsa-auctions-manual.yml` permet un lancement manuel et une collecte programmée tous les deux jours. Il utilise le secret GitHub `GSA_API_KEY`, publie le fichier `data/gsa-auctions.json` et conserve un artefact de revue pendant 14 jours. L'application lit ce fichier et met les annonces en cache dans le navigateur.
 
-Un premier répertoire multi-secteurs de plateformes de surplus, enchères industrielles, liquidations, ventes publiques et annuaires B2B est disponible dans [docs/SOURCES.md](docs/SOURCES.md). Il s'agit de pistes de sourcing à vérifier : aucune source n'est réputée connectée tant qu'une intégration autorisée n'a pas été développée et testée.
+**Dernier instantané vérifié dans le dépôt :** 591 annonces, 591 identifiants uniques et 591 liens vers le domaine officiel, collectés le 17 novembre 2026 à 22:01 UTC. Les 591 fiches ont `review_status=pending` et `availability_status=unverified`. Leur statut d'enchère était « scheduled » dans cet instantané.
+
+GSA Auctions présente des biens mobiliers publics vendus aux enchères : ce ne sont pas automatiquement des stocks commerciaux disponibles à prix fixe. La quantité n'est pas fournie de façon générale ; la réserve peut être un simple indicateur et l'enchère actuelle n'est pas un prix final. Le score affiché dans l'interface mesure la qualité des informations, pas la rentabilité.
+
+**Droits de réutilisation :** la fiche Data.gov de l'API confirme l'accès public mais ne comporte pas de champ de licence explicite. Une fiche distincte « GSA Auctions » indique CC0 1.0 pour sa distribution HTML ; cela ne suffit pas à affirmer sans réserve que cette licence couvre chaque réponse de l'API live. Avant une exploitation commerciale ou une republication au-delà du flux actuel, demander confirmation à l'équipe API GSA. Les liens et preuves sont détaillés dans [le guide du connecteur](docs/connectors/GSA_AUCTIONS.md).
+
+Le connecteur ne contacte aucun vendeur ou acheteur, ne place aucune enchère, ne crée aucune commande et ne déclenche aucun paiement. Les annonces restent des pistes à vérifier manuellement.
+
+## Répertoire des sources
+
+Le répertoire multi-secteurs se trouve dans [docs/SOURCES.md](docs/SOURCES.md). Une source privée ou commerciale n'est connectée qu'après vérification de son API, de ses conditions, de ses droits d'accès et de réutilisation.
+
+Le pipeline et les règles de validation sont décrits dans [docs/PIPELINE_SOURCES.md](docs/PIPELINE_SOURCES.md).
 
 ## Architecture cible
 
-1. **Sources de stocks autorisées** : API partenaires, flux fournisseurs, imports CSV et portails dont les conditions autorisent explicitement la collecte.
-2. **Référentiel entreprises et produits** : normalisation des unités, catégories, quantités, prix, localisation, disponibilité et dates de validité.
-3. **Moteur de matching** : compatibilité produit/catégorie, quantité, prix, distance, délais, qualité et contraintes commerciales.
-4. **Workflow de mise en relation** : consentement et vérification des entreprises, notification des deux parties, acceptation/refus, suivi des échanges et journal d'audit.
-5. **Commande et paiement** : prestataire de paiement adapté au modèle marketplace, encaissement sécurisé et calcul de la commission de 5 % uniquement après confirmation de la transaction selon des conditions contractuelles claires.
-6. **Confiance et conformité** : authentification, rôles, protection des données, gestion des désinscriptions, traçabilité, lutte contre la fraude et respect du RGPD.
+1. **Sources autorisées** : API officielles, flux partenaires, exports autorisés et imports manuels.
+2. **Référentiel** : normalisation des produits, unités, quantités, prix, localisation et dates de validité.
+3. **Matching** : compatibilité produit, catégorie, quantité, budget, zone et délais.
+4. **Mise en relation** : consentement, acceptation/refus et journal d'audit.
+5. **Commande et paiement** : intégration future d'un prestataire adapté ; commission envisagée de 5 % uniquement après confirmation contractuelle de la vente.
+6. **Confiance et conformité** : vérification des entreprises, sécurité, RGPD, prévention de la fraude et gestion des désinscriptions.
 
 ## Prochaines étapes
 
-- Créer le projet Appwrite Cloud gratuit.
-- Créer la base et les tables selon [le guide Appwrite](docs/APPWRITE_SCHEMA.md).
-- Configurer l'authentification et les permissions par entreprise.
-- Connecter le site à Appwrite sans exposer de clé secrète.
-- Construire le matching côté serveur, puis les notifications et la validation des ventes.
+1. Confirmer auprès de GSA la portée de la licence applicable aux données de l'API avant tout usage commercial.
+2. Vérifier le déploiement réel des règles et index Firestore dans le projet Firebase.
+3. Corriger et tester les flux TED et SAM.gov avant de les présenter comme actifs.
+4. Améliorer la classification et la revue humaine des annonces GSA, sans transformer automatiquement une enchère en stock vendeur.
+5. Étudier les autres places de marché uniquement via des accès officiellement autorisés.
 
-Aucun accès à des comptes tiers, aucune collecte non autorisée, aucun contact externe et aucun paiement ne doivent être activés sans les autorisations, les contrôles et les intégrations appropriés.
-
-## Connecteurs acheteurs publics
-
-- **TED (Union européenne)** : recherche publique sans clé, flux `data/ted-buyer-opportunities.json`, collecte tous les deux jours.
-- **SAM.gov (États-Unis)** : connecteur prêt, nécessite le secret GitHub `SAM_API_KEY`. Voir [le guide SAM.gov](docs/connectors/SAM_GOV.md).
+Aucun scraping non autorisé, message automatique, enchère, commande ou paiement ne doit être déclenché par les connecteurs.
