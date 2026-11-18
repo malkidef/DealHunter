@@ -123,6 +123,42 @@ if (!ready) {
     try { await createUserWithEmailAndPassword(auth, email, password); }
     catch (error) { showError(error); }
   });
+  const companyForm = document.getElementById("companyForm");
+  companyForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const user = auth.currentUser;
+    if (!user) {
+      status.textContent = "Connecte-toi avant de créer ton espace entreprise.";
+      return;
+    }
+    const companyName = document.getElementById("companyName").value.trim();
+    const companyCountry = document.getElementById("companyCountry").value;
+    if (!companyName) {
+      status.textContent = "Saisis le nom de ton entreprise.";
+      return;
+    }
+    const submitButton = document.getElementById("createCompany");
+    submitButton.disabled = true;
+    status.textContent = "Enregistrement de ton espace entreprise…";
+    try {
+      await setDoc(doc(db, "users", user.uid), {
+        company: {
+          name: companyName,
+          country: companyCountry,
+          updatedAt: serverTimestamp()
+        },
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      status.textContent = "Espace entreprise enregistré avec succès.";
+      companyForm.reset();
+    } catch (error) {
+      console.error("Enregistrement de l’entreprise impossible :", error);
+      status.textContent = "Enregistrement impossible : " + (error.message || error.code);
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+
   signOutButton.addEventListener("click", async () => {
     try { await signOut(auth); }
     catch (error) { showError(error); }
