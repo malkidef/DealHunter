@@ -1,10 +1,10 @@
 # DealHunter — pipeline de collecte des sources
 
-## Objectif du premier incrément
+## État du pipeline
 
-Passer du répertoire de pistes (`docs/SOURCES.md`) à un flux de données vérifiable, sans scraping non autorisé ni contact automatique.
+Le premier connecteur technique, **GSA Auctions**, est maintenant exécuté par GitHub Actions et alimente `data/gsa-auctions.json`. Le dernier instantané vérifié contient 591 annonces, toutes en attente de revue humaine. Le flux n'est pas intégré aux stocks vendeurs et ne confirme ni quantité ni prix final.
 
-Le prototype actuel reste utilisable. Ce document définit le prochain incrément technique ; il ne prétend pas qu'une source est déjà connectée.
+Les autres places de marché du répertoire restent des pistes. Aucun scraping non autorisé ni contact automatique n'est permis.
 
 ## Règle de fonctionnement
 
@@ -16,18 +16,19 @@ Le prototype actuel reste utilisable. Ce document définit le prochain incrémen
 6. Détecter les doublons ; envoyer les cas incertains en revue humaine.
 7. Ne publier une opportunité qu'après contrôle de validité. Ne contacter personne automatiquement sans base légale, autorisation et mécanisme de désinscription.
 
-## Registre initial des connecteurs
+## Registre des connecteurs
 
-### GSA Auctions — premier connecteur candidat
+### GSA Auctions — collecte technique active
 
-- **Accès technique :** API GET publique documentée par la GSA, réponses JSON/XML, clé personnelle via api.data.gov ; limites publiées : 5 000 appels/jour et 5 appels/5 secondes.
-- **Champs disponibles :** identifiants vente/lot, description, dates, statut, localisation, réserve, enchère actuelle et URL de description. La quantité n'est pas systématiquement fournie.
-- **Droits :** l'accès API est documenté, mais la permission de republication commerciale des annonces dans DealHunter reste à confirmer auprès de GSA. Ne pas confondre la licence CC0 du dépôt documentaire avec les droits sur les données de production.
-- **Statut :** connecteur préparé, non exécuté ; nécessite le secret GitHub `GSA_API_KEY` et un test réel. Les résultats sont produits en JSON `pending`, pas publiés dans le matching.
-- **Implémentation :** [guide du connecteur](connectors/GSA_AUCTIONS.md), [script](../scripts/gsa_auctions.py), [workflow manuel](../.github/workflows/gsa-auctions-manual.yml).
+- **Accès :** API GET officielle, réponses JSON/XML, clé personnelle via api.data.gov.
+- **Preuve :** documentation GSA et fiche Data.gov ; voir [le guide détaillé](connectors/GSA_AUCTIONS.md).
+- **Limites :** 5 000 appels/jour et 5 appels/5 secondes selon la documentation GSA. La quantité n'est pas systématiquement fournie ; réserve et enchère actuelle ne sont pas des prix finaux.
+- **Licence :** la fiche Data.gov de l'API indique un accès public sans champ de licence explicite. Une fiche distincte « GSA Auctions » déclare CC0 1.0 pour sa distribution HTML. Confirmer auprès de GSA que CC0 couvre bien les réponses de l'API avant toute exploitation commerciale.
+- **Statut opérationnel :** workflow GitHub Actions manuel et programmé tous les deux jours ; flux public `data/gsa-auctions.json`. Dernier instantané vérifié : 591 annonces, 591 identifiants uniques, 591 URL officielles, toutes `pending` et `unverified`, collectées le 17 novembre 2026 à 22:01 UTC.
+- **Utilisation dans l'application :** affichage séparé dans « Annonces GSA », recherche, filtres et classement indicatif. Les annonces ne sont pas ajoutées aux stocks vendeurs et les suggestions acheteurs ne déclenchent aucun contact.
+- **Implémentation :** [guide](connectors/GSA_AUCTIONS.md), [script](../scripts/gsa_auctions.py), [tests](../tests/test_gsa_auctions.py), [workflow](../.github/workflows/gsa-auctions-manual.yml).
 
-
-Aucune des sources ci-dessous n'est déclarée connectée. Les candidats sont à examiner individuellement.
+### Autres sources — à vérifier avant toute connexion
 
 | Source candidate | Famille | Première vérification | Statut |
 |---|---|---|---|
@@ -35,7 +36,6 @@ Aucune des sources ci-dessous n'est déclarée connectée. Les candidats sont à
 | AllSurplus | Surplus commerciaux et publics | Accès aux données et conditions de réutilisation | À vérifier |
 | Troostwijk Auctions | Enchères industrielles | Flux/API partenaire et conditions par vente | À vérifier |
 | Surplex | Machines industrielles | Données exportables et droits de réutilisation | À vérifier |
-| GSA Auctions | Surplus public américain | Conditions officielles d'accès et de réutilisation | À vérifier |
 | GovDeals | Surplus public | Accès aux annonces et conditions par organisme | À vérifier |
 
 ## Fiche obligatoire par source
