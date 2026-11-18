@@ -59,5 +59,25 @@ service cloud.firestore {
         && request.resource.data.recipientUid == resource.data.recipientUid;
       allow delete: if false;
     }
+
+    match /matchContacts/{contactId} {
+      function acceptedRequest(requestId) {
+        return exists(/databases/$(database)/documents/matchRequests/$(requestId))
+          && get(/databases/$(database)/documents/matchRequests/$(requestId)).data.status == "accepted"
+          && request.auth.uid in get(/databases/$(database)/documents/matchRequests/$(requestId)).data.participantUids;
+      }
+      allow read: if request.auth != null
+        && acceptedRequest(resource.data.requestId);
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && acceptedRequest(request.resource.data.requestId)
+        && contactId == request.resource.data.requestId + "_" + request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.requestId == resource.data.requestId
+        && acceptedRequest(resource.data.requestId);
+      allow delete: if false;
+    }
   }
 }
