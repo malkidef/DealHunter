@@ -123,13 +123,20 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = testEnv.authenticatedContext("alice").firestore();
     const outsider = testEnv.authenticatedContext("charlie").firestore();
     await assertSucceeds(addDoc(collection(alice, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "alice", text: "Bonjour"
+      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Bonjour", createdAt: new Date()
     }));
     await assertFails(addDoc(collection(alice, "matchMessages"), {
-      requestId: "pending-1", senderUid: "alice", text: "Trop tôt"
+      requestId: "pending-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Trop tôt", createdAt: new Date()
     }));
     await assertFails(addDoc(collection(outsider, "matchMessages"), {
-      requestId: "accepted-1", senderUid: "charlie", text: "Intrus"
+      requestId: "accepted-1", senderUid: "charlie", senderEmail: "charlie@example.test", text: "Intrus", createdAt: new Date()
+    }));
+    await assertFails(addDoc(collection(alice, "matchMessages"), {
+      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test",
+      text: "Champ interdit", createdAt: new Date(), privatePhone: "0600000000"
+    }));
+    await assertFails(addDoc(collection(alice, "matchMessages"), {
+      requestId: "accepted-1", senderUid: "alice", senderEmail: "alice@example.test", text: "Sans date"
     }));
   });
 
@@ -141,12 +148,23 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = testEnv.authenticatedContext("alice").firestore();
     const bob = testEnv.authenticatedContext("bob").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
-      requestId: "accepted-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405"
+      requestId: "accepted-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405", company: "Entreprise A", sharedAt: new Date()
     }));
     await assertSucceeds(getDoc(doc(bob, "matchContacts", "accepted-1_alice")));
     await assertFails(setDoc(doc(alice, "matchContacts", "pending-1_alice"), {
-      requestId: "pending-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405"
+      requestId: "pending-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405", company: "Entreprise A", sharedAt: new Date()
     }));
     await assertFails(getDoc(doc(testEnv.authenticatedContext("charlie").firestore(), "matchContacts", "accepted-1_alice")));
+    await assertFails(setDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
+      requestId: "accepted-1", ownerUid: "alice", email: "alice@example.test",
+      phone: "0102030405", company: "Entreprise A", sharedAt: new Date(), privateNote: "interdit"
+    }));
+    await assertFails(updateDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
+      ownerUid: "bob"
+    }));
+    await assertSucceeds(setDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
+      requestId: "accepted-1", ownerUid: "alice", email: "alice-new@example.test",
+      phone: "0102030406", company: "Entreprise A", sharedAt: new Date()
+    }));
   });
 });
