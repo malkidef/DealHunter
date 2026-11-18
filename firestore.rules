@@ -202,9 +202,9 @@ service cloud.firestore {
         && request.resource.data.quantity > 0
         && request.resource.data.unitPrice is number
         && request.resource.data.unitPrice > 0
-        && request.resource.data.totalAmount == request.resource.data.quantity * request.resource.data.unitPrice
+        && request.resource.data.totalAmount == math.round(request.resource.data.quantity * request.resource.data.unitPrice * 100) / 100
         && request.resource.data.commissionRate == 5
-        && request.resource.data.commissionAmount == request.resource.data.totalAmount * 0.05
+        && request.resource.data.commissionAmount == math.round(request.resource.data.totalAmount * 5) / 100
         && request.resource.data.status == "proposed"
         && request.resource.data.sellerConfirmed == false
         && request.resource.data.buyerConfirmed == false
