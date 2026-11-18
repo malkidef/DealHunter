@@ -39,7 +39,7 @@ def main():
     date_field = field_name(fields, [r"^dateparution$", r"date.*publication", r"^date_publication$"])
     if not title_field:
         raise RuntimeError("Champ titre BOAMP introuvable dans le schéma officiel; collecte arrêtée sans écraser le flux.")
-    order = f"&order_by={date_field} desc" if date_field else ""
+    order = f"&order_by={date_field}%20desc" if date_field else ""
     url = f"{BASE}/catalog/datasets/{DATASET}/records?limit=100{order}"
     payload = get_json(url)
     records = payload.get("results", [])
