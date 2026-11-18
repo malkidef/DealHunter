@@ -57,7 +57,9 @@ service cloud.firestore {
         && request.resource.data.status in ["accepted", "rejected"]
         && request.resource.data.participantUids == resource.data.participantUids
         && request.resource.data.requesterUid == resource.data.requesterUid
-        && request.resource.data.recipientUid == resource.data.recipientUid;
+        && request.resource.data.recipientUid == resource.data.recipientUid
+        // Le destinataire ne peut modifier que la décision et sa date.
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "respondedAt"]);
       allow delete: if false;
     }
 
