@@ -90,6 +90,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = testEnv.authenticatedContext("alice").firestore();
     const bob = testEnv.authenticatedContext("bob").firestore();
     await assertFails(updateDoc(doc(alice, "matchRequests", "request-1"), { status: "accepted" }));
+    await assertFails(updateDoc(doc(bob, "matchRequests", "request-1"), {
+      status: "accepted",
+      requesterCompany: "Entreprise usurpée"
+    }));
     await assertSucceeds(updateDoc(doc(bob, "matchRequests", "request-1"), { status: "accepted" }));
     await assertFails(updateDoc(doc(bob, "matchRequests", "request-1"), {
       status: "rejected",
