@@ -741,6 +741,32 @@ document.addEventListener('click',e=>{
 window.addEventListener('dealhunter-deals',e=>{
  const deals=Array.isArray(e.detail?.deals)?e.detail.deals:[];
  const list=$('dealDashboardList');
+ const uid=window.dealhunterUserUid||'';
+ const sellerList=$('sellerDashboardStatus');
+ const buyerList=$('buyerDashboardStatus');
+ const renderRoleDeals=(items,role)=>{
+  if(!items)return;
+  items=items.filter(d=>role==='seller'?d.sellerUid===uid:d.buyerUid===uid);
+  items.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  items.length?(items.forEach(()=>{}),items.map(d=>{
+   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+   const state=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente terminée':'Proposition refusée';
+   const confirmation=role==='seller'?(d.sellerConfirmed?'Ta réalisation est confirmée.':'Confirmation de réalisation à effectuer si la vente est réalisée.'):(d.buyerConfirmed?'Ta réception est confirmée.':'Confirmation de réception à effectuer si les produits sont reçus.');
+   return '<article class="item"><span class="pill">'+state+'</span><h4>'+escapeHtml(d.product||'Vente')+'</h4><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">'+confirmation+'</div></article>';
+  }).join('')&&(items.length?null:null)):null;
+  const html=items.map(d=>{
+   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+   const state=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente terminée':'Proposition refusée';
+   const confirmation=role==='seller'?(d.sellerConfirmed?'Ta réalisation est confirmée.':'Confirmation de réalisation à effectuer si la vente est réalisée.'):(d.buyerConfirmed?'Ta réception est confirmée.':'Confirmation de réception à effectuer si les produits sont reçus.');
+   return '<article class="item"><span class="pill">'+state+'</span><h4>'+escapeHtml(d.product||'Vente')+'</h4><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">'+confirmation+'</div></article>';
+  }).join('');
+  items.length?(items.length&& (items._unused=0),sellerList===items?null:null):null;
+  const target=role==='seller'?sellerList:buyerList;
+  target.className=html?'cards':'empty';
+  target.innerHTML=html|| (role==='seller'?'Aucun accord vendeur à afficher pour le moment.':'Aucun accord acheteur à afficher pour le moment.');
+ };
+ renderRoleDeals(deals,'seller');
+ renderRoleDeals(deals,'buyer');
  if(!list)return;
  list.className=deals.length?'cards':'empty';
  list.innerHTML=deals.length?deals.map(d=>{
