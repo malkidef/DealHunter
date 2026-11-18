@@ -133,7 +133,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       status: "accepted",
       requesterCompany: "Entreprise usurpée"
     }));
-    await assertSucceeds(updateDoc(doc(bob, "matchRequests", "request-1"), { status: "accepted" }));
+    await assertFails(updateDoc(doc(bob, "matchRequests", "request-1"), { status: "accepted" }));
+    await assertSucceeds(updateDoc(doc(bob, "matchRequests", "request-1"), {
+      status: "accepted", respondedAt: new Date()
+    }));
     await assertFails(updateDoc(doc(bob, "matchRequests", "request-1"), {
       status: "rejected",
       participantUids: ["bob"]
