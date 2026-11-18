@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
@@ -13,6 +13,7 @@ const status = document.getElementById("authStatus");
 const emailForm = document.getElementById("emailAuthForm");
 const emailButton = document.getElementById("emailSignIn");
 const createButton = document.getElementById("emailCreate");
+const resetButton = document.getElementById("passwordReset");
 const googleButton = document.getElementById("googleSignIn");
 const appleButton = document.getElementById("appleSignIn");
 const signOutButton = document.getElementById("signOut");
@@ -112,6 +113,20 @@ if (!ready) {
     status.textContent = "Connexion en cours…";
     try { await signInWithEmailAndPassword(auth, email, password); }
     catch (error) { showError(error); }
+  });
+  resetButton.addEventListener("click", async () => {
+    const email = document.getElementById("authEmail").value.trim();
+    if (!email) {
+      status.textContent = "Saisis d’abord ton adresse e-mail pour recevoir le lien de réinitialisation.";
+      return;
+    }
+    status.textContent = "Envoi du lien de réinitialisation…";
+    try {
+      await sendPasswordResetEmail(auth, email);
+      status.textContent = "Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d’être envoyé. Vérifie aussi les courriers indésirables.";
+    } catch (error) {
+      showError(error);
+    }
   });
   createButton.addEventListener("click", async () => {
     const { email, password } = credentials();
