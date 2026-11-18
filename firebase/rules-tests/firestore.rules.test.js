@@ -13,7 +13,8 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  addDoc
+  addDoc,
+  deleteDoc
 } from "firebase/firestore";
 
 const projectId = process.env.GCLOUD_PROJECT || "demo-dealhunter";
@@ -106,6 +107,34 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "publicNeeds", "need-invalid"), {
       ...need, status: "draft"
     }));
+  });
+
+  it("autorise le propriétaire à retirer ses annonces privées et publiques, mais pas un autre compte", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "users/alice/sellerOffers", "offer-delete"), { product: "Cartons" });
+      await setDoc(doc(db, "users/alice/buyerNeeds", "need-delete"), { product: "Palettes" });
+      await setDoc(doc(db, "publicOffers", "offer-delete"), {
+        ownerUid: "alice", company: "Entreprise A", product: "Cartons",
+        category: "Emballage", quantity: 10, unitPrice: 2,
+        location: "Lille", status: "active", createdAt: new Date()
+      });
+      await setDoc(doc(db, "publicNeeds", "need-delete"), {
+        ownerUid: "alice", company: "Entreprise A", product: "Palettes",
+        category: "Logistique", quantity: 5, maxUnitBudget: 10,
+        location: "Lille", status: "active", createdAt: new Date()
+      });
+    });
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    const bob = testEnv.authenticatedContext("bob").firestore();
+    await assertFails(deleteDoc(doc(bob, "users/alice/sellerOffers", "offer-delete")));
+    await assertFails(deleteDoc(doc(bob, "users/alice/buyerNeeds", "need-delete")));
+    await assertFails(deleteDoc(doc(bob, "publicOffers", "offer-delete")));
+    await assertFails(deleteDoc(doc(bob, "publicNeeds", "need-delete")));
+    await assertSucceeds(deleteDoc(doc(alice, "users/alice/sellerOffers", "offer-delete")));
+    await assertSucceeds(deleteDoc(doc(alice, "users/alice/buyerNeeds", "need-delete")));
+    await assertSucceeds(deleteDoc(doc(alice, "publicOffers", "offer-delete")));
+    await assertSucceeds(deleteDoc(doc(alice, "publicNeeds", "need-delete")));
   });
 
   it("autorise une demande valide et refuse l'usurpation du demandeur", async () => {
