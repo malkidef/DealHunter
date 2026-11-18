@@ -54,17 +54,25 @@ if (!ready) {
   });
 
   const loadMatchRequests = async user => {
+    // Charger d'abord les demandes : une erreur sur les coordonnées ne doit pas masquer la liste.
     const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
-    const requests = await Promise.all(snap.docs.map(async item => {
-      const r = {id:item.id,...item.data()};
-      if (r.status !== "accepted") return r;
+    const requests = snap.docs.map(item => ({id:item.id,...item.data()}));
+    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
+    for (const r of requests) {
+      if (r.status !== "accepted") continue;
       const otherUid = (r.participantUids || []).find(uid => uid !== user.uid);
-      const [mine, other] = await Promise.all([
-        getDoc(doc(db,"matchContacts",r.id+"_"+user.uid)),
-        otherUid ? getDoc(doc(db,"matchContacts",r.id+"_"+otherUid)) : Promise.resolve(null)
-      ]);
-      return {...r,myContact:mine?.exists()?mine.data():null,otherContact:other?.exists()?other.data():null};
-    }));
+      try {
+        const [mine, other] = await Promise.all([
+          getDoc(doc(db,"matchContacts",r.id+"_"+user.uid)),
+          otherUid ? getDoc(doc(db,"matchContacts",r.id+"_"+otherUid)) : Promise.resolve(null)
+        ]);
+        r.myContact = mine?.exists()?mine.data():null;
+        r.otherContact = other?.exists()?other.data():null;
+      } catch (contactError) {
+        console.error("Lecture des coordonnées partagées impossible :", contactError);
+        r.contactLoadError = contactError.code || contactError.message || "erreur inconnue";
+      }
+    }
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
   };
   window.addEventListener("dealhunter-create-match-request",async e=>{
