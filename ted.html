@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>DealHunter — Opportunités TED Europe</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#111c30;--line:#263852;--muted:#9eabc0;--green:#43e0a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f7fb;font:15px system-ui,Arial,sans-serif}
+header,main{max-width:1000px;margin:auto;padding:20px}header{border-bottom:1px solid var(--line)}
+h1{font-size:clamp(24px,4vw,34px)}p,.muted{color:var(--muted);line-height:1.5}
+input{width:100%;padding:13px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit;margin:12px 0}
+.card{padding:15px;margin:12px 0;border:1px solid var(--line);background:var(--panel);border-radius:12px}
+.card h2{font-size:17px;margin:8px 0}.pill{color:var(--green);font-size:12px;font-weight:700}
+a{color:#9ec5ff}.warning{padding:12px;border:1px solid #66552a;background:#2a2415;color:#f3d99b;border-radius:10px}
+</style>
+</head>
+<body>
+<header><strong>DEALHUNTER ⚡</strong><div class="muted">Prospection — opportunités publiques européennes</div></header>
+<main>
+<h1>Appels d’offres TED — Europe</h1>
+<p>Flux de l’API officielle TED de l’Office des publications de l’Union européenne. Ces avis indiquent des besoins potentiels d’acheteurs publics, pas des commandes garanties. Chaque piste doit être vérifiée.</p>
+<div class="warning">Ces avis concernent des acheteurs publics européens. Ils ne représentent pas des vendeurs privés de surplus. Ce flux couvre les avis publiés sur TED, pas tous les marchés publics de chaque pays.</div>
+<div id="status" class="muted">Chargement du flux TED…</div>
+<input id="search" type="search" placeholder="Rechercher un produit, un acheteur ou un pays…">
+<div id="results"></div>
+<p class="muted">Source : <a href="https://docs.ted.europa.eu/api/latest/search.html" target="_blank" rel="noopener">API officielle TED</a>.</p>
+<p><a href="boamp.html">← Revenir aux avis BOAMP français</a></p>
+</main>
+<script>
+const statusEl=document.getElementById('status'),resultsEl=document.getElementById('results'),searchEl=document.getElementById('search');
+let notices=[];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+ const q=searchEl.value.trim().toLocaleLowerCase('fr');
+ const rows=notices.filter(n=>[n.title,n.buyer,n.country,n.cpv,n.deadline].join(' ').toLocaleLowerCase('fr').includes(q));
+ resultsEl.innerHTML=rows.length?rows.map(n=>'<article class="card"><span class="pill">Piste publique à qualifier</span><h2>'+esc(n.title)+'</h2><div class="muted">Acheteur : '+esc(n.buyer||'Non précisé')+'</div><div class="muted">Pays : '+esc(n.country||'Non précisé')+' · Échéance : '+esc(n.deadline||'À vérifier')+'</div><div class="muted">Publication : '+esc(n.publicationDate||'Non précisée')+' · CPV : '+esc((n.cpv||[]).join(', '))+'</div><p><a href="'+esc(n.url)+'" target="_blank" rel="noopener">Consulter l’avis officiel</a></p></article>').join(''):'<div class="card">Aucun avis ne correspond à cette recherche.</div>';
+}
+searchEl.addEventListener('input',render);
+fetch('data/ted-buyer-opportunities.json?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Le flux TED n’a pas encore été publié (HTTP '+r.status+').');return r.json()}).then(data=>{
+ if(data.source!=='TED — API officielle de recherche'||!Array.isArray(data.notices))throw new Error('Format du flux TED invalide.');
+ notices=data.notices;
+ statusEl.textContent=notices.length+' avis chargés · collecte : '+data.collected_at+' · total annoncé par TED : '+(data.total_available??'non précisé')+' · tous à vérifier.';
+ render();
+}).catch(err=>{statusEl.textContent=err.message+' Lance la collecte TED dans GitHub Actions.';resultsEl.innerHTML='';});
+</script>
+</body>
+</html>
