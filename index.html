@@ -473,12 +473,12 @@ function render(){
  const tedList=$('tedFeedList');
  if(tedList){
   const q=norm($('tedSearch')?.value||'');
-  const filtered=tedNotices.filter(n=>[n.title,n.buyer_name,n.buyer_country,n.source_notice_id,n.notice_type].join(' ').toLowerCase().includes(q));
-  $('tedFeedSummary').textContent=filtered.length+' avis correspondant(s) · '+tedNotices.length+' avis chargés sur '+(tedFeedMeta?.total_matching_notices??'—')+' avis trouvés par la requête TED.';
+  const filtered=tedNotices.filter(n=>[n.title,n.buyer,n.country,n.id,n.noticeType].join(' ').toLowerCase().includes(q));
+  $('tedFeedSummary').textContent=filtered.length+' avis correspondant(s) · '+tedNotices.length+' avis chargés sur '+(tedFeedMeta?.total_available??'—')+' avis trouvés par la requête TED.';
   tedList.innerHTML=filtered.length?filtered.slice(0,50).map(n=>{
-   const link=typeof n.source_url==='string'&&/^https:\/\//i.test(n.source_url)?'<a href="'+escapeHtml(n.source_url)+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel TED</a>':'Lien officiel indisponible';
-   const details=[n.buyer_country?'Pays : '+n.buyer_country:'',n.notice_type?'Type : '+n.notice_type:'',n.publication_date?'Publié : '+n.publication_date:'',n.deadline_date?'Date limite : '+n.deadline_date:'',n.source_notice_id?'Référence : '+n.source_notice_id:''].filter(Boolean).join(' · ');
-   return '<article class="item"><span class="pill">Signal public · à vérifier</span><h3>'+escapeHtml(n.title||'Avis TED sans titre')+'</h3><div class="muted">'+escapeHtml(n.buyer_name||'Acheteur non précisé')+'</div><div class="muted">'+escapeHtml(details)+'</div><p class="muted">'+link+'</p></article>';
+   const link=typeof n.url==='string'&&/^https:\/\//i.test(n.url)?'<a href="'+escapeHtml(n.url)+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel TED</a>':'Lien officiel indisponible';
+   const details=[n.country?'Pays : '+n.country:'',n.noticeType?'Type : '+n.noticeType:'',n.publicationDate?'Publié : '+n.publicationDate:'',n.deadline?'Date limite : '+n.deadline:'',n.id?'Référence : '+n.id:''].filter(Boolean).join(' · ');
+   return '<article class="item"><span class="pill">Signal public · à vérifier</span><h3>'+escapeHtml(n.title||'Avis TED sans titre')+'</h3><div class="muted">'+escapeHtml(n.buyer||'Acheteur non précisé')+'</div><div class="muted">'+escapeHtml(details)+'</div><p class="muted">'+link+'</p></article>';
   }).join(''):'<div class="empty">Aucun avis TED correspondant. Si le flux n’est pas encore publié, la collecte automatique doit d’abord s’exécuter.</div>';
   if(filtered.length>50)tedList.insertAdjacentHTML('beforeend','<div class="muted">Affichage des 50 premiers avis. Affine ta recherche pour voir les suivants.</div>');
  }
