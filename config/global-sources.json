@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "project": "DealHunter Global",
+  "purpose": "Registry of authorized discovery sources. This registry describes source coverage; it does not claim that every source is already connected or that every record is a verified offer.",
+  "sourceTypes": {
+    "publicBuyer": "Public procurement notices and public buyer demand",
+    "privateBuyer": "Private-sector requests for quotation or purchasing needs",
+    "surplusSeller": "Private surplus, excess inventory, liquidation or end-of-line stock offers",
+    "companyDirectory": "Business identity and qualification data"
+  },
+  "sources": [
+    {
+      "id": "ocp-data-registry",
+      "name": "Open Contracting Partnership Data Registry",
+      "sourceType": ["publicBuyer"],
+      "coverage": "Global; datasets from 100+ publishers and 100+ countries/regions, depending on publisher coverage",
+      "access": "Bulk downloads in JSON, CSV and Excel; dataset-specific access methods",
+      "url": "https://data.open-contracting.org/en/",
+      "technicalStandard": "OCDS",
+      "status": "discovery-index",
+      "automation": "not-connected",
+      "notes": "Use this registry to discover country publishers. Inspect each dataset's freshness, licence, fields and coverage before activating an adapter."
+    },
+    {
+      "id": "ted-eu",
+      "name": "Tenders Electronic Daily (TED) Search API and Open Data",
+      "sourceType": ["publicBuyer"],
+      "coverage": "European Union public procurement notices and related data",
+      "access": "Official search API and open data services",
+      "url": "https://ted.europa.eu/",
+      "technicalReference": "https://data.europa.eu/en/PPDS",
+      "status": "candidate",
+      "automation": "not-connected",
+      "notes": "Use as a regional source and deduplicate against national portals."
+    },
+    {
+      "id": "boamp-fr",
+      "name": "BOAMP / DILA Open Data",
+      "sourceType": ["publicBuyer"],
+      "coverage": "France",
+      "access": "Official OpenDataSoft API; Open Licence",
+      "url": "https://boamp-datadila.opendatasoft.com/explore/dataset/boamp/api/",
+      "status": "prototype-adapter-added",
+      "automation": "workflow-created-not-yet-validated",
+      "notes": "The existing collector and GitHub Actions workflow must pass a real run before this source is marked active."
+    },
+    {
+      "id": "simap-ch",
+      "name": "SIMAP",
+      "sourceType": ["publicBuyer"],
+      "coverage": "Switzerland",
+      "access": "Official procurement portal; API access and terms must be checked before implementation",
+      "url": "https://www.simap.ch/fr",
+      "technicalReference": "https://www.simap.ch/api-doc",
+      "status": "candidate",
+      "automation": "not-connected",
+      "notes": "Do not assume unrestricted API access; verify authentication, licence and permitted reuse."
+    },
+    {
+      "id": "world-bank-gppd",
+      "name": "World Bank Global Public Procurement Database",
+      "sourceType": ["publicBuyer"],
+      "coverage": "Global procurement-system directory and reference information",
+      "access": "Public information and downloadable reference material",
+      "url": "https://www.globalpublicprocurementdata.org/gppd/",
+      "status": "reference-source",
+      "automation": "not-connected",
+      "notes": "Useful for mapping country procurement systems; not a universal live tender feed."
+    },
+    {
+      "id": "private-surplus-partner-feeds",
+      "name": "Private surplus seller feeds and partner marketplaces",
+      "sourceType": ["surplusSeller"],
+      "coverage": "Global, only where a seller or marketplace grants access",
+      "access": "Seller-submitted listings, partner API, licensed feed or explicit permission",
+      "url": null,
+      "status": "integration-framework-required",
+      "automation": "not-connected",
+      "notes": "No scraping behind login, bypassing access controls or reusing listings contrary to platform terms. Stock, quantity, price and availability require seller confirmation."
+    },
+    {
+      "id": "private-buyer-rfq-feeds",
+      "name": "Private buyer RFQ and purchasing-need feeds",
+      "sourceType": ["privateBuyer"],
+      "coverage": "Global, only where the buyer or platform grants access",
+      "access": "Buyer-submitted requests, partner API, licensed feed or explicit permission",
+      "url": null,
+      "status": "integration-framework-required",
+      "automation": "not-connected",
+      "notes": "Treat discovered demand as a lead until the buyer confirms it is current and genuine."
+    },
+    {
+      "id": "business-directories",
+      "name": "Business directories and company registers",
+      "sourceType": ["companyDirectory"],
+      "coverage": "Country-specific",
+      "access": "Official open registers or licensed providers, subject to local law and terms",
+      "url": null,
+      "status": "country-by-country-review",
+      "automation": "not-connected",
+      "notes": "Use only for company qualification and lawful business contact; a directory entry is not proof of buyer intent or available stock."
+    }
+  ],
+  "normalization": {
+    "requiredFields": [
+      "sourceId",
+      "sourceRecordId",
+      "sourceCountry",
+      "sourceType",
+      "title",
+      "description",
+      "publishedAt",
+      "expiresAt",
+      "buyerOrSellerName",
+      "productCategory",
+      "quantity",
+      "unit",
+      "currency",
+      "price",
+      "location",
+      "sourceUrl",
+      "retrievedAt",
+      "verificationStatus",
+      "reuseLicence"
+    ],
+    "verificationStatuses": ["unverified", "source-checked", "party-confirmed", "expired", "rejected"],
+    "matchingPolicy": "Never treat a public tender as a surplus-stock offer. Never treat a directory listing as confirmed demand or stock. Match buyer and seller leads separately, then require party confirmation."
+  }
+}
