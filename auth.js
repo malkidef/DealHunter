@@ -105,7 +105,7 @@ if (!ready) {
       if(!requestSnap.exists()||requestSnap.data().status!=="accepted"||!(requestSnap.data().participantUids||[]).includes(user.uid)){
         status.textContent="La messagerie est disponible uniquement entre entreprises ayant accepté la mise en relation.";return;
       }
-      await addDoc(collection(db,"matchMessages"),{requestId,senderUid:user.uid,senderEmail:user.email||"",text:message,createdAt:serverTimestamp()});
+      await addDoc(collection(db,"matchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});
       await loadMatchRequests(user);
       status.textContent="Message envoyé.";
     }catch(err){console.error("Envoi du message impossible :",err);status.textContent="Message non envoyé : "+(err.code||err.message||"erreur inconnue");}
