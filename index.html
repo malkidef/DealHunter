@@ -696,7 +696,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
         ? '<div class="muted">Tes coordonnées sont partagées avec cette entreprise : '+escapeHtml(r.myContact.email||'')+'</div>'
         : '<p><button type="button" data-share-contact="'+escapeHtml(r.id)+'">Partager mon e-mail et mon téléphone professionnels</button></p>';
       const messages=Array.isArray(r.messages)?r.messages:[];
-      details+='<section class="item" style="margin-top:12px"><h3>Messagerie entre entreprises</h3><div class="cards">'+(messages.length?messages.map(m=>'<div class="item"><strong>'+((m.senderUid||'')===(window.dealhunterUserUid||'')?'Moi':'Entreprise participante')+'</strong><p>'+escapeHtml(m.text||'')+'</p></div>').join(''):'<div class="empty">Aucun message pour le moment. Tu peux commencer la conversation.</div>')+'</div><form data-message-form="'+escapeHtml(r.id)+'"><div class="field"><label>Ton message</label><textarea name="message" required maxlength="2000" rows="3" placeholder="Écris ton message à cette entreprise…" style="width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit"></textarea></div><button type="submit">Envoyer le message</button></form></section>';
+      details+='<section class="item" style="margin-top:12px"><h3>Messagerie entre entreprises</h3><div class="cards">'+(messages.length?messages.map(m=>'<div class="item"><strong>'+((m.senderUid||'')===(window.dealhunterUserUid||'')?'Moi':'Entreprise participante')+'</strong><p>'+escapeHtml(m.text||'')+'</p></div>').join(''):'<div class="empty">Aucun message pour le moment. Tu peux commencer la conversation.</div>')+'</div><form data-message-form="'+escapeHtml(r.id)+'"><div class="field"><label>Ton message</label><textarea name="message" required maxlength="2000" rows="3" placeholder="Écris ton message à cette entreprise…" style="width:100%;padding:12px;border:1px solid #354761;border-radius:9px;background:#0d1728;color:white;font:inherit"></textarea></div><p data-message-status role="status" aria-live="polite" class="muted"></p><button type="submit">Envoyer le message</button></form></section>';
     }else{
       details=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
         ? '<p><button type="button" data-match-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button> <button type="button" class="secondary" data-match-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button></p>'
@@ -715,11 +715,20 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-share-cont
   const message=field.value.trim();
   if(!message)return;
   const button=form.querySelector('button[type="submit"]');
+  const feedback=form.querySelector('[data-message-status]');
   button.disabled=true;
   button.textContent='Envoi…';
-  window.dispatchEvent(new CustomEvent('dealhunter-send-message',{detail:{requestId:form.dataset.messageForm,text:message}}));
-  field.value='';
-  setTimeout(()=>{button.disabled=false;button.textContent='Envoyer le message';},1800);
+  if(feedback)feedback.textContent='Envoi du message en cours…';
+  window.dispatchEvent(new CustomEvent('dealhunter-send-message',{detail:{
+    requestId:form.dataset.messageForm,
+    text:message,
+    onResult:(ok,label)=>{
+      if(ok)field.value='';
+      if(feedback)feedback.textContent=label;
+      button.disabled=false;
+      button.textContent='Envoyer le message';
+    }
+  }}));
  });
 document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
