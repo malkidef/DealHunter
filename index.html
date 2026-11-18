@@ -254,14 +254,24 @@ function canonicalCategory(value){
 function score(s,b){
  const sellerCategory=canonicalCategory(s.category),buyerCategory=canonicalCategory(b.category);
  if(sellerCategory!==buyerCategory)return 0;
- const words=norm(s.product).split(/\s+/).filter(w=>w.length>2);
- const buyerWords=norm(b.product).split(/\s+/).filter(w=>w.length>2);
- const productFit=norm(s.product)===norm(b.product)||words.some(w=>buyerWords.includes(w));
- const priceFit=Number(s.price)<=Number(b.budget);
- const qtyFit=Number(s.qty)>=Number(b.qty);
- const locationFit=norm(s.location)===norm(b.location);
- if(!priceFit||!qtyFit||(!productFit&&sellerCategory==='Autre / à classer'))return 0;
- return 55+(productFit?20:0)+(locationFit?15:0)+(priceFit?10:0);
+ // Une entreprise ne doit pas être mise en relation avec ses propres annonces.
+ if(s.ownerUid&&b.ownerUid&&s.ownerUid===b.ownerUid)return 0;
+ const sellerProduct=norm(s.product),buyerProduct=norm(b.product);
+ const words=[...new Set(sellerProduct.split(/[^a-z0-9]+/).filter(w=>w.length>2))];
+ const buyerWords=[...new Set(buyerProduct.split(/[^a-z0-9]+/).filter(w=>w.length>2))];
+ const common=words.filter(w=>buyerWords.includes(w));
+ const productRatio=common.length/Math.max(1,Math.min(words.length,buyerWords.length));
+ const productExact=sellerProduct===buyerProduct;
+ const productFit=productExact||productRatio>=0.5;
+ const price=Number(s.price),budget=Number(b.budget);
+ const available=Number(s.qty),wanted=Number(b.qty);
+ const priceFit=Number.isFinite(price)&&Number.isFinite(budget)&&price>0&&budget>0&&price<=budget;
+ const qtyFit=Number.isFinite(available)&&Number.isFinite(wanted)&&available>0&&wanted>0&&available>=wanted;
+ const sellerLocation=norm(s.location),buyerLocation=norm(b.location);
+ const locationFit=!!sellerLocation&&!!buyerLocation&&sellerLocation===buyerLocation;
+ // Prix, quantité et zone sont des conditions obligatoires, pas de simples bonus.
+ if(!priceFit||!qtyFit||!locationFit||!productFit)return 0;
+ return Math.min(100,35+(productExact?30:20)+15+10+10);
 }
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta){return '<article class="item"><span class="pill">'+meta+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div></article>'}
@@ -676,5 +686,5 @@ syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 </script>
-<script type="module" src="auth.js?v=20261118-4"></script>
+<script type="module" src="auth.js?v=20261118-5"></script>
 </body></html>
