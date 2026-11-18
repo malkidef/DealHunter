@@ -122,6 +122,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
+<div id="matchingDataStatus" class="muted" role="status">Chargement des données Firebase…</div>
 <div id="matchList" class="cards"></div>
 </section>
 <div id="sellers" class="grid hidden">
@@ -300,6 +301,14 @@ function classifyGsaTech(x){
  for(const [category,re] of rules)if(re.test(t))return {category,score:Math.min(100,70+(re.test(title)?20:0)+(desc?10:0)),label:({computers:'Ordinateurs',screens:'Écrans',servers:'Serveurs / stockage',network:'Réseaux',printers:'Impression / scan',accessories:'Périphériques'})[category]};
  return null;
 }
+window.addEventListener('dealhunter-cloud-data',event=>{
+ const data=event.detail||{};
+ sellers=Array.isArray(data.sellers)?data.sellers:[];
+ buyers=Array.isArray(data.buyers)?data.buyers:[];
+ const info=$('matchingDataStatus');
+ if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.';
+ render();
+});
 function render(){
  const importList=$('importList');
  if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
@@ -667,5 +676,5 @@ syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 </script>
-<script type="module" src="auth.js?v=20261118-2"></script>
+<script type="module" src="auth.js?v=20261118-3"></script>
 </body></html>
