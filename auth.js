@@ -10,6 +10,7 @@ import {
 import { firebaseConfig } from "./firebase-web-config.js";
 
 const status = document.getElementById("authStatus");
+const accountStatus = document.getElementById("authAccount");
 const emailForm = document.getElementById("emailAuthForm");
 const emailButton = document.getElementById("emailSignIn");
 const createButton = document.getElementById("emailCreate");
@@ -70,6 +71,9 @@ if (!ready) {
 
   onAuthStateChanged(auth, async user => {
     status.replaceChildren();
+    if (accountStatus) accountStatus.textContent = user
+      ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
+      : "Aucun utilisateur connecté.";
     if (user) {
       const label = document.createElement("span");
       label.className = "auth-user";
