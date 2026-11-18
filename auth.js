@@ -68,6 +68,8 @@ if (!ready) {
         ]);
         r.myContact = mine?.exists()?mine.data():null;
         r.otherContact = other?.exists()?other.data():null;
+        const messageSnap = await getDocs(query(collection(db,"matchMessages"),where("requestId","==",r.id)));
+        r.messages = messageSnap.docs.map(item=>({id:item.id,...item.data()})).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
       } catch (contactError) {
         console.error("Lecture des coordonnées partagées impossible :", contactError);
         r.contactLoadError = contactError.code || contactError.message || "erreur inconnue";
@@ -93,6 +95,22 @@ if (!ready) {
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
+  window.addEventListener("dealhunter-send-message",async e=>{
+    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
+    const message=String(messageText||"").trim();
+    if(!user||!requestId||!message)return;
+    if(message.length>2000){status.textContent="Message limité à 2 000 caractères.";return;}
+    try{
+      const requestSnap=await getDoc(doc(db,"matchRequests",requestId));
+      if(!requestSnap.exists()||requestSnap.data().status!=="accepted"||!(requestSnap.data().participantUids||[]).includes(user.uid)){
+        status.textContent="La messagerie est disponible uniquement entre entreprises ayant accepté la mise en relation.";return;
+      }
+      await addDoc(collection(db,"matchMessages"),{requestId,senderUid:user.uid,senderEmail:user.email||"",text:message,createdAt:serverTimestamp()});
+      await loadMatchRequests(user);
+      status.textContent="Message envoyé.";
+    }catch(err){console.error("Envoi du message impossible :",err);status.textContent="Message non envoyé : "+(err.code||err.message||"erreur inconnue");}
+  });
+
   window.addEventListener("dealhunter-share-contact",async e=>{
     const user=auth.currentUser,{requestId}=e.detail||{};
     if(!user||!requestId||!user.email){status.textContent="Connecte-toi avec une adresse e-mail pour la partager.";return;}
