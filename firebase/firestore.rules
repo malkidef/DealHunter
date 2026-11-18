@@ -44,10 +44,41 @@ service cloud.firestore {
 
     match /matchRequests/{requestId} {
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "sellerId", "buyerId", "sellerUid", "buyerUid", "participantUids",
+          "requesterUid", "recipientUid", "requesterCompany", "recipientCompany",
+          "product", "status", "createdAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "sellerId", "buyerId", "sellerUid", "buyerUid", "participantUids",
+          "requesterUid", "recipientUid", "requesterCompany", "recipientCompany",
+          "product", "status", "createdAt"
+        ])
         && request.resource.data.requesterUid == request.auth.uid
         && request.resource.data.recipientUid != request.auth.uid
+        && request.resource.data.sellerUid is string
+        && request.resource.data.buyerUid is string
+        && request.resource.data.sellerUid != request.resource.data.buyerUid
+        && request.resource.data.participantUids is list
+        && request.resource.data.participantUids.size() == 2
+        && request.resource.data.participantUids.hasAll([
+          request.resource.data.sellerUid, request.resource.data.buyerUid
+        ])
         && request.auth.uid in request.resource.data.participantUids
-        && request.resource.data.status == "pending";
+        && request.resource.data.recipientUid in request.resource.data.participantUids
+        && request.resource.data.requesterUid in [
+          request.resource.data.sellerUid, request.resource.data.buyerUid
+        ]
+        && request.resource.data.recipientUid in [
+          request.resource.data.sellerUid, request.resource.data.buyerUid
+        ]
+        && request.resource.data.status == "pending"
+        && request.resource.data.sellerId is string
+        && request.resource.data.buyerId is string
+        && request.resource.data.requesterCompany is string
+        && request.resource.data.recipientCompany is string
+        && request.resource.data.product is string
+        && request.resource.data.createdAt is timestamp;
       // Seuls les deux participants peuvent lire une demande.
       allow read: if request.auth != null
         && request.auth.uid in resource.data.participantUids;
