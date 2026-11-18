@@ -68,11 +68,19 @@ if (!ready) {
         ]);
         r.myContact = mine?.exists()?mine.data():null;
         r.otherContact = other?.exists()?other.data():null;
-        const messageSnap = await getDocs(query(collection(db,"matchMessages"),where("requestId","==",r.id)));
-        r.messages = messageSnap.docs.map(item=>({id:item.id,...item.data()})).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
       } catch (contactError) {
         console.error("Lecture des coordonnées partagées impossible :", contactError);
         r.contactLoadError = contactError.code || contactError.message || "erreur inconnue";
+      }
+      // Charger les messages indépendamment des coordonnées : une erreur
+      // sur un document de contact absent ne doit pas masquer la messagerie.
+      try {
+        const messageSnap = await getDocs(query(collection(db,"matchMessages"),where("requestId","==",r.id)));
+        r.messages = messageSnap.docs.map(item=>({id:item.id,...item.data()})).sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+      } catch (messageError) {
+        console.error("Lecture des messages impossible :", messageError);
+        r.messageLoadError = messageError.code || messageError.message || "erreur inconnue";
+        r.messages = [];
       }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
