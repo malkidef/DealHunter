@@ -132,7 +132,8 @@ service cloud.firestore {
         && request.resource.data.requesterUid == resource.data.requesterUid
         && request.resource.data.recipientUid == resource.data.recipientUid
         // Le destinataire ne peut modifier que la décision et sa date.
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "respondedAt"]);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "respondedAt"])
+        && request.resource.data.respondedAt is timestamp;
       allow delete: if false;
     }
 
