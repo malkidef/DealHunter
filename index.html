@@ -97,29 +97,29 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 <section id="dashboard" class="panel hidden">
 <h2>Tableau de bord DealHunter</h2>
-<p class="muted">Suivi des activités vendeur et acheteur. Les chiffres ci-dessous proviennent uniquement de ce navigateur tant que Firebase n’est pas connecté.</p>
+<p class="muted">Suivi des activités vendeur et acheteur. Les données affichées peuvent être synchronisées avec Firebase ou provenir du cache local du navigateur.</p>
 <div class="status-note" id="dashboardConnection" role="status">Mode prototype : aucun compte connecté, aucune transaction réelle synchronisée et aucun paiement disponible.</div>
 <div class="dashboard-grid">
-<div class="dashboard-stat"><span class="muted">Stocks locaux</span><strong id="dashSellerCount">0</strong><span class="muted">Offres enregistrées sur cet appareil</span></div>
-<div class="dashboard-stat"><span class="muted">Besoins locaux</span><strong id="dashBuyerCount">0</strong><span class="muted">Demandes enregistrées sur cet appareil</span></div>
+<div class="dashboard-stat"><span class="muted">Offres vendeurs visibles</span><strong id="dashSellerCount">0</strong><span class="muted">Offres chargées dans cette session (Firebase / cache local)</span></div>
+<div class="dashboard-stat"><span class="muted">Besoins acheteurs visibles</span><strong id="dashBuyerCount">0</strong><span class="muted">Besoins chargés dans cette session (Firebase / cache local)</span></div>
 <div class="dashboard-stat"><span class="muted">Correspondances</span><strong id="dashMatchCount">0</strong><span class="muted">Compatibilités indicatives</span></div>
 </div>
 <div class="dashboard-role">
 <section class="item dashboard-section">
 <h3>Espace vendeur</h3>
-<div class="muted">Suivi prévu : stocks publiés, ventes acceptées, paiements reçus, commission DealHunter de 5 %, montant net et versements.</div>
-<div class="cards" id="sellerDashboardStatus"><div class="empty">Aucune vente réelle synchronisée. La connexion Firebase sera nécessaire pour afficher les transactions.</div></div>
+<div class="muted">Suivi des accords liés aux offres vendeurs. Les paiements et versements ne sont pas encore activés.</div>
+<div class="cards" id="sellerDashboardStatus"><div class="empty">Aucun accord vendeur à afficher pour le moment. Les ventes de test confirmées figurent dans « Transactions et litiges ».</div></div>
 </section>
 <section class="item dashboard-section">
 <h3>Espace acheteur</h3>
-<div class="muted">Suivi prévu : besoins publiés, offres compatibles, commandes, paiements, livraison et confirmation de réception.</div>
-<div class="cards" id="buyerDashboardStatus"><div class="empty">Aucun achat réel synchronisé. Les besoins saisis ici restent locaux à cet appareil.</div></div>
+<div class="muted">Suivi des accords liés aux besoins acheteurs. Aucun paiement ni encaissement n’est activé dans ce prototype.</div>
+<div class="cards" id="buyerDashboardStatus"><div class="empty">Aucun accord acheteur à afficher pour le moment. Les ventes de test confirmées figurent dans « Transactions et litiges ».</div></div>
 </section>
 </div>
 <section class="dashboard-section">
 <h3>Transactions et litiges</h3>
 <p class="muted">Suivi des accords et confirmations des deux entreprises. La commission de 5 % est calculée à titre indicatif uniquement : aucun paiement ni prélèvement n’est activé.</p>
-<div id="dealDashboardList" class="empty">Aucune transaction réelle à afficher.</div>
+<div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div>
 </section>
 </section>
 <section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div></section>
@@ -748,7 +748,7 @@ window.addEventListener('dealhunter-deals',e=>{
   const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'En attente des confirmations':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
   return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div></article>';
- }).join(''):'Aucune vente proposée pour le moment.';
+ }).join(''):'Aucun accord de vente proposé pour le moment.';
 });
 
  document.addEventListener('submit',e=>{
