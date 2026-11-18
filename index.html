@@ -620,7 +620,7 @@ async function syncTedFeed(){
   const response=await fetch('data/ted-buyer-opportunities.json',{cache:'no-store'});
   if(!response.ok)throw new Error('Flux TED indisponible ('+response.status+').');
   const data=await response.json();
-  if(!data||data.source!=='TED — Tenders Electronic Daily'||!Array.isArray(data.notices))throw new Error('Format du flux TED invalide.');
+  if(!data||data.source!=='TED — API officielle de recherche'||!Array.isArray(data.notices))throw new Error('Format du flux TED invalide.');
   tedNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.title);
   tedFeedMeta=data;
   render();
