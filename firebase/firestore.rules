@@ -148,14 +148,13 @@ service cloud.firestore {
         && acceptedParticipant(resource.data.requestId);
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
-          "requestId", "senderUid", "senderEmail", "text", "createdAt"
+          "requestId", "senderUid", "text", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
-          "requestId", "senderUid", "senderEmail", "text", "createdAt"
+          "requestId", "senderUid", "text", "createdAt"
         ])
         && request.resource.data.requestId is string
         && request.resource.data.senderUid == request.auth.uid
-        && request.resource.data.senderEmail is string
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 2000
