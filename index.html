@@ -496,7 +496,7 @@ function render(){
   };
   const publicSignals=[
    ...samNotices.map(n=>({...n,_source:'SAM.gov',_buyer:n.buyer_organization,_date:n.deadline_date,_url:n.source_url,_place:[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(' '),_sector:[n.naics_code,n.classification_code].filter(Boolean).join(' ')})),
-   ...tedNotices.map(n=>({...n,_source:'TED',_buyer:n.buyer_name,_date:n.deadline_date,_url:n.source_url,_place:n.buyer_country||'',_sector:n.notice_type||''}))
+   ...tedNotices.map(n=>({...n,_source:'TED',_buyer:n.buyer||n.buyer_name||'',_date:n.deadline||n.deadline_date,_url:n.url||n.source_url,_place:n.country||n.buyer_country||'',_sector:n.noticeType||n.notice_type||''}))
   ];
   const candidates=[];
   sellers.forEach(s=>{
@@ -621,7 +621,7 @@ async function syncTedFeed(){
   if(!response.ok)throw new Error('Flux TED indisponible ('+response.status+').');
   const data=await response.json();
   if(!data||data.source!=='TED — API officielle de recherche'||!Array.isArray(data.notices))throw new Error('Format du flux TED invalide.');
-  tedNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.title);
+  tedNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.title).map(n=>({...n,buyer:n.buyer||n.buyer_name||n.buyerName||n.buyer_organization||'',url:n.url||n.source_url||n.html_url||'',country:n.country||n.buyer_country||'',deadline:n.deadline||n.deadline_date||''}));
   tedFeedMeta=data;
   render();
   status.textContent=tedNotices.length+' avis publics chargés · collecte du '+(data.collected_at||'date inconnue')+'. Tous les avis restent à vérifier.';
