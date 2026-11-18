@@ -320,6 +320,8 @@ window.addEventListener('dealhunter-cloud-data',event=>{
  buyers=Array.isArray(data.buyers)?data.buyers:[];
  const info=$('matchingDataStatus');
  if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.';
+ const dashboardConnection=$('dashboardConnection');
+ if(dashboardConnection)dashboardConnection.textContent='Firebase connecté · données synchronisées depuis ton compte. Les correspondances restent indicatives ; aucun paiement n’est activé.';
  render();
 });
 function render(){
