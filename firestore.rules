@@ -104,10 +104,19 @@ service cloud.firestore {
       allow read: if request.auth != null
         && acceptedParticipant(resource.data.requestId);
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "requestId", "senderUid", "senderEmail", "text", "createdAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "requestId", "senderUid", "senderEmail", "text", "createdAt"
+        ])
+        && request.resource.data.requestId is string
         && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.senderEmail is string
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 2000
+        && request.resource.data.createdAt is timestamp
         && acceptedParticipant(request.resource.data.requestId);
       allow update, delete: if false;
     }
@@ -121,14 +130,39 @@ service cloud.firestore {
       allow read: if request.auth != null
         && acceptedRequest(resource.data.requestId);
       allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "requestId", "ownerUid", "email", "phone", "company", "sharedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "requestId", "ownerUid", "email", "phone", "company", "sharedAt"
+        ])
+        && request.resource.data.requestId is string
         && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.company is string
+        && request.resource.data.sharedAt is timestamp
         && acceptedRequest(request.resource.data.requestId)
         && contactId == request.resource.data.requestId + "_" + request.auth.uid;
       allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "requestId", "ownerUid", "email", "phone", "company", "sharedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "requestId", "ownerUid", "email", "phone", "company", "sharedAt"
+        ])
         && resource.data.ownerUid == request.auth.uid
-        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.requestId == resource.data.requestId
-        && acceptedRequest(resource.data.requestId);
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.company is string
+        && request.resource.data.sharedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "email", "phone", "company", "sharedAt"
+        ])
+        && acceptedRequest(resource.data.requestId)
+        && contactId == resource.data.requestId + "_" + request.auth.uid;
       allow delete: if false;
     }
   }
