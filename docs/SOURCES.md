@@ -55,17 +55,16 @@ Ce répertoire est une **liste de pistes de sourcing à examiner**, pas une list
 
 ## 3. Surplus publics, saisies et ventes administratives
 
-| [GSA Auctions API](https://gsa.github.io/auctions_api/) | États-Unis fédéral; annonces de biens mobiliers publics | API GET officielle JSON/XML ; clé API ; connecteur DealHunter préparé, réutilisation commerciale à confirmer avant republication |
-
 | Source | Couverture / spécialités | Accès et notes |
 |---|---|---|
-| [GSA Auctions](https://www.gsaauctions.gov/) | États-Unis fédéral; biens excédentaires, véhicules, équipements et mobilier | Portail officiel; règles d'enchères publiques |
-| [USA.gov — Government auctions](https://www.usa.gov/auctions-and-sales) | États-Unis; répertoire officiel de ventes publiques, saisies et surplus | Page d'orientation vers les portails officiels |
-| [GovDeals](https://www.govdeals.com/) | États-Unis et Canada; actifs d'administrations et organismes publics | Enchères; conditions par vendeur |
-| [Public Surplus](https://www.publicsurplus.com/) | États-Unis; surplus d'écoles, municipalités et organismes publics | Enchères; inscription et règles locales |
-| [GovPlanet](https://www.govplanet.com/) | États-Unis et marchés associés; équipements et surplus gouvernementaux/militaires | Enchères; restrictions possibles selon biens et pays |
-| [AllSurplus](https://www.allsurplus.com/) | Plusieurs pays; surplus commercial et public | Voir également la section surplus B2B |
-| [Auctions International](https://www.auctionsinternational.com/) | États-Unis; véhicules, équipements et biens d'organismes publics | Enchères; conditions par organisme |
+| [GSA Auctions API](https://gsa.github.io/auctions_api/) | États-Unis fédéral ; annonces de biens mobiliers publics | API GET officielle JSON/XML ; connecteur DealHunter actif via GitHub Actions ; annonces en attente de revue. La fiche API Data.gov est publique mais sans licence explicite ; une fiche distincte GSA Auctions indique CC0 1.0 pour la distribution HTML. Confirmer l'application de CC0 aux réponses API avant usage commercial. |
+| [GSA Auctions](https://www.gsaauctions.gov/) | États-Unis fédéral ; biens excédentaires, véhicules, équipements et mobilier | Portail officiel ; ventes aux enchères, pas des stocks B2B à prix fixe |
+| [USA.gov — Government auctions](https://www.usa.gov/auctions-and-sales) | États-Unis ; répertoire officiel de ventes publiques, saisies et surplus | Page d'orientation vers les portails officiels |
+| [GovDeals](https://www.govdeals.com/) | États-Unis et Canada ; actifs d'administrations et organismes publics | Enchères ; conditions par vendeur |
+| [Public Surplus](https://www.publicsurplus.com/) | États-Unis ; surplus d'écoles, municipalités et organismes publics | Enchères ; inscription et règles locales |
+| [GovPlanet](https://www.govplanet.com/) | États-Unis et marchés associés ; équipements et surplus gouvernementaux/militaires | Enchères ; restrictions possibles selon biens et pays |
+| [AllSurplus](https://www.allsurplus.com/) | Plusieurs pays ; surplus commercial et public | Voir également la section surplus B2B |
+| [Auctions International](https://www.auctionsinternational.com/) | États-Unis ; véhicules, équipements et biens d'organismes publics | Enchères ; conditions par organisme |
 
 ## 4. Répertoires et agrégateurs pour découvrir d'autres sources
 
