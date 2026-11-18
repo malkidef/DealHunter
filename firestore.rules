@@ -1,6 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Profil privé : chaque entreprise ne lit et ne modifie que son propre profil.
     match /users/{userId} {
       allow read, create, update: if request.auth != null
         && request.auth.uid == userId;
@@ -15,6 +16,30 @@ service cloud.firestore {
         allow read, create, update, delete: if request.auth != null
           && request.auth.uid == userId;
       }
+    }
+
+    // Catalogues partagés : visibles uniquement après connexion.
+    // Seul le propriétaire d'une annonce peut la créer, modifier ou supprimer.
+    match /publicOffers/{offerId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /publicNeeds/{needId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
     }
   }
 }
