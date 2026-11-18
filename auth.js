@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -53,6 +53,40 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
+  const loadCloudRecords = async user => {
+    const [sellerSnapshot, buyerSnapshot] = await Promise.all([
+      getDocs(collection(db, "users", user.uid, "sellerOffers")),
+      getDocs(collection(db, "users", user.uid, "buyerNeeds"))
+    ]);
+    const sellers = sellerSnapshot.docs.map(item => {
+      const data = item.data();
+      return {
+        id: item.id,
+        company: data.company || "",
+        product: data.product || "",
+        category: data.category || "Autre / à classer",
+        qty: Number(data.quantity ?? data.qty ?? 0),
+        price: Number(data.unitPrice ?? data.price ?? 0),
+        location: data.location || ""
+      };
+    });
+    const buyers = buyerSnapshot.docs.map(item => {
+      const data = item.data();
+      return {
+        id: item.id,
+        company: data.company || "",
+        product: data.product || "",
+        category: data.category || "Autre / à classer",
+        qty: Number(data.quantity ?? data.qty ?? 0),
+        budget: Number(data.maxUnitBudget ?? data.budget ?? 0),
+        location: data.location || ""
+      };
+    });
+    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+      detail: { sellers, buyers }
+    }));
+  };
+
   const saveUserProfile = async user => {
     const userRef = doc(db, "users", user.uid);
     const existing = await getDoc(userRef);
@@ -83,6 +117,7 @@ if (!ready) {
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
       try {
         await saveUserProfile(user);
+        await loadCloudRecords(user);
         status.dataset.firestore = "saved";
       } catch (error) {
         console.error("Enregistrement du profil Firestore impossible :", error);
@@ -162,9 +197,10 @@ if (!ready) {
         createdAt: serverTimestamp(),
         status: "active"
       });
+      await loadCloudRecords(user);
       status.textContent = collectionName === "sellerOffers"
-        ? "Stock enregistré dans ton compte DealHunter."
-        : "Besoin acheteur enregistré dans ton compte DealHunter.";
+        ? "Stock enregistré et synchronisé depuis Firebase."
+        : "Besoin acheteur enregistré et synchronisé depuis Firebase.";
     } catch (error) {
       console.error("Enregistrement Firestore impossible :", error);
       status.textContent = "Enregistrement cloud impossible : " + (error.message || error.code);
