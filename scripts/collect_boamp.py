@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Collecte prudente des avis BOAMP via l'API open data officielle de la DILA."""
+import gzip
 import json
 import os
 import re
@@ -14,7 +15,11 @@ HEADERS = {"User-Agent": "DealHunter/0.1 (open-data reuse; contact: project main
 def get_json(url):
     req = urllib.request.Request(url, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=40) as response:
-        return json.loads(response.read().decode("utf-8"))
+        raw = response.read()
+        # Certains serveurs renvoient du gzip même sans négociation explicite.
+        if raw.startswith(b"\\x1f\\x8b"):
+            raw = gzip.decompress(raw)
+        return json.loads(raw.decode("utf-8-sig"))
 
 def field_name(fields, patterns):
     for field in fields:
