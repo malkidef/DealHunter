@@ -4,6 +4,9 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
 const status = document.getElementById("authStatus");
@@ -18,10 +21,12 @@ const ready = Object.values(firebaseConfig).every(value =>
 );
 
 if (!ready) {
-  status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js. Les connexions Google, Apple et e-mail seront disponibles après cette étape.";
+  status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js.";
   [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
 } else {
-  const auth = getAuth(initializeApp(firebaseConfig));
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const signInWithProvider = async provider => {
     if (isMobileBrowser) return signInWithRedirect(auth, provider);
@@ -46,9 +51,23 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
+  const saveUserProfile = async user => {
+    const userRef = doc(db, "users", user.uid);
+    const existing = await getDoc(userRef);
+    const profile = {
+      uid: user.uid,
+      email: user.email || null,
+      displayName: user.displayName || null,
+      photoURL: user.photoURL || null,
+      updatedAt: serverTimestamp()
+    };
+    if (!existing.exists()) profile.createdAt = serverTimestamp();
+    await setDoc(userRef, profile, { merge: true });
+  };
+
   getRedirectResult(auth).catch(showError);
 
-  onAuthStateChanged(auth, user => {
+  onAuthStateChanged(auth, async user => {
     status.replaceChildren();
     if (user) {
       const label = document.createElement("span");
@@ -57,8 +76,17 @@ if (!ready) {
       status.append(label);
       signOutButton.classList.remove("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
+      try {
+        await saveUserProfile(user);
+        status.dataset.firestore = "saved";
+      } catch (error) {
+        console.error("Enregistrement du profil Firestore impossible :", error);
+        status.dataset.firestore = "error";
+        status.append(document.createTextNode(" · Profil non enregistré dans la base : vérifie les règles Firestore."));
+      }
     } else {
       status.textContent = "Aucun compte connecté.";
+      delete status.dataset.firestore;
       signOutButton.classList.add("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = false);
     }
