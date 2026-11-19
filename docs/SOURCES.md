@@ -66,6 +66,15 @@ Ce répertoire est une **liste de pistes de sourcing à examiner**, pas une list
 | [AllSurplus](https://www.allsurplus.com/) | Plusieurs pays ; surplus commercial et public | Voir également la section surplus B2B |
 | [Auctions International](https://www.auctionsinternational.com/) | États-Unis ; véhicules, équipements et biens d'organismes publics | Enchères ; conditions par organisme |
 
+### AGRASC — calendrier officiel, lien direct uniquement
+
+- **Page officielle :** [calendrier des ventes aux enchères AGRASC](https://agrasc.gouv.fr/ventes-aux-encheres).
+- **Nature :** ventes publiques de biens saisis ou confisqués ; ce ne sont pas des surplus de stocks déclarés par des entreprises.
+- **Accès DealHunter :** lien direct de consultation uniquement.
+- **Limite juridique :** les [mentions légales AGRASC](https://agrasc.gouv.fr/index.php/mentions-legales) mentionnent une licence ouverte, mais précisent également que les informations ne doivent être utilisées qu'à des fins personnelles, associatives ou professionnelles et que toute diffusion ou utilisation commerciale ou publicitaire est interdite. En attendant une clarification écrite de l'AGRASC, DealHunter ne collecte, ne copie et ne republie aucune annonce, description, photographie ou catalogue.
+- **Statut :** link_only — aucune collecte automatique, aucun import dans les stocks et aucun matching.
+- **Vérifié le :** 19 novembre 2026.
+
 ## 4. Répertoires et agrégateurs pour découvrir d'autres sources
 
 | Source | Utilité | Accès et notes |
