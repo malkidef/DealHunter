@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -518,11 +518,40 @@ async function processStripeEvent(event) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new Error("Vente liée au paiement introuvable");
       const deal = snap.data();
-      const amounts = assertCheckoutSessionMatchesDeal(deal, session, dealId);
-      if (deal.paymentStatus === "paid") return;
-      assertDealPayable(deal);
+      const decision = resolveCheckoutPaymentEvent(deal, session, dealId);
+      if (decision.action === "already_paid") return;
+      if (decision.action === "duplicate_payment") {
+        tx.update(ref, {
+          paymentReviewStatus: "duplicate_payment",
+          stripeDuplicatePaymentIntentIds: FieldValue.arrayUnion(decision.paymentIntentId),
+          transferStatus: deal.stripeTransferId ? "manual_review_after_transfer" : (deal.transferStatus || "none"),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        return;
+      }
+      if (decision.action === "stale_checkout_paid") {
+        tx.update(ref, {
+          paymentStatus: "manual_review",
+          paymentReviewStatus: "stale_checkout_paid",
+          stripeUnmatchedPaymentIntentId: decision.paymentIntentId,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        return;
+      }
+      try {
+        assertDealPayable(deal);
+      } catch (error) {
+        tx.update(ref, {
+          paymentStatus: "manual_review",
+          paymentReviewStatus: "paid_checkout_in_ineligible_deal",
+          stripeUnmatchedPaymentIntentId: decision.paymentIntentId,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        return;
+      }
       tx.update(ref, {
-        paymentStatus: "paid", stripePaymentIntentId: session.payment_intent || null,
+        paymentStatus: "paid", stripePaymentIntentId: decision.paymentIntentId,
+        paymentReviewStatus: "none",
         paidAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
       });
     });
