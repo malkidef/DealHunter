@@ -97,7 +97,7 @@ if (!ready) {
       if (adminQueueButton) adminQueueButton.disabled = false;
     }
   };
-  adminQueueButton?.addEventListener("click", loadAdminReconciliationQueue");
+  adminQueueButton?.addEventListener("click", loadAdminReconciliationQueue);
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
