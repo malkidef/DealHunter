@@ -58,7 +58,7 @@ if (!ready) {
       if (!items.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "Aucune vente en attente de réconciliation.";
+        empty.textContent = "Aucune vente à examiner : aucun risque de paiement, remboursement, litige ou versement signalé.";
         adminQueue.append(empty);
       } else {
         items.forEach(deal => {
@@ -72,7 +72,7 @@ if (!ready) {
           const safeCurrency = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR"].includes(rawCurrency) ? rawCurrency : "EUR";
           const amount = deal.totalAmount === null ? "Montant indisponible" :
             new Intl.NumberFormat("fr-FR", { style: "currency", currency: safeCurrency }).format(deal.totalAmount);
-          detail.textContent = "Vente : " + deal.dealId + " · " + amount + " · " + (deal.paymentReviewStatus || "à examiner");
+          detail.textContent = "Vente : " + deal.dealId + " · " + amount + " · Paiement : " + (deal.paymentReviewStatus || deal.paymentStatus || "à examiner") + " · Remboursement : " + (deal.refundStatus || "none") + " · Litige : " + (deal.disputeStatus || "none") + " · Versement : " + (deal.transferStatus || "none");
           const audits = document.createElement("p");
           audits.className = "muted";
           audits.textContent = "Dernières décisions : " + (deal.audit?.length ? deal.audit.map(entry => entry.decision).join(", ") : "aucune");
@@ -91,7 +91,7 @@ if (!ready) {
           adminQueue.append(card);
         });
       }
-      if (adminQueueStatus) adminQueueStatus.textContent = items.length + " vente(s) signalée(s) · maximum serveur : " + (response.data?.limit || 50) + ".";
+      if (adminQueueStatus) adminQueueStatus.textContent = items.length + " vente(s) à examiner (paiement, remboursement, litige ou versement) · maximum serveur : " + (response.data?.limit || 100) + ".";
     } catch (error) {
       if (adminQueueStatus) adminQueueStatus.textContent = "File indisponible : " + (error.message || error.code || "erreur inconnue");
     } finally {
