@@ -583,8 +583,25 @@ exports.cancelDeal = onCall({ secrets: [stripeSecret] }, async (request) => {
   let session;
   try {
     session = await stripeClient().checkout.sessions.retrieve(reservation.sessionId);
-    if (session.payment_status === "paid" || session.status === "complete") {
-      throw new HttpsError("failed-precondition", "Le paiement semble avoir abouti. La vente reste bloquée pour vérification, sans versement vendeur.");
+    if (session.payment_status === "paid") {
+      const paymentIntentId = typeof session.payment_intent === "string"
+        ? session.payment_intent : session.payment_intent?.id || null;
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(ref);
+        if (fresh.exists && fresh.data().status === "cancellation_pending" &&
+            fresh.data().stripeCheckoutSessionId === reservation.sessionId) {
+          tx.update(ref, {
+            paymentStatus: "manual_review",
+            paymentReviewStatus: "paid_checkout_in_ineligible_deal",
+            stripeUnmatchedPaymentIntentId: paymentIntentId,
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        }
+      });
+      throw new HttpsError("failed-precondition", "Stripe confirme le paiement. La vente est placée en vérification manuelle, sans versement vendeur.");
+    }
+    if (session.status === "complete") {
+      throw new HttpsError("failed-precondition", "La session Stripe est terminée mais son paiement n'est pas confirmé. La vente reste bloquée pour vérification.");
     }
     if (session.status === "open") {
       session = await stripeClient().checkout.sessions.expire(reservation.sessionId);
