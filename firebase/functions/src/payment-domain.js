@@ -118,6 +118,33 @@ function assertCanOpenDispute(deal, uid) {
   return role;
 }
 
+function resolveRefundState(deal, charge) {
+  if (!deal || !charge) throw new TypeError("Données de remboursement invalides.");
+  const charged = Number(charge.amount || 0);
+  const incomingRefunded = Number(charge.amount_refunded || 0);
+  const previousRefunded = Number(deal.refundedAmountCents || 0);
+  if (!Number.isSafeInteger(charged) || charged <= 0 ||
+      !Number.isSafeInteger(incomingRefunded) || incomingRefunded < 0 ||
+      !Number.isSafeInteger(previousRefunded) || previousRefunded < 0) {
+    throw new TypeError("Montants de remboursement invalides.");
+  }
+  // Stripe events can arrive out of order: never move the recorded refund backwards.
+  const refundedAmountCents = Math.max(incomingRefunded, previousRefunded);
+  const fullyRefunded = refundedAmountCents >= charged;
+  if (deal.refundStatus === "refunded" && fullyRefunded) {
+    return { status: "refunded", refundedAmountCents, fullyRefunded: true, alreadyFinal: true };
+  }
+  if (fullyRefunded) {
+    return { status: "refunded", refundedAmountCents, fullyRefunded: true, alreadyFinal: false };
+  }
+  return {
+    status: "partial_refund_manual_review",
+    refundedAmountCents,
+    fullyRefunded: false,
+    alreadyFinal: deal.refundStatus === "refunded"
+  };
+}
+
 function canReleaseToSeller(deal) {
   const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
@@ -128,5 +155,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller
 };
