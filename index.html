@@ -532,8 +532,8 @@ function render(){
    const value=String(raw).trim();
    if(!value)return {timestamp:null,state:'missing'};
    let parsed=NaN;
-   const iso=value.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[T\\s].*)?$/);
-   const us=value.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})(?:\\s+.*)?$/);
+   const iso=value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+   const us=value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
    if(iso){
     const year=Number(iso[1]),month=Number(iso[2]),day=Number(iso[3]);
     const check=new Date(Date.UTC(year,month-1,day));
