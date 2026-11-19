@@ -102,7 +102,7 @@ exports.matchOnSellerWrite = onDocumentWritten("publicOffers/{listingId}", async
 exports.matchOnBuyerWrite = onDocumentWritten("publicNeeds/{requestId}", async (event) => {
   if (!event.data?.after?.exists) return;
   const data = event.data.after.data();
-  if (data.status !== "open") return;
+  if (data.status !== "active") return;
   const listings = await loadByStatus("publicOffers", "active");
   const created = await createSuggestionsFromRequest(listings, event.data.after);
   console.log(JSON.stringify({ event: "buyer_write", requestId: event.params.requestId, scannedListings: listings.length, created }));
