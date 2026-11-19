@@ -814,6 +814,11 @@ window.addEventListener('dealhunter-match-requests',e=>{
           else if(!confirmed)actions='<p><button type="button" data-deal-confirm="'+escapeHtml(d.id)+'">'+(seller?'Confirmer la réalisation (vendeur)':'Confirmer la réception (acheteur)')+'</button></p>';
           else actions='<div class="muted">Ta confirmation est enregistrée. En attente de l’autre entreprise.</div>';
         }
+        if(d.paymentStatus==='paid'&&d.disputeStatus!=='open'&&(!d.refundStatus||d.refundStatus==='none')){
+          actions+='<p><button type="button" class="secondary" data-deal-dispute="'+escapeHtml(d.id)+'">Signaler un problème / ouvrir un litige</button></p>';
+        } else if(d.disputeStatus==='open'){
+          actions+='<div class="muted">Litige ouvert : versement vendeur suspendu.</div>';
+        }
         return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+actions+'</article>';
       }).join(''):'<div class="muted">Aucun accord de vente proposé pour cette mise en relation.</div>')+
       (dealList.length?'':'<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p data-deal-proposal-status class="muted" role="status" aria-live="polite">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form>')+'</section>';
@@ -842,6 +847,19 @@ document.addEventListener('click',e=>{
  pay.disabled=true;
  pay.textContent='Ouverture du paiement…';
  window.dispatchEvent(new CustomEvent('dealhunter-pay-deal',{detail:{dealId:pay.dataset.dealPay}}));
+});
+document.addEventListener('click',e=>{
+ const dispute=e.target.closest('[data-deal-dispute]');
+ if(!dispute)return;
+ const reason=window.prompt("Motif du litige (ex. produit non reçu, quantité incorrecte, qualité) :");
+ if(!reason||!reason.trim())return;
+ const description=window.prompt("Décris précisément le problème (2 000 caractères maximum) :");
+ if(!description||!description.trim())return;
+ dispute.disabled=true;
+ dispute.textContent='Ouverture du litige…';
+ window.dispatchEvent(new CustomEvent('dealhunter-open-dispute',{detail:{
+  dealId:dispute.dataset.dealDispute,reason:reason.trim(),description:description.trim()
+ }}));
 });
 document.addEventListener('click',e=>{
  const accept=e.target.closest('[data-deal-accept]');
