@@ -804,6 +804,9 @@ window.addEventListener('dealhunter-match-requests',e=>{
         const amount=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
         const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
         const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
+        const paymentLabel=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':'Paiement en attente';
+        const transferLabel=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Versement bloqué : vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
+        const issueLabel=d.disputeStatus==='open'?'Litige ouvert':d.disputeStatus==='won'?'Litige clôturé en faveur de DealHunter':d.disputeStatus==='lost'?'Litige clôturé en défaveur de DealHunter':d.refundStatus==='refunded'?'Paiement remboursé':d.refundStatus==='partial_refund_manual_review'?'Remboursement partiel à examiner':d.refundStatus==='manual_review'?'Remboursement en examen':'Aucun litige ou remboursement signalé';
         let actions='';
         if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button></p>';
         if(d.status==='agreed'){
@@ -819,7 +822,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
         } else if(d.disputeStatus==='open'){
           actions+='<div class="muted">Litige ouvert : versement vendeur suspendu.</div>';
         }
-        return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+actions+'</article>';
+        return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Paiement : '+paymentLabel+' · '+transferLabel+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div><div class="muted">'+issueLabel+'</div>'+actions+'</article>';
       }).join(''):'<div class="muted">Aucun accord de vente proposé pour cette mise en relation.</div>')+
       (dealList.length?'':'<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p data-deal-proposal-status class="muted" role="status" aria-live="polite">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form>')+'</section>';
     }else{
