@@ -239,9 +239,23 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
     try { freshAmounts = assertDealPayable(d); }
     catch (error) { throw new HttpsError("failed-precondition", error.message); }
     if (freshAmounts.totalCents < 50) throw new HttpsError("failed-precondition", "Le montant minimum d'un paiement est de 0,50 €.");
-    if (d.paymentStatus === "checkout_creating") throw new HttpsError("aborted", "Création du paiement déjà en cours.");
-    const attempt = Number(d.checkoutAttempt || 0) + 1;
-    tx.update(ref, { paymentStatus: "checkout_creating", checkoutAttempt: attempt, updatedAt: FieldValue.serverTimestamp() });
+    const previousAttempt = Number(d.checkoutAttempt || 0);
+    let attempt;
+    if (d.paymentStatus === "checkout_creating") {
+      const startedAt = d.checkoutStartedAt?.toMillis?.() || d.updatedAt?.toMillis?.() || 0;
+      if (Date.now() - startedAt < 2 * 60 * 1000) {
+        throw new HttpsError("aborted", "Création du paiement déjà en cours. Réessayez dans deux minutes.");
+      }
+      // Reuse the same Stripe idempotency key after a timed-out invocation.
+      // This prevents a second Checkout Session if Stripe succeeded but Firestore did not save its ID.
+      attempt = previousAttempt || 1;
+    } else {
+      attempt = previousAttempt + 1;
+    }
+    tx.update(ref, {
+      paymentStatus: "checkout_creating", checkoutAttempt: attempt,
+      checkoutStartedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
+    });
     return { deal: d, amounts: freshAmounts, attempt };
   });
   const amounts = reservation.amounts;
