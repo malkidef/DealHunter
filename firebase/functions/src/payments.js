@@ -208,10 +208,6 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
   if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
   const deal = snap.data();
   if (deal.buyerUid !== uid) throw new HttpsError("permission-denied", "Seul l'acheteur de cette vente peut payer.");
-  let amounts;
-  try { amounts = assertDealPayable(deal); }
-  catch (error) { throw new HttpsError("failed-precondition", error.message); }
-  if (amounts.totalCents < 50) throw new HttpsError("failed-precondition", "Le montant minimum d'un paiement est de 0,50 €.");
   if (deal.paymentStatus === "checkout_created" && deal.stripeCheckoutSessionId) {
     const existing = await stripeClient().checkout.sessions.retrieve(deal.stripeCheckoutSessionId);
     if (existing.status === "open" && existing.url) return { url: existing.url };
@@ -219,16 +215,22 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
   }
   const base = process.env.DEALHUNTER_APP_URL;
   if (!base) throw new HttpsError("failed-precondition", "DEALHUNTER_APP_URL doit être configurée.");
-  const attempt = Number(deal.checkoutAttempt || 0) + 1;
   const reservation = await db.runTransaction(async (tx) => {
     const fresh = await tx.get(ref);
     if (!fresh.exists || fresh.data().buyerUid !== uid) throw new HttpsError("permission-denied", "Vente non accessible.");
     const d = fresh.data();
-    try { assertDealPayable(d); } catch (error) { throw new HttpsError("failed-precondition", error.message); }
+    let freshAmounts;
+    try { freshAmounts = assertDealPayable(d); }
+    catch (error) { throw new HttpsError("failed-precondition", error.message); }
+    if (freshAmounts.totalCents < 50) throw new HttpsError("failed-precondition", "Le montant minimum d'un paiement est de 0,50 €.");
     if (d.paymentStatus === "checkout_creating") throw new HttpsError("aborted", "Création du paiement déjà en cours.");
+    const attempt = Number(d.checkoutAttempt || 0) + 1;
     tx.update(ref, { paymentStatus: "checkout_creating", checkoutAttempt: attempt, updatedAt: FieldValue.serverTimestamp() });
-    return d;
+    return { deal: d, amounts: freshAmounts, attempt };
   });
+  const amounts = reservation.amounts;
+  const checkoutDeal = reservation.deal;
+  const attempt = reservation.attempt;
   try {
     const session = await stripeClient().checkout.sessions.create({
       mode: "payment",
@@ -238,7 +240,7 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
         price_data: {
           currency: amounts.currency,
           unit_amount: amounts.totalCents,
-          product_data: { name: String(reservation.product || "Transaction DealHunter").slice(0, 120) }
+          product_data: { name: String(checkoutDeal.product || "Transaction DealHunter").slice(0, 120) }
         }
       }],
       success_url: base + "/?deal=" + encodeURIComponent(dealId) + "&payment=success",
@@ -250,8 +252,9 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
     await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
       if (!fresh.exists) throw new Error("Vente supprimée pendant la création du paiement");
+      const current = fresh.data();
       tx.update(ref, {
-        paymentStatus: fresh.data().paymentStatus === "paid" ? "paid" : "checkout_created",
+        paymentStatus: current.paymentStatus === "paid" ? "paid" : "checkout_created",
         stripeCheckoutSessionId: session.id,
         updatedAt: FieldValue.serverTimestamp()
       });
