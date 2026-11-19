@@ -35,6 +35,8 @@ if (!ready) {
   const acceptDealProposalCall = httpsCallable(functions, "acceptDealProposal");
   const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
   const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
+  const createSellerConnectAccountCall = httpsCallable(functions, "createSellerConnectAccount");
+  const createSellerOnboardingLinkCall = httpsCallable(functions, "createSellerOnboardingLink");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
@@ -618,6 +620,33 @@ if (!ready) {
       status.textContent = "Enregistrement impossible : " + (error.message || error.code);
     } finally {
       submitButton.disabled = false;
+    }
+  });
+
+  const sellerStripeButton = document.getElementById("sellerStripeOnboarding");
+  const sellerStripeStatus = document.getElementById("sellerStripeStatus");
+  sellerStripeButton?.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      if (sellerStripeStatus) sellerStripeStatus.textContent = "Connecte-toi pour configurer les paiements vendeur.";
+      return;
+    }
+    sellerStripeButton.disabled = true;
+    if (sellerStripeStatus) sellerStripeStatus.textContent = "Préparation sécurisée du compte Stripe Connect…";
+    try {
+      await createSellerConnectAccountCall({});
+      const result = await createSellerOnboardingLinkCall({});
+      const url = result.data?.url;
+      const parsed = url ? new URL(url) : null;
+      if (!parsed || parsed.protocol !== "https:" || parsed.hostname !== "connect.stripe.com") {
+        throw new Error("Lien d’onboarding Stripe invalide.");
+      }
+      if (sellerStripeStatus) sellerStripeStatus.textContent = "Redirection vers Stripe pour vérifier l’entreprise et les coordonnées bancaires…";
+      window.location.assign(parsed.href);
+    } catch (error) {
+      console.error("Configuration Stripe Connect impossible :", error);
+      if (sellerStripeStatus) sellerStripeStatus.textContent = "Configuration indisponible : " + (error.message || error.code) + ". Le mode paiement peut être désactivé ou l’espace entreprise incomplet.";
+      sellerStripeButton.disabled = false;
     }
   });
 
