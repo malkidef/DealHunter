@@ -107,7 +107,10 @@ La callable `inspectDealPaymentReconciliation` compare une vente Firestore à un
 - L'appel exige une authentification Firebase et le custom claim `admin: true`. Aucun rôle administrateur n'est attribué automatiquement par cette fonction ; l'attribution doit être réalisée par un processus serveur de confiance, jamais depuis le navigateur.
 - L'accès Stripe est en lecture seule dans cette callable. Les identifiants fournis doivent être ceux d'une vente et d'une session connue ; les secrets restent côté Cloud Functions.
 - Une session obsolète peut être examinée même si son numéro de tentative ne correspond plus, mais un résultat positif ne signifie pas qu'elle peut être automatiquement créditée.
-- Les écarts doivent être examinés manuellement. Cette première version n'autorise aucune régularisation ou action financière.
+- `recordDealPaymentReconciliationReview` permet à un administrateur de consigner une décision (`payment_confirmed`, `refund_review`, `duplicate_payment`, `not_paid` ou `manual_review`) avec une note obligatoire et une nouvelle lecture de la session Stripe. Les décisions positives sont contraintes par les preuves Stripe et l'état de la vente relu dans une transaction Firestore.
+- Chaque revue est enregistrée dans `deals/{dealId}/payment_reconciliation_audit` avec l'identifiant de l'administrateur, les preuves observées et `actionTaken=false`. Le journal est non modifiable depuis les clients ; la callable ne change jamais `paymentStatus`, ne rembourse pas et ne transfère pas de fonds.
+- `payment_confirmed` n'est autorisé que pour la session courante, la tentative courante, un paiement Stripe confirmé et un PaymentIntent. Une session payée obsolète reste en revue manuelle ; elle ne peut pas être créditée par cette fonction.
+- Les écarts doivent être examinés manuellement. Cette version n'autorise aucune régularisation ou action financière.
 
 ### Préparer un environnement de test isolé
 
