@@ -70,6 +70,31 @@ class SamCollectorTests(unittest.TestCase):
         self.assertIn("ptype=g", calls[0])
         self.assertIn("api_key=test-key", calls[0])
 
+    def test_malformed_total_records_does_not_abort_pagination(self):
+        calls = []
+        class Response:
+            def __init__(self, payload):
+                self.payload = payload
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return json.dumps(self.payload).encode()
+        def opener(request, timeout):
+            calls.append(request.full_url)
+            if len(calls) == 1:
+                return Response({"totalRecords": "not-a-number", "opportunitiesData": [
+                    {"noticeId": "1", "title": "Lot A"},
+                ]})
+            return Response({"totalRecords": "not-a-number", "opportunitiesData": []})
+        feed = collect("test-key", days=2, limit=1, max_pages=3,
+                       today=date(2026, 11, 19), opener=opener)
+        self.assertEqual(feed["count"], 1)
+        self.assertIsNone(feed["total_matching_notices"])
+        self.assertEqual(feed["pages_collected"], 2)
+        self.assertEqual(len(calls), 2)
+
     def test_requires_api_key(self):
         with self.assertRaises(ValueError):
             collect("")
