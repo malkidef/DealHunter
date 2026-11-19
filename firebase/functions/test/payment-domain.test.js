@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -142,4 +142,42 @@ test("a dispute cannot be reopened or opened during or after a refund", () => {
     assert.throws(() => assertCanOpenDispute({ ...paid, refundStatus }, "buyer-1"), /remboursement/);
   }
   assert.equal(assertCanOpenDispute({ ...paid, disputeStatus: "none", refundStatus: "none" }, "buyer-1"), "buyer");
+});
+
+
+test("refund amounts are monotonic when Stripe events arrive out of order", () => {
+  const partial = resolveRefundState(
+    { refundedAmountCents: 4000 },
+    { amount: 20000, amount_refunded: 2500 }
+  );
+  assert.deepEqual(partial, {
+    status: "partial_refund_manual_review",
+    refundedAmountCents: 4000,
+    fullyRefunded: false,
+    alreadyFinal: false
+  });
+  const full = resolveRefundState(
+    { refundedAmountCents: 4000 },
+    { amount: 20000, amount_refunded: 20000 }
+  );
+  assert.equal(full.status, "refunded");
+  assert.equal(full.refundedAmountCents, 20000);
+  assert.equal(full.fullyRefunded, true);
+  assert.equal(full.alreadyFinal, false);
+});
+
+test("a stale partial refund event cannot downgrade a completed full refund", () => {
+  const result = resolveRefundState(
+    { refundStatus: "refunded", refundedAmountCents: 20000 },
+    { amount: 20000, amount_refunded: 5000 }
+  );
+  assert.equal(result.status, "refunded");
+  assert.equal(result.alreadyFinal, true);
+  assert.equal(result.refundedAmountCents, 20000);
+});
+
+test("refund state rejects invalid Stripe monetary values", () => {
+  assert.throws(() => resolveRefundState({}, { amount: 0, amount_refunded: 0 }));
+  assert.throws(() => resolveRefundState({}, { amount: 20000, amount_refunded: -1 }));
+  assert.throws(() => resolveRefundState({}, { amount: 20000, amount_refunded: 1.5 }));
 });
