@@ -124,6 +124,22 @@ exports.acceptDealProposal = onCall(async (request) => {
   return { accepted: true, dealId };
 });
 
+exports.declineDealProposal = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const dealId = validId(request.data?.dealId, "Vente");
+  const ref = db.collection("deals").doc(dealId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Proposition introuvable.");
+    const deal = snap.data();
+    if (deal.status !== "proposed" || deal.accepterUid !== uid) {
+      throw new HttpsError("permission-denied", "Seul le destinataire peut refuser cette proposition en attente.");
+    }
+    tx.update(ref, { status: "rejected", rejectedAt: FieldValue.serverTimestamp(), rejectedByUid: uid, updatedAt: FieldValue.serverTimestamp() });
+  });
+  return { accepted: true, dealId };
+});
+
 exports.getCompanyDashboard = onCall(async (request) => {
   requirePaymentsEnabled();
   const uid = requireAuth(request);
