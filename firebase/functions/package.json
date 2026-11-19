@@ -7,7 +7,7 @@
   },
   "scripts": {
     "lint": "node --check src/index.js && node --check src/payments.js && node --input-type=module --check < ../../auth.js",
-    "test": "node --test test/matching.test.js",
+    "test": "node --test test/matching.test.js test/payment-domain.test.js",
     "test:rules": "firebase emulators:exec --config ../../firebase.json --only firestore --project demo-dealhunter-test \"node --test test/firestore-rules.test.js\""
   },
   "dependencies": {
