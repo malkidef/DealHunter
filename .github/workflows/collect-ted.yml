@@ -2,11 +2,26 @@ name: Collecte quotidienne TED Europe
 
 on:
   schedule:
-    - cron: "35 5 * * *"
+    - cron: "17 6 * * *"
   workflow_dispatch:
+    inputs:
+      days:
+        description: "Fenêtre de publication en jours"
+        required: false
+        default: "45"
+        type: string
+      limit:
+        description: "Nombre maximal d'avis sur la première page (1 à 250)"
+        required: false
+        default: "100"
+        type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: ted-collection-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   collect:
@@ -14,8 +29,31 @@ jobs:
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester les collecteurs
+        run: python -m unittest discover -s tests -v
       - name: Collecter les avis TED officiels
-        run: python3 scripts/collect_ted.py
+        env:
+          TED_DAYS: ${{ inputs.days || '45' }}
+          TED_LIMIT: ${{ inputs.limit || '100' }}
+        run: |
+          python scripts/collect_ted.py --days "$TED_DAYS" --limit "$TED_LIMIT" --output data/ted-buyer-opportunities.json
+      - name: Vérifier le flux généré
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          feed = json.loads(Path("data/ted-buyer-opportunities.json").read_text(encoding="utf-8"))
+          assert isinstance(feed.get("notices"), list), "Liste notices absente"
+          assert feed.get("count") == len(feed["notices"]), "Compteur incohérent"
+          assert all(item.get("verified") is False for item in feed["notices"]), "Les avis TED ne doivent pas être qualifiés automatiquement"
+          print(f"Flux TED valide : {feed['count']} avis non qualifiés")
+          PY
       - name: Publier le flux TED
         run: |
           git config user.name "github-actions[bot]"
@@ -25,5 +63,5 @@ jobs:
             echo "Aucune modification du flux TED."
           else
             git commit -m "Mise à jour quotidienne des opportunités TED"
-            git push
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

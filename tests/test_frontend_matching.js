@@ -77,3 +77,12 @@ test("classe plusieurs combinaisons par score sans toucher aux données réelles
 test("normalise les accents dans les libellés", () => {
   assert.equal(canonicalCategory("Informatique et électronique"), "Informatique et électronique");
 });
+
+test("n'autorise la redirection de paiement que vers Stripe Checkout officiel", () => {
+  const auth = fs.readFileSync(path.join(__dirname, "..", "auth.js"), "utf8");
+  assert.match(auth, /checkoutUrl\.protocol !== "https:"/);
+  assert.match(auth, /checkoutUrl\.hostname !== "checkout\.stripe\.com"/);
+  assert.match(auth, /checkoutUrl\.username \|\| checkoutUrl\.password/);
+  assert.match(auth, /window\.location\.assign\(checkoutUrl\.href\)/);
+  assert.doesNotMatch(auth, /window\.location\.assign\(url\)/);
+});

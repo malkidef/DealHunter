@@ -1,0 +1,35 @@
+name: DealHunter quality checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "firebase/**"
+      - "firebase.json"
+      - "functions/matching/**"
+      - "auth.js"
+      - ".github/workflows/quality.yml"
+  push:
+    branches: ["hardening/**"]
+    paths:
+      - "firebase/**"
+      - "functions/matching/**"
+      - ".github/workflows/quality.yml"
+
+jobs:
+  firebase-functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firebase/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm install --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:rules

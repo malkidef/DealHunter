@@ -58,6 +58,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="tabs" id="mainTabs">
 <button type="button" class="active" data-tab="matches">Correspondances</button>
 <button type="button" class="secondary" data-tab="matchRequests">Demandes</button>
+<button type="button" class="secondary hidden" id="adminTabButton" data-tab="admin">Administration</button>
 <button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
 <button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
 <button type="button" class="secondary" data-tab="sellers">Déposer un surplus</button>
@@ -92,6 +93,8 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="companyCountry">Pays</label><select id="companyCountry"><option value="FR">France</option><option value="BE">Belgique</option><option value="LU">Luxembourg</option><option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option><option value="NL">Pays-Bas</option><option value="GB">Royaume-Uni</option><option value="US">États-Unis</option><option value="CA">Canada</option><option value="CH">Suisse</option></select></div>
 <button type="submit" id="createCompany">Créer mon espace entreprise</button>
 </form>
+<div class="auth-actions"><button type="button" id="sellerStripeOnboarding" class="secondary">Configurer les paiements vendeur (Stripe)</button></div>
+<p class="muted" id="sellerStripeStatus" role="status" aria-live="polite">Disponible après configuration du mode test Stripe par l’administrateur.</p>
 <div class="auth-account" id="authAccount"><div class="muted">Aucun utilisateur connecté.</div></div>
 <div class="auth-actions"><button type="button" class="secondary" id="signOut">Se déconnecter</button></div>
 </section>
@@ -124,6 +127,43 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div>
 </section>
 </section>
+
+<section id="admin" class="panel hidden">
+<h2>Administration · Réconciliation des paiements</h2>
+<p class="muted">Espace réservé aux comptes disposant du rôle Firebase admin. Consultation Stripe en lecture seule et journalisation des décisions. Aucun remboursement, transfert ou changement de paiement n'est déclenché ici.</p>
+<div class="status-note" id="adminAccessStatus" role="status">Vérification des droits administrateur…</div>
+<div class="item">
+  <h3>File des paiements à examiner</h3>
+  <p class="muted">Ventes signalées par les contrôles Stripe. Sélectionne une ligne pour préremplir l'inspection ; aucune action financière n'est lancée.</p>
+  <button type="button" class="secondary" id="adminRefreshQueueButton">Actualiser la file</button>
+  <p class="muted" id="adminQueueStatus" role="status" aria-live="polite">File non chargée.</p>
+  <div id="adminReconciliationQueue" class="cards"><div class="empty">Connecte-toi avec un compte administrateur pour charger la file.</div></div>
+</div>
+<form id="adminReconciliationInspectForm" class="item">
+<h3>Inspecter une vente</h3>
+<div class="field"><label for="adminDealId">Identifiant de vente (dealId)</label><input id="adminDealId" required maxlength="160" autocomplete="off"></div>
+<div class="field"><label for="adminCheckoutSessionId">Session Stripe Checkout</label><input id="adminCheckoutSessionId" required maxlength="160" autocomplete="off" placeholder="cs_…"></div>
+<button type="submit" id="adminInspectButton">Inspecter la session Stripe</button>
+<p class="muted" id="adminInspectStatus" role="status" aria-live="polite">Aucune inspection effectuée.</p>
+<h4>Contrôles détectés</h4><div id="adminReconciliationChecks" class="cards"><div class="empty">Aucune inspection effectuée.</div></div>
+<h4>Journal des 20 dernières décisions</h4><div id="adminAuditHistory" class="cards"><div class="empty">Aucun journal chargé.</div></div>
+<details><summary>Données techniques complètes</summary><pre id="adminReconciliationResult" class="code-output" aria-live="polite">Les résultats apparaîtront ici après inspection.</pre></details>
+</form>
+<form id="adminReconciliationReviewForm" class="item">
+<h3>Consigner une décision humaine</h3>
+<p class="muted">Une inspection préalable et une note de 10 à 1 000 caractères sont obligatoires. L'enregistrement n'exécute aucune action financière.</p>
+<div class="field"><label for="adminReviewDecision">Décision</label><select id="adminReviewDecision" required>
+<option value="manual_review">Revue manuelle requise</option>
+<option value="payment_confirmed">Paiement confirmé (preuves obligatoires)</option>
+<option value="refund_review">Remboursement à examiner (aucun remboursement lancé)</option>
+<option value="duplicate_payment">Paiement potentiellement dupliqué</option>
+<option value="not_paid">Paiement non effectué</option>
+</select></div>
+<div class="field"><label for="adminReviewNotes">Notes et justification</label><textarea id="adminReviewNotes" required minlength="10" maxlength="1000" rows="4" placeholder="Décrire les éléments examinés et la décision…"></textarea></div>
+<button type="submit" id="adminRecordReviewButton" disabled>Enregistrer dans le journal d'audit</button>
+<p class="muted" id="adminReviewStatus" role="status" aria-live="polite">Effectue une inspection avant d'enregistrer une décision.</p>
+</form>
+</section>
 <section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div></section>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
@@ -136,7 +176,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="sCompany">Entreprise vendeuse</label><input id="sCompany" required placeholder="Ex. Société Nord"></div>
 <div class="field"><label for="sProduct">Produit</label><input id="sProduct" required placeholder="Ex. Cartons d'emballage"></div>
 <div class="field"><label for="sCategory">Catégorie</label><select id="sCategory"><option value="Informatique et électronique">Informatique et électronique</option><option value="Véhicules et transport">Véhicules et transport</option><option value="Machines et équipements industriels">Machines et équipements industriels</option><option value="Construction et matériaux">Construction et matériaux</option><option value="Mobilier et bureau">Mobilier et bureau</option><option value="Agriculture">Agriculture</option><option value="Alimentation et boissons">Alimentation et boissons</option><option value="Textile et habillement">Textile et habillement</option><option value="Santé et matériel médical">Santé et matériel médical</option><option value="Chimie et consommables">Chimie et consommables</option><option value="Énergie et environnement">Énergie et environnement</option><option value="Emballage et logistique">Emballage et logistique</option><option value="Maison et biens de consommation">Maison et biens de consommation</option><option value="Autre / à classer">Autre / à classer</option></select></div>
-<div class="field"><label for="sQty">Quantité disponible</label><input id="sQty" type="number" min="1" required placeholder="100"></div>
+<div class="field"><label for="sQty">Quantité disponible</label><input id="sQty" type="number" min="1" required placeholder="100"></div><div class="field"><label for="sUnit">Unité de mesure</label><select id="sUnit"><option value="unit">Unité / pièce</option><option value="kg">Kilogramme (kg)</option><option value="t">Tonne (t)</option><option value="l">Litre (L)</option><option value="m">Mètre (m)</option><option value="m2">Mètre carré (m²)</option><option value="m3">Mètre cube (m³)</option><option value="carton">Carton</option><option value="pallet">Palette</option></select></div>
 <div class="field"><label for="sPrice">Prix unitaire (€)</label><input id="sPrice" type="number" min="0.01" step="0.01" required placeholder="4.50"></div>
 <div class="field"><label for="sLocation">Ville / zone</label><input id="sLocation" required placeholder="Lille"></div>
 <div class="auth-actions"><button type="submit" id="sellerSubmitButton">Enregistrer le stock</button><button type="button" class="secondary hidden" id="cancelSellerEdit">Annuler la modification</button></div></form></section>
@@ -148,7 +188,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="bCompany">Entreprise acheteuse</label><input id="bCompany" required placeholder="Ex. Acheteur Distribution"></div>
 <div class="field"><label for="bProduct">Produit recherché</label><input id="bProduct" required placeholder="Ex. Cartons d'emballage"></div>
 <div class="field"><label for="bCategory">Catégorie</label><select id="bCategory"><option value="Informatique et électronique">Informatique et électronique</option><option value="Véhicules et transport">Véhicules et transport</option><option value="Machines et équipements industriels">Machines et équipements industriels</option><option value="Construction et matériaux">Construction et matériaux</option><option value="Mobilier et bureau">Mobilier et bureau</option><option value="Agriculture">Agriculture</option><option value="Alimentation et boissons">Alimentation et boissons</option><option value="Textile et habillement">Textile et habillement</option><option value="Santé et matériel médical">Santé et matériel médical</option><option value="Chimie et consommables">Chimie et consommables</option><option value="Énergie et environnement">Énergie et environnement</option><option value="Emballage et logistique">Emballage et logistique</option><option value="Maison et biens de consommation">Maison et biens de consommation</option><option value="Autre / à classer">Autre / à classer</option></select></div>
-<div class="field"><label for="bQty">Quantité souhaitée</label><input id="bQty" type="number" min="1" required placeholder="50"></div>
+<div class="field"><label for="bQty">Quantité souhaitée</label><input id="bQty" type="number" min="1" required placeholder="50"></div><div class="field"><label for="bUnit">Unité de mesure</label><select id="bUnit"><option value="unit">Unité / pièce</option><option value="kg">Kilogramme (kg)</option><option value="t">Tonne (t)</option><option value="l">Litre (L)</option><option value="m">Mètre (m)</option><option value="m2">Mètre carré (m²)</option><option value="m3">Mètre cube (m³)</option><option value="carton">Carton</option><option value="pallet">Palette</option></select></div>
 <div class="field"><label for="bBudget">Budget maximum unitaire (€)</label><input id="bBudget" type="number" min="0.01" step="0.01" required placeholder="5"></div>
 <div class="field"><label for="bLocation">Ville / zone souhaitée</label><input id="bLocation" required placeholder="Lille"></div>
 <button type="submit">Enregistrer le besoin</button></form></section>
@@ -258,7 +298,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),serverMatches=[],serverMatchesLoaded=false,pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
@@ -288,7 +328,7 @@ function score(s,b){
  const productRatio=common.length/Math.max(1,Math.min(words.length,buyerWords.length));
  const productExact=sellerProduct===buyerProduct;
  const productFit=productExact||productRatio>=0.5;
- const price=Number(s.price),budget=Number(b.budget);
+ const price=Number(s.price),budget=Number(b.budget);if((s.unit||"unit")!==(b.unit||"unit"))return 0;
  const available=Number(s.qty),wanted=Number(b.qty);
  const priceFit=Number.isFinite(price)&&Number.isFinite(budget)&&price>0&&budget>0&&price<=budget;
  const qtyFit=Number.isFinite(available)&&Number.isFinite(wanted)&&available>0&&wanted>0&&available>=wanted;
@@ -298,7 +338,7 @@ function score(s,b){
  if(!priceFit||!qtyFit||!locationFit||!productFit)return 0;
  return Math.min(100,35+(productExact?30:20)+15+10+10);
 }
-function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
+function matches(){if(typeof serverMatchesLoaded!=='undefined'&&serverMatchesLoaded)return typeof serverMatches!=='undefined'?serverMatches:[];const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function classifyGsaSector(x){
@@ -340,8 +380,10 @@ window.addEventListener('dealhunter-cloud-data',event=>{
  const data=event.detail||{};
  sellers=Array.isArray(data.sellers)?data.sellers:[];
  buyers=Array.isArray(data.buyers)?data.buyers:[];
+ serverMatches=Array.isArray(data.serverMatches)?data.serverMatches:[];
+ serverMatchesLoaded=data.serverMatchesLoaded===true;
  const info=$('matchingDataStatus');
- if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.';
+ if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur · '+(serverMatchesLoaded?serverMatches.length+' correspondance(s) calculée(s) par le serveur':'matching local de secours')+'. Les correspondances restent indicatives.';
  const dashboardConnection=$('dashboardConnection');
  if(dashboardConnection)dashboardConnection.textContent='Firebase connecté · données synchronisées depuis ton compte. Les correspondances restent indicatives ; aucun paiement n’est activé.';
  render();
@@ -508,57 +550,102 @@ function render(){
  }
  const publicMatchList=$('publicMatchList');
  if(publicMatchList){
-  const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','and','the','you','are']);
+  const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','you','are']);
   const tokens=value=>[...new Set(norm(value).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!stop.has(w)))];
   const sectorTerms={
-   'high-tech':['computer','computers','informatique','electronique','electronic','software','network','server','ordinateur','logiciel'],
-   'maison':['furniture','furnishing','household','home','mobilier','ameublement'],
-   'mode':['clothing','textile','garment','uniform','apparel','vetement','habillement'],
-   'auto':['vehicle','vehicles','automotive','car','truck','transport','vehicule','automobile'],
-   'alimentaire':['food','catering','meal','agri','agriculture','alimentaire','restauration'],
-   'materiaux':['construction','building','material','materials','works','materiaux','batiment']
+   'informatique et electronique':['computer','computers','informatique','electronique','electronic','software','network','server','ordinateur','logiciel','laptop','printer'],
+   'vehicules et transport':['vehicle','vehicles','automotive','car','truck','transport','vehicule','automobile','fleet'],
+   'machines et equipements industriels':['machine','machinery','industrial','equipment','equipement','manufacturing'],
+   'construction et materiaux':['construction','building','material','materials','works','materiaux','batiment','cement'],
+   'mobilier et bureau':['furniture','furnishing','household','home','mobilier','ameublement','office','desk','chair'],
+   'agriculture':['agriculture','agri','farm','farming','crop','tractor'],
+   'alimentation et boissons':['food','catering','meal','alimentaire','restauration','beverage'],
+   'textile et habillement':['clothing','textile','garment','uniform','apparel','vetement','habillement'],
+   'emballage et logistique':['packaging','pack','carton','pallet','logistics','emballage','logistique'],
+   'maison et biens de consommation':['furniture','household','home','consumer','mobilier','maison']
   };
-  const publicSignals=[
-   ...samNotices.map(n=>({...n,_source:'SAM.gov',_buyer:n.buyer_organization,_date:n.deadline_date,_url:n.source_url,_place:[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(' '),_sector:[n.naics_code,n.classification_code].filter(Boolean).join(' ')})),
-   ...tedNotices.map(n=>({...n,_source:'TED',_buyer:n.buyer||n.buyer_name||'',_date:n.deadline||n.deadline_date,_url:n.url||n.source_url,_place:n.country||n.buyer_country||'',_sector:n.noticeType||n.notice_type||''}))
-  ];
+  const categoryKey=value=>norm(value).replace(/[^a-z0-9]+/g,' ').trim();
   const candidates=[];
-  sellers.forEach(s=>{
-   const wanted=tokens(s.product);
-   if(!wanted.length)return;
-   publicSignals.forEach(n=>{
-    const available=new Set(tokens(n.title||''));
-    const common=wanted.filter(w=>available.has(w));
-    const productRatio=common.length/Math.max(1,wanted.length);
-    if(productRatio<0.25)return;
-    const terms=sectorTerms[norm(s.category)]||[];
-    const sectorText=norm([n.title,n._buyer,n._sector].join(' '));
-    const sectorFit=terms.length>0&&terms.some(term=>sectorText.includes(norm(term)));
-    const sellerPlace=norm(s.location);
-    const noticePlace=norm(n._place);
-    const locationFit=!!sellerPlace&&!!noticePlace&&(noticePlace.includes(sellerPlace)||sellerPlace.includes(noticePlace));
-    const deadline=n._date?Date.parse(n._date):NaN;
-    const deadlineValid=Number.isFinite(deadline)&&deadline>=Date.now();
-    if(Number.isFinite(deadline)&&deadline<Date.now())return;
-    const score=Math.min(100,Math.round(productRatio*55)+(sectorFit?20:0)+(locationFit?15:0)+(deadlineValid?10:0));
-    const reasons=['produit '+Math.round(productRatio*100)+' %'];
-    if(sectorFit)reasons.push('secteur cohérent');
-    if(locationFit)reasons.push('zone géographique proche');
-    if(deadlineValid)reasons.push('échéance encore ouverte');
-    candidates.push({s,n,common,score,reasons,deadlineValid});
-   });
-  });
-  candidates.sort((a,b)=>b.score-a.score||a.s.product.localeCompare(b.s.product));
-  $('publicMatchSummary').textContent=candidates.length+' piste(s) classée(s) · '+sellers.length+' stock(s) comparé(s) à '+publicSignals.length+' avis publics. Le score mesure la proximité produit, secteur, zone et échéance.';
+  const seenPublicMatches=new Set();
+  const parsePublicDeadline=raw=>{
+   if(raw===null||raw===undefined||raw==='')return {timestamp:null,state:'missing'};
+   const value=String(raw).trim();
+   if(!value)return {timestamp:null,state:'missing'};
+   let parsed=NaN;
+   const iso=value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+   const us=value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
+   if(iso){
+    const year=Number(iso[1]),month=Number(iso[2]),day=Number(iso[3]);
+    const check=new Date(Date.UTC(year,month-1,day));
+    if(check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day)parsed=Date.parse(value.length===10?value+'T23:59:59Z':value);
+   }else if(us){
+    const month=Number(us[1]),day=Number(us[2]),year=Number(us[3]);
+    const check=new Date(Date.UTC(year,month-1,day));
+    if(month>=1&&month<=12&&check.getUTCMonth()===month-1&&check.getUTCDate()===day)parsed=Date.UTC(year,month-1,day,23,59,59);
+   }else parsed=Date.parse(value);
+   return Number.isFinite(parsed)?{timestamp:parsed,state:'valid'}:{timestamp:null,state:'invalid'};
+  };
+  const addCandidate=(record,notice,source,role)=>{
+   const noticeId=notice.id||notice.notice_id||notice.publication_number||notice.url||notice.source_url||notice.title;
+   const matchKey=[source,role,record.id||record.product,noticeId].join('|');
+   if(seenPublicMatches.has(matchKey))return;
+   seenPublicMatches.add(matchKey);
+   const wanted=tokens(record.product);
+   const available=new Set(tokens(notice.title||''));
+   if(!wanted.length||!available.size)return;
+   const common=wanted.filter(w=>available.has(w));
+   const ratio=common.length/Math.max(1,wanted.length);
+   if(ratio<0.25)return;
+   const category=categoryKey(record.category);
+   const terms=sectorTerms[category]||[];
+   const sectorText=norm([notice.title,notice.description,notice.buyer_organization,notice.buyer,notice.naics_code,notice.classification_code,notice.cpv,notice.noticeType,notice.notice_type].join(' '));
+   const sectorFit=terms.length>0&&terms.some(term=>sectorText.includes(norm(term)));
+   const place=role==='seller'?(notice.country||notice.buyer_country||''):[notice.place_of_performance?.city,notice.place_of_performance?.state,notice.place_of_performance?.country].filter(Boolean).join(' ');
+   const recordPlace=norm(record.location);
+   const noticePlace=norm(place);
+   const locationFit=!!recordPlace&&!!noticePlace&&(noticePlace.includes(recordPlace)||recordPlace.includes(noticePlace));
+   const deadlineRaw=role==='seller'?(notice.deadline||notice.deadline_date):(notice.deadline_date||notice.responseDeadLine);
+   const deadlineInfo=parsePublicDeadline(deadlineRaw);
+   if(deadlineInfo.timestamp!==null&&deadlineInfo.timestamp<Date.now())return;
+   const deadlineValid=deadlineInfo.state==='valid';
+   const score=Math.min(100,Math.round(ratio*55)+(sectorFit?20:0)+(locationFit?15:0)+(deadlineValid?10:0));
+   const reasons=['produit '+Math.round(ratio*100)+' %'];
+   if(sectorFit)reasons.push('secteur cohérent');
+   if(locationFit)reasons.push('zone géographique concordante');
+   if(deadlineValid)reasons.push('échéance future');
+   else if(deadlineInfo.state==='invalid')reasons.push('format de date à confirmer');
+   candidates.push({record,notice,source,role,common,score,reasons,deadlineRaw,deadlineState:deadlineInfo.state});
+  };
+  // TED = avis de marchés : des acheteurs publics recherchent des fournisseurs.
+  // SAM.gov ptype=g = vente de biens excédentaires : les acheteurs DealHunter peuvent rechercher ces lots.
+  sellers.forEach(s=>tedNotices.forEach(n=>addCandidate(s,n,'TED','seller')));
+  buyers.forEach(b=>samNotices.forEach(n=>addCandidate(b,n,'SAM.gov','buyer')));
+  candidates.sort((a,b)=>b.score-a.score||String(a.record.product).localeCompare(String(b.record.product)));
+  $('publicMatchSummary').textContent=candidates.length+' piste(s) classée(s) · '+sellers.length+' stock(s) comparés aux avis TED et '+buyers.length+' besoin(s) comparés aux ventes de surplus SAM.gov. Sens du matching adapté à chaque source ; scores indicatifs.';
   publicMatchList.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
-   const link=typeof m.n._url==='string'&&/^https:\/\//i.test(m.n._url)?'<a href="'+escapeHtml(m.n._url)+'" target="_blank" rel="noopener noreferrer">Consulter la source</a>':'Source officielle indisponible';
+   const n=m.notice, r=m.record;
+   const url=m.source==='TED'?(n.url||n.source_url):(n.source_url||n.uiLink);
+   let trustedSourceUrl='';
+   try{
+    const parsedSourceUrl=new URL(String(url||''));
+    const host=parsedSourceUrl.hostname.toLowerCase();
+    const officialHost=m.source==='TED'?(host==='ted.europa.eu'||host.endsWith('.ted.europa.eu')):(host==='sam.gov'||host.endsWith('.sam.gov'));
+    if(parsedSourceUrl.protocol==='https:'&&officialHost)trustedSourceUrl=parsedSourceUrl.href;
+   }catch(_){}
+   const link=trustedSourceUrl?'<a href="'+escapeHtml(trustedSourceUrl)+'" target="_blank" rel="noopener noreferrer">Consulter la source officielle</a>':'Lien officiel indisponible : vérifier la fiche sur le site de la source';
+   const title=n.title||'Avis public sans titre';
+   const counterparty=m.source==='TED'?(n.buyer||n.buyer_name||'Acheteur public non précisé'):(n.buyer_organization||'Organisme public non précisé');
+   const place=m.source==='TED'?(n.country||n.buyer_country||'non précisée'):[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(', ')||'non précisée';
+   const details=m.role==='seller'
+    ?'Stock vendeur : '+escapeHtml(r.qty)+' '+escapeHtml(r.unit||'unit')+' · Prix proposé : '+(Number.isFinite(Number(r.price))?Number(r.price).toFixed(2)+' € / unité':'non renseigné')
+    :'Besoin acheteur : '+escapeHtml(r.qty)+' '+escapeHtml(r.unit||'unit')+' · Budget maximum : '+(Number.isFinite(Number(r.budget))?Number(r.budget).toFixed(2)+' € / unité':'non renseigné');
    const missing=[];
-   if(!m.n.quantity&&!m.n.estimated_quantity)missing.push('quantité demandée non publiée');
-   if(!m.n.budget&&!m.n.estimated_value&&!m.n.award_value)missing.push('budget non disponible');
-   const status=m.deadlineValid?'Échéance future indiquée':'Échéance non renseignée';
-   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.n._source)+'</span><h3>'+escapeHtml(m.s.product)+' — stock de '+escapeHtml(m.s.company)+'</h3><div><strong>'+escapeHtml(m.n.title||'Avis public sans titre')+'</strong></div><div class="muted">Acheteur : '+escapeHtml(m.n._buyer||'non précisé')+' · Zone : '+escapeHtml(m.n._place||'non précisée')+'</div><div class="muted">Échéance : '+escapeHtml(m.n._date||'non précisée')+' · '+status+'</div><div class="match-score">Score de pertinence : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">Stock local : '+escapeHtml(m.s.qty)+' unités · Prix vendeur : '+Number(m.s.price).toFixed(2)+' € / unité</div><div class="muted">À confirmer sur l’avis original : '+escapeHtml(missing.join(' ; ')||'budget, quantité et conditions de livraison')+'. Le score ne valide ni prix ni quantité.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié. Vérification humaine indispensable.</div></article>';
-  }).join(''):'<div class="empty">Aucune piste publique suffisamment proche des stocks pour le moment.</div>';
-
+   if(m.role==='seller'&&!r.verified)missing.push('stock vendeur non vérifié');
+   if(m.role==='buyer')missing.push('quantité, état, prix final et conditions du lot SAM.gov à confirmer');
+   if(m.deadlineState==='missing')missing.push('échéance non renseignée');
+   if(m.deadlineState==='invalid')missing.push('échéance au format non reconnu, à confirmer');
+   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.source)+'</span><h3>'+escapeHtml(r.product)+' — '+(m.role==='seller'?'stock vendeur':'besoin acheteur')+'</h3><div><strong>'+escapeHtml(title)+'</strong></div><div class="muted">Organisme : '+escapeHtml(counterparty)+' · Zone : '+escapeHtml(place)+'</div><div class="muted">Échéance : '+escapeHtml(m.deadlineRaw||(m.deadlineState==='invalid'?'format à confirmer':'non précisée'))+'</div><div class="match-score">Pertinence indicative : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">'+details+'</div><div class="muted">À vérifier manuellement : '+escapeHtml(missing.join(' ; ')||'conditions, disponibilité et conformité de l’avis')+'.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié : aucune commande, disponibilité ni transaction n’est confirmée.</div></article>';
+  }).join(''):'<div class="empty">Aucune piste publique suffisamment proche pour le moment. Les avis TED sont comparés aux stocks vendeurs ; les ventes de surplus SAM.gov sont comparées aux besoins acheteurs.</div>';
  }
 
  const bodaccList=$('bodaccList');
@@ -577,9 +664,9 @@ function render(){
  const dm=$('dashMatchCount');if(dm)dm.textContent=ms.length;
  $('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  const uid=window.dealhunterUserUid||'';
- $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category,s.ownerUid===uid&&uid?'<p><button type="button" data-edit-business-record data-record-id="'+escapeHtml(s.id)+'">Modifier mon stock</button> <button type="button" class="secondary" data-remove-business-record data-collection="sellerOffers" data-record-id="'+escapeHtml(s.id)+'">Retirer mon stock</button></p>':'')).join(''):'<div class="empty">Aucun stock enregistré.</div>';
- $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category,b.ownerUid===uid&&uid?'<p><button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
- $('matchList').innerHTML=ms.length?ms.map(m=>{const uid=window.dealhunterUserUid||'';const can=!!uid&&(m.s.ownerUid===uid||m.b.ownerUid===uid)&&m.s.ownerUid&&m.b.ownerUid&&m.s.ownerUid!==m.b.ownerUid;return '<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' disponibles / '+m.b.qty+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.s.id)+'" data-buyer="'+escapeHtml(m.b.id)+'" data-seller-uid="'+escapeHtml(m.s.ownerUid)+'" data-buyer-uid="'+escapeHtml(m.b.ownerUid)+'" data-seller-company="'+escapeHtml(m.s.company)+'" data-buyer-company="'+escapeHtml(m.b.company)+'" data-product="'+escapeHtml(m.s.product)+'">Demander la mise en relation</button>':'<div class="muted">Connecte-toi avec le compte vendeur ou acheteur concerné pour demander la mise en relation.</div>')+'</article>'}).join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
+ $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' '+(s.unit||'unit')+' · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category,s.ownerUid===uid&&uid?'<p><button type="button" data-edit-business-record data-record-id="'+escapeHtml(s.id)+'">Modifier mon stock</button> <button type="button" class="secondary" data-remove-business-record data-collection="sellerOffers" data-record-id="'+escapeHtml(s.id)+'">Retirer mon stock</button></p>':'')).join(''):'<div class="empty">Aucun stock enregistré.</div>';
+ $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' '+(b.unit||'unit')+' · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category,b.ownerUid===uid&&uid?'<p><button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
+ $('matchList').innerHTML=ms.length?ms.map(m=>{const uid=window.dealhunterUserUid||'';const can=!!uid&&(m.s.ownerUid===uid||m.b.ownerUid===uid)&&m.s.ownerUid&&m.b.ownerUid&&m.s.ownerUid!==m.b.ownerUid;return '<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' '+(m.s.unit||'unit')+' disponibles / '+m.b.qty+' '+(m.b.unit||'unit')+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.s.id)+'" data-buyer="'+escapeHtml(m.b.id)+'" data-seller-uid="'+escapeHtml(m.s.ownerUid)+'" data-buyer-uid="'+escapeHtml(m.b.ownerUid)+'" data-seller-company="'+escapeHtml(m.s.company)+'" data-buyer-company="'+escapeHtml(m.b.company)+'" data-product="'+escapeHtml(m.s.product)+'" data-unit="'+escapeHtml(m.s.unit||'unit')+'">Demander la mise en relation</button>':'<div class="muted">Connecte-toi avec le compte vendeur ou acheteur concerné pour demander la mise en relation.</div>')+'</article>'}).join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
 }
 
 function parseCSV(text){
@@ -733,7 +820,7 @@ $('importList').addEventListener('click',e=>{
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
-document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product}}));b.disabled=true;b.textContent='Demande en cours…';});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product,unit:b.dataset.unit||"unit"}}));b.disabled=true;b.textContent='Demande en cours…';});
 window.addEventListener('dealhunter-match-requests',e=>{
   const el=$('matchRequestList');
   if(!el)return;
@@ -754,18 +841,31 @@ window.addEventListener('dealhunter-match-requests',e=>{
       details+='<section class="item" style="margin-top:12px"><h3>Accord de vente</h3>'+(dealList.length?dealList.map(d=>{
         const amount=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
         const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
-        const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
+        const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='cancellation_pending'?'Annulation en cours de vérification':d.status==='cancelled'?'Vente annulée':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
+        const paymentLabel=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':d.paymentStatus==='checkout_expired'?'Session de paiement expirée':d.paymentStatus==='manual_review'?'Paiement à vérifier':'Paiement en attente';
+        const transferLabel=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Versement bloqué : vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
+        const issueLabel=d.disputeStatus==='open'?'Litige ouvert':d.disputeStatus==='won'?'Litige clôturé en faveur du vendeur':d.disputeStatus==='lost'?'Litige clôturé en défaveur de DealHunter':d.refundStatus==='refunded'?'Paiement remboursé':d.refundStatus==='partial_refund_manual_review'?'Remboursement partiel à examiner':d.refundStatus==='manual_review'?'Remboursement en examen':'Aucun litige ou remboursement signalé';
         let actions='';
-        if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button></p>';
+        if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button> <button type="button" class="secondary" data-deal-decline="'+escapeHtml(d.id)+'">Refuser la proposition</button></p>';
         if(d.status==='agreed'){
           const seller=(window.dealhunterUserUid||'')===d.sellerUid;
           const confirmed=seller?d.sellerConfirmed:d.buyerConfirmed;
-          if(!confirmed)actions='<p><button type="button" data-deal-confirm="'+escapeHtml(d.id)+'">'+(seller?'Confirmer la réalisation (vendeur)':'Confirmer la réception (acheteur)')+'</button></p>';
+          if(d.paymentStatus!=='paid'&&!seller)actions='<p><button type="button" data-deal-pay="'+escapeHtml(d.id)+'">Payer et sécuriser la transaction</button></p>';
+          else if(d.paymentStatus!=='paid'&&seller)actions='<div class="muted">En attente du paiement sécurisé de l’acheteur.</div>';
+          else if(!confirmed)actions='<p><button type="button" data-deal-confirm="'+escapeHtml(d.id)+'">'+(seller?'Confirmer la réalisation (vendeur)':'Confirmer la réception (acheteur)')+'</button></p>';
           else actions='<div class="muted">Ta confirmation est enregistrée. En attente de l’autre entreprise.</div>';
+          if(d.paymentStatus!=='paid'&&d.paymentStatus!=='manual_review'&&(!d.paymentReviewStatus||d.paymentReviewStatus==='none')&&(!d.disputeStatus||d.disputeStatus==='none')&&(!d.refundStatus||d.refundStatus==='none'))actions+='<p><button type="button" class="secondary" data-deal-cancel="'+escapeHtml(d.id)+'">Annuler cette vente avant paiement</button></p>';
         }
-        return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' unités × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+actions+'</article>';
+        if(d.status==='cancellation_pending')actions+='<div class="muted">Annulation en cours de vérification avec Stripe. Aucun versement vendeur ne peut être déclenché.</div><p><button type="button" class="secondary" data-deal-cancel-retry="'+escapeHtml(d.id)+'">Réessayer la vérification Stripe</button></p>';
+        if(d.status==='cancelled')actions+='<div class="muted">Cette vente est annulée.</div>';
+        if(d.paymentStatus==='paid'&&d.disputeStatus!=='open'&&(!d.refundStatus||d.refundStatus==='none')){
+          actions+='<p><button type="button" class="secondary" data-deal-dispute="'+escapeHtml(d.id)+'">Signaler un problème / ouvrir un litige</button></p>';
+        } else if(d.disputeStatus==='open'){
+          actions+='<div class="muted">Litige ouvert : versement vendeur suspendu.</div>';
+        }
+        return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Paiement : '+paymentLabel+' · '+transferLabel+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div><div class="muted">'+issueLabel+'</div>'+actions+'</article>';
       }).join(''):'<div class="muted">Aucun accord de vente proposé pour cette mise en relation.</div>')+
-      '<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p class="muted">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form></section>';
+      (dealList.length?'':'<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p data-deal-proposal-status class="muted" role="status" aria-live="polite">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form>')+'</section>';
     }else{
       details=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
         ? '<p><button type="button" data-match-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button> <button type="button" class="secondary" data-match-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button></p>'
@@ -779,9 +879,55 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-share-cont
 document.addEventListener('submit',e=>{
  const form=e.target.closest('form[data-deal-proposal]');if(!form)return;
  e.preventDefault();
- const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Envoi…';
- window.dispatchEvent(new CustomEvent('dealhunter-propose-deal',{detail:{requestId:form.dataset.dealProposal,quantity:form.elements.quantity.value,unitPrice:form.elements.unitPrice.value}}));
- setTimeout(()=>{button.disabled=false;button.textContent='Proposer les conditions de vente';},1200);
+ const button=form.querySelector('button[type="submit"]');const feedback=form.querySelector('[data-deal-proposal-status]');button.disabled=true;button.textContent='Envoi…';
+ window.dispatchEvent(new CustomEvent('dealhunter-propose-deal',{detail:{
+  requestId:form.dataset.dealProposal,quantity:form.elements.quantity.value,unitPrice:form.elements.unitPrice.value,
+  onResult:message=>{if(feedback)feedback.textContent=message;button.disabled=false;button.textContent='Proposer les conditions de vente';}
+ }}));
+});
+document.addEventListener('click',e=>{
+ const pay=e.target.closest('[data-deal-pay]');
+ if(!pay)return;
+ pay.disabled=true;
+ pay.textContent='Ouverture du paiement…';
+ window.dispatchEvent(new CustomEvent('dealhunter-pay-deal',{detail:{dealId:pay.dataset.dealPay}}));
+});
+document.addEventListener('click',e=>{
+ const decline=e.target.closest('[data-deal-decline]');
+ if(!decline)return;
+ if(!window.confirm('Refuser définitivement cette proposition de vente ?'))return;
+ decline.disabled=true;
+ decline.textContent='Refus…';
+ window.dispatchEvent(new CustomEvent('dealhunter-decline-deal',{detail:{dealId:decline.dataset.dealDecline}}));
+});
+document.addEventListener('click',e=>{
+ const cancel=e.target.closest('[data-deal-cancel]');
+ if(!cancel)return;
+ if(!window.confirm('Annuler cette vente ? Cette action est réservée aux ventes non payées. Une session Stripe existante sera expirée avant la confirmation de l’annulation.'))return;
+ cancel.disabled=true;
+ cancel.textContent='Annulation en cours…';
+ window.dispatchEvent(new CustomEvent('dealhunter-cancel-deal',{detail:{dealId:cancel.dataset.dealCancel}}));
+});
+document.addEventListener('click',e=>{
+ const retry=e.target.closest('[data-deal-cancel-retry]');
+ if(!retry)return;
+ if(!window.confirm('Relancer la vérification de cette annulation auprès de Stripe ? Aucun paiement ni versement ne sera initié.'))return;
+ retry.disabled=true;
+ retry.textContent='Vérification en cours…';
+ window.dispatchEvent(new CustomEvent('dealhunter-cancel-deal',{detail:{dealId:retry.dataset.dealCancelRetry}}));
+});
+document.addEventListener('click',e=>{
+ const dispute=e.target.closest('[data-deal-dispute]');
+ if(!dispute)return;
+ const reason=window.prompt("Motif du litige (ex. produit non reçu, quantité incorrecte, qualité) :");
+ if(!reason||!reason.trim())return;
+ const description=window.prompt("Décris précisément le problème (2 000 caractères maximum) :");
+ if(!description||!description.trim())return;
+ dispute.disabled=true;
+ dispute.textContent='Ouverture du litige…';
+ window.dispatchEvent(new CustomEvent('dealhunter-open-dispute',{detail:{
+  dealId:dispute.dataset.dealDispute,reason:reason.trim(),description:description.trim()
+ }}));
 });
 document.addEventListener('click',e=>{
  const accept=e.target.closest('[data-deal-accept]');
@@ -803,7 +949,7 @@ window.addEventListener('dealhunter-deals',e=>{
    const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
    const state=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente terminée':'Proposition refusée';
    const confirmation=role==='seller'?(d.sellerConfirmed?'Ta réalisation est confirmée.':'Confirmation de réalisation à effectuer si la vente est réalisée.'):(d.buyerConfirmed?'Ta réception est confirmée.':'Confirmation de réception à effectuer si les produits sont reçus.');
-   return '<article class="item"><span class="pill">'+state+'</span><h4>'+escapeHtml(d.product||'Vente')+'</h4><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">'+confirmation+'</div></article>';
+   return '<article class="item"><span class="pill">'+state+'</span><h4>'+escapeHtml(d.product||'Vente')+'</h4><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' · '+total+'</div><div class="muted">'+confirmation+'</div></article>';
   }).join('');
   target.className=html?'cards':'empty';
   target.innerHTML=html||(role==='seller'?'Aucun accord vendeur à afficher pour le moment.':'Aucun accord acheteur à afficher pour le moment.');
@@ -815,8 +961,13 @@ window.addEventListener('dealhunter-deals',e=>{
  list.innerHTML=deals.length?deals.map(d=>{
   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
-  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'En attente des confirmations':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
-  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div></article>';
+  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'Accord accepté':d.status==='cancellation_pending'?'Annulation en vérification':d.status==='cancelled'?'Annulée':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
+  const paymentState=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':'Paiement en attente';
+  const transferState=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
+  const paymentAction=d.buyerUid===uid&&d.status==='agreed'&&d.paymentStatus!=='paid'
+    ?'<p><button type="button" data-deal-pay="'+escapeHtml(d.id)+'">Payer et sécuriser la transaction</button></p>'
+    :'';
+  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div><div class="muted">'+paymentState+' · '+transferState+'</div><div class="muted">'+(d.disputeStatus==='open'?'Litige ouvert':d.refundStatus==='refunded'?'Remboursé':d.refundStatus==='manual_review'||d.refundStatus==='partial_refund_manual_review'?'Remboursement à examiner':'Aucun litige ou remboursement')+'</div>'+paymentAction+'</article>';
  }).join(''):'Aucun accord de vente proposé pour le moment.';
 });
 
@@ -843,20 +994,20 @@ window.addEventListener('dealhunter-deals',e=>{
     }
   }}));
  });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','admin','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','admin','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
-$('sellerForm').addEventListener('submit',e=>{e.preventDefault();const editingId=e.target.dataset.editingId;if(editingId){window.dispatchEvent(new CustomEvent('dealhunter-update-business-record',{detail:{collectionName:'sellerOffers',recordId:editingId,record:{company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,quantity:Number($('sQty').value),unitPrice:Number($('sPrice').value),location:$('sLocation').value.trim()}}}));return;}sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
-$('sellerList').addEventListener('click',e=>{const b=e.target.closest('[data-edit-business-record]');if(!b)return;const item=sellers.find(x=>x.id===b.dataset.recordId&&x.ownerUid===(window.dealhunterUserUid||''));if(!item)return;const form=$('sellerForm');form.dataset.editingId=item.id;$('sCompany').value=item.company||'';$('sProduct').value=item.product||'';$('sCategory').value=item.category||'Autre / à classer';$('sQty').value=item.qty??'';$('sPrice').value=item.price??'';$('sLocation').value=item.location||'';$('sellerSubmitButton').textContent='Enregistrer les modifications';$('cancelSellerEdit').classList.remove('hidden');form.scrollIntoView({behavior:'smooth',block:'start'});});
+$('sellerForm').addEventListener('submit',e=>{e.preventDefault();const editingId=e.target.dataset.editingId;if(editingId){window.dispatchEvent(new CustomEvent('dealhunter-update-business-record',{detail:{collectionName:'sellerOffers',recordId:editingId,record:{company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,quantity:Number($('sQty').value),unit:$('sUnit').value,unitPrice:Number($('sPrice').value),location:$('sLocation').value.trim()}}}));return;}sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),unit:$('sUnit').value,price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
+$('sellerList').addEventListener('click',e=>{const b=e.target.closest('[data-edit-business-record]');if(!b)return;const item=sellers.find(x=>x.id===b.dataset.recordId&&x.ownerUid===(window.dealhunterUserUid||''));if(!item)return;const form=$('sellerForm');form.dataset.editingId=item.id;$('sCompany').value=item.company||'';$('sProduct').value=item.product||'';$('sCategory').value=item.category||'Autre / à classer';$('sQty').value=item.qty??'';$('sUnit').value=item.unit||'unit';$('sPrice').value=item.price??'';$('sLocation').value=item.location||'';$('sellerSubmitButton').textContent='Enregistrer les modifications';$('cancelSellerEdit').classList.remove('hidden');form.scrollIntoView({behavior:'smooth',block:'start'});});
 $('cancelSellerEdit').addEventListener('click',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 window.addEventListener('dealhunter-business-record-updated',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
-$('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
+$('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),unit:$('bUnit').value,budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
 render();
 syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 syncBodaccFeed();
 </script>
-<script type="module" src="auth.js?v=20261118-19"></script>
+<script type="module" src="auth.js?v=20261119-23"></script>
 </body></html>
