@@ -60,7 +60,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="button" class="secondary" data-tab="matchRequests">Demandes</button>
 <button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
 <button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
-<button type="button" class="secondary" data-tab="sellers">Stocks vendeurs</button>
+<button type="button" class="secondary" data-tab="sellers">Déposer un surplus</button>
 <button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
@@ -131,7 +131,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="matchList" class="cards"></div>
 </section>
 <div id="sellers" class="grid hidden">
-<section class="panel"><h2>Ajouter un stock vendeur</h2><p class="muted">Décris un surplus disponible à la vente.</p>
+<section class="panel"><h2>Déposer un surplus professionnel</h2><p class="muted">Publie directement un lot réellement disponible : produit, catégorie, quantité, prix unitaire et zone. Après connexion à ton compte entreprise, ton offre est enregistrée dans DealHunter, partagée dans le catalogue professionnel et prise en compte par le matching automatique. Aucune annonce d’une autre marketplace n’est copiée.</p>
 <form id="sellerForm">
 <div class="field"><label for="sCompany">Entreprise vendeuse</label><input id="sCompany" required placeholder="Ex. Société Nord"></div>
 <div class="field"><label for="sProduct">Produit</label><input id="sProduct" required placeholder="Ex. Cartons d'emballage"></div>
@@ -140,7 +140,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="sPrice">Prix unitaire (€)</label><input id="sPrice" type="number" min="0.01" step="0.01" required placeholder="4.50"></div>
 <div class="field"><label for="sLocation">Ville / zone</label><input id="sLocation" required placeholder="Lille"></div>
 <button type="submit">Enregistrer le stock</button></form></section>
-<section class="panel"><h2>Stocks enregistrés</h2><div id="sellerList" class="cards"></div></section>
+<section class="panel"><h2>Surplus enregistrés</h2><p class="muted">Tes offres restent liées à ton compte. Les acheteurs connectés peuvent voir les informations commerciales nécessaires au matching, sans coordonnées personnelles.</p><div id="sellerList" class="cards"></div></section>
 </div>
 <div id="buyers" class="grid hidden">
 <section class="panel"><h2>Ajouter un besoin acheteur</h2><p class="muted">Indique ce que recherche une entreprise.</p>
