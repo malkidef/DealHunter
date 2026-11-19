@@ -240,7 +240,14 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
-          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid;
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.product == request.resource.data.product
+          && exists(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId))
+          && exists(/databases/$(database)/documents/publicNeeds/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerId))
+          && get(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId)).data.product == request.resource.data.product
+          && request.resource.data.quantity <= get(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId)).data.quantity
+          && request.resource.data.quantity <= get(/databases/$(database)/documents/publicNeeds/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerId)).data.quantity
+          && request.resource.data.unitPrice <= get(/databases/$(database)/documents/publicNeeds/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerId)).data.maxUnitBudget;
       }
       allow read: if isParticipant();
       allow create: if request.auth != null
@@ -274,8 +281,13 @@ service cloud.firestore {
         && request.resource.data.unitPrice > 0
         && request.resource.data.totalAmount is number
         && request.resource.data.totalAmount > 0
+        // Montants arrondis au centime comme dans le formulaire de proposition.
+        && request.resource.data.totalAmount >= request.resource.data.quantity * request.resource.data.unitPrice - 0.005
+        && request.resource.data.totalAmount < request.resource.data.quantity * request.resource.data.unitPrice + 0.005
         && request.resource.data.commissionRate == 5
         && request.resource.data.commissionAmount is number
+        && request.resource.data.commissionAmount >= request.resource.data.totalAmount * 0.05 - 0.005
+        && request.resource.data.commissionAmount < request.resource.data.totalAmount * 0.05 + 0.005
         && request.resource.data.status == "proposed"
         && request.resource.data.sellerConfirmed == false
         && request.resource.data.buyerConfirmed == false
