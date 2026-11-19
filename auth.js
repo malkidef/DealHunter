@@ -506,7 +506,17 @@ if (!ready) {
         const item = document.createElement("article");
         item.className = "item";
         const label = document.createElement("strong");
-        label.textContent = name;
+        const checkLabels = {
+          identityMatches: "Identité de la vente et de l'acheteur",
+          amountMatches: "Montant Stripe / montant attendu",
+          currencyMatches: "Devise de la transaction",
+          currentSession: "Session Checkout actuelle",
+          checkoutAttemptMatches: "Tentative Checkout actuelle",
+          paidInStripe: "Paiement confirmé par Stripe",
+          paidInDealHunter: "Paiement enregistré dans DealHunter",
+          paymentIntentMatches: "PaymentIntent cohérent"
+        };
+        label.textContent = checkLabels[name] || name;
         const state = document.createElement("div");
         state.textContent = value === true ? "Conforme" : value === false ? "Écart détecté" : String(value);
         state.className = value === true ? "status-success" : value === false ? "status-warning" : "muted";
