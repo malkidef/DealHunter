@@ -87,6 +87,11 @@ test("paid stale Checkout attempts are held for review, and duplicate paid sessi
     action: "stale_checkout_paid", paymentIntentId: "pi_stale"
   });
   assert.deepEqual(resolveCheckoutPaymentEvent(
+    current,
+    { ...staleSession, metadata: { ...staleSession.metadata, checkoutAttempt: "4" } },
+    "deal-1"
+  ), { action: "mark_paid", paymentIntentId: "pi_stale" });
+  assert.deepEqual(resolveCheckoutPaymentEvent(
     { ...current, paymentStatus: "paid", stripePaymentIntentId: "pi_current" },
     { ...staleSession, metadata: { ...staleSession.metadata, checkoutAttempt: "4" }, payment_intent: "pi_current" },
     "deal-1"
@@ -119,7 +124,9 @@ test("seller payout requires completed status, both confirmations and paid funds
     { paymentStatus: "pending" }, { disputeStatus: "open" },
     { disputeStatus: "lost" }, { disputeStatus: "under_review" },
     { refundStatus: "refunded" }, { refundStatus: "partial_refund_manual_review" },
-    { refundStatus: "manual_review" }
+    { refundStatus: "manual_review" },
+    { paymentReviewStatus: "duplicate_payment" },
+    { paymentReviewStatus: "stale_checkout_paid" }
   ]) assert.equal(canReleaseToSeller({ ...releasable, ...patch }), false);
 });
 
