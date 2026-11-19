@@ -85,6 +85,26 @@ service cloud.firestore {
     }
 
     match /matchRequests/{requestId} {
+      // Les identifiants et propriétaires doivent correspondre aux annonces
+      // réellement publiées : le navigateur ne peut pas inventer les parties.
+      function referencesActiveListings() {
+        return exists(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId))
+          && exists(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId))
+          && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.ownerUid == request.resource.data.sellerUid
+          && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.ownerUid == request.resource.data.buyerUid
+          && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
+          && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
+          && request.resource.data.requesterCompany == (
+            request.auth.uid == request.resource.data.sellerUid
+              ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+              : get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+          )
+          && request.resource.data.recipientCompany == (
+            request.auth.uid == request.resource.data.sellerUid
+              ? get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+              : get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+          );
+      }
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
           "sellerId", "buyerId", "sellerUid", "buyerUid", "participantUids",
@@ -114,6 +134,7 @@ service cloud.firestore {
         && request.resource.data.recipientUid in [
           request.resource.data.sellerUid, request.resource.data.buyerUid
         ]
+        && referencesActiveListings()
         && request.resource.data.status == "pending"
         && request.resource.data.sellerId is string
         && request.resource.data.buyerId is string
