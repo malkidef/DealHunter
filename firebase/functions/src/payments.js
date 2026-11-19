@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, canReleaseToSeller } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, canReleaseToSeller } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -333,11 +333,7 @@ async function processStripeEvent(event) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new Error("Vente liée au paiement introuvable");
       const deal = snap.data();
-      const amounts = getDealAmounts(deal);
-      if (session.metadata?.buyerUid !== deal.buyerUid ||
-          session.amount_total !== amounts.totalCents ||
-          String(session.currency || "").toLowerCase() !== amounts.currency ||
-          session.client_reference_id !== dealId) throw new Error("Les montants ou participants du paiement ne correspondent pas à la vente");
+      const amounts = assertCheckoutSessionMatchesDeal(deal, session, dealId);
       if (deal.paymentStatus === "paid") return;
       assertDealPayable(deal);
       tx.update(ref, {
