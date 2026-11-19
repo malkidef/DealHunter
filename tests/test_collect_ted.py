@@ -55,6 +55,19 @@ class TedCollectorTests(unittest.TestCase):
             "https://ted.europa.eu/en/notice/-/detail/456-2026",
         )
 
+    def test_rejects_non_ted_external_notice_url(self):
+        feed = parse_payload({
+            "notices": [{
+                "publication-number": "123/2026",
+                "notice-title": "Avis",
+                "links": {"html": {"fra": "https://ted.europa.eu.attacker.example/fake"}},
+            }]
+        }, "query")
+        self.assertEqual(
+            feed["notices"][0]["url"],
+            "https://ted.europa.eu/en/notice/-/detail/123%2F2026",
+        )
+
     def test_rejects_timed_out_response(self):
         with self.assertRaises(RuntimeError):
             parse_payload({"timedOut": True, "notices": []}, "query")
