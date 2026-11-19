@@ -8,32 +8,33 @@ const {
 } = require("../src/payment-domain.js");
 
 const deal = {
-  status: "agreed",
-  sellerUid: "seller-1",
-  buyerUid: "buyer-1",
-  participantUids: ["seller-1", "buyer-1"],
-  quantity: 50,
-  unitPrice: 4,
-  totalAmount: 200,
-  currency: "EUR"
+  status: "agreed", sellerUid: "seller-1", buyerUid: "buyer-1",
+  participantUids: ["seller-1", "buyer-1"], quantity: 50,
+  unitPrice: 4, totalAmount: 200, commissionRate: 5,
+  commissionAmount: 10, currency: "EUR"
 };
 
 test("commission is fixed at 5% and calculated in integer cents", () => {
   assert.equal(COMMISSION_BPS, 500);
   assert.deepEqual(getDealAmounts(deal), {
-    currency: "eur", totalCents: 20000, commissionCents: 1000,
+    currency: "eur", quantity: 50, unitPriceCents: 400,
+    totalCents: 20000, commissionCents: 1000,
     sellerNetCents: 19000, commissionRate: 5
   });
 });
 
-test("rounds the commission to the nearest cent", () => {
-  assert.equal(getDealAmounts({ ...deal, totalAmount: 10.01 }).commissionCents, 50);
+test("rounds commission to nearest cent", () => {
+  assert.equal(getDealAmounts({ ...deal, quantity: 1, unitPrice: 10.01, totalAmount: 10.01 }).commissionCents, 50);
 });
 
-test("rejects zero, negative, non-finite and unsafe amounts", () => {
-  for (const value of [0, -1, NaN, Infinity, "not-money"]) {
-    assert.throws(() => toCents(value));
-  }
+test("rejects invalid monetary amounts", () => {
+  for (const value of [0, -1, NaN, Infinity, "not-money"]) assert.throws(() => toCents(value));
+});
+
+test("rejects quantity or total inconsistent with unit price", () => {
+  assert.throws(() => getDealAmounts({ ...deal, quantity: 0 }));
+  assert.throws(() => getDealAmounts({ ...deal, totalAmount: 199.99 }));
+  assert.throws(() => getDealAmounts({ ...deal, unitPrice: 4.01 }));
 });
 
 test("payment is allowed only after status agreed", () => {
@@ -43,13 +44,17 @@ test("payment is allowed only after status agreed", () => {
   }
 });
 
-test("payment rejects unsupported currencies and already paid deals", () => {
+test("payment rejects invalid participants, currency and commission", () => {
   assert.throws(() => assertDealPayable({ ...deal, currency: "usd" }));
   assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "paid" }));
   assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "refunded" }));
+  assert.throws(() => assertDealPayable({ ...deal, buyerUid: "seller-1" }));
+  assert.throws(() => assertDealPayable({ ...deal, participantUids: ["seller-1"] }));
+  assert.throws(() => assertDealPayable({ ...deal, commissionRate: 7 }));
+  assert.throws(() => assertDealPayable({ ...deal, commissionAmount: 12 }));
 });
 
-test("participant role is derived only from the actual participant UID fields", () => {
+test("participant role is derived only from participant UID fields", () => {
   assert.equal(participantRole(deal, "seller-1"), "seller");
   assert.equal(participantRole(deal, "buyer-1"), "buyer");
   assert.equal(participantRole(deal, "outsider"), null);
@@ -57,16 +62,11 @@ test("participant role is derived only from the actual participant UID fields", 
 });
 
 test("seller payout requires completed status, both confirmations and paid funds", () => {
-  const releasable = {
-    ...deal, status: "completed", sellerConfirmed: true,
-    buyerConfirmed: true, paymentStatus: "paid"
-  };
+  const releasable = { ...deal, status: "completed", sellerConfirmed: true, buyerConfirmed: true, paymentStatus: "paid" };
   assert.equal(canReleaseToSeller(releasable), true);
   for (const patch of [
     { status: "agreed" }, { sellerConfirmed: false }, { buyerConfirmed: false },
     { paymentStatus: "pending" }, { disputeStatus: "open" },
     { disputeStatus: "lost" }, { refundStatus: "refunded" }
-  ]) {
-    assert.equal(canReleaseToSeller({ ...releasable, ...patch }), false);
-  }
+  ]) assert.equal(canReleaseToSeller({ ...releasable, ...patch }), false);
 });
