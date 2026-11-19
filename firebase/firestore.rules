@@ -264,6 +264,11 @@ service cloud.firestore {
       allow read: if request.auth != null
         && request.auth.uid in resource.data.participantUids;
       allow create, update, delete: if false;
+
+      // Journal de réconciliation : écriture exclusivement par Cloud Functions Admin SDK.
+      match /payment_reconciliation_audit/{auditId} {
+        allow read, create, update, delete: if false;
+      }
     }
 
   }
