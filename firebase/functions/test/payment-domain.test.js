@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -285,4 +285,15 @@ test("seller transfer cannot be created twice when a Stripe transfer ID already 
     assert.equal(canCreateSellerTransfer({ ...eligible, transferStatus }), false);
   }
   assert.equal(canCreateSellerTransfer({ ...eligible, disputeStatus: "open" }), false);
+});
+
+
+test("checkout callbacks may only update the currently reserved attempt", () => {
+  const deal = { checkoutAttempt: 4 };
+  assert.equal(isCurrentCheckoutAttempt(deal, 4), true);
+  assert.equal(isCurrentCheckoutAttempt(deal, "4"), true);
+  assert.equal(isCurrentCheckoutAttempt(deal, 3), false);
+  assert.equal(isCurrentCheckoutAttempt(deal, 0), false);
+  assert.equal(isCurrentCheckoutAttempt(deal, "invalid"), false);
+  assert.equal(isCurrentCheckoutAttempt(null, 4), false);
 });
