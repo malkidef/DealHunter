@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -346,10 +346,12 @@ exports.openDealDispute = onCall(async (request) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
     const deal = snap.data();
-    if (!participantRole(deal, uid)) throw new HttpsError("permission-denied", "Vous ne participez pas à cette vente.");
-    if (deal.paymentStatus !== "paid") throw new HttpsError("failed-precondition", "Un litige ne peut être ouvert que sur une vente payée.");
-    if (["resolved", "cancelled"].includes(deal.status)) throw new HttpsError("failed-precondition", "Cette vente est déjà clôturée.");
-    if (deal.disputeStatus === "open") throw new HttpsError("already-exists", "Un litige est déjà ouvert pour cette vente.");
+    try {
+      assertCanOpenDispute(deal, uid);
+    } catch (error) {
+      const permission = error.message === "Vous ne participez pas à cette vente.";
+      throw new HttpsError(permission ? "permission-denied" : "failed-precondition", error.message);
+    }
     tx.create(disputeRef, {
       openedByUid: uid, role: deal.sellerUid === uid ? "seller" : "buyer",
       reason, description, status: "open", createdAt: FieldValue.serverTimestamp()
