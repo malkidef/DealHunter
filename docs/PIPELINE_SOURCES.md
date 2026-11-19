@@ -39,6 +39,14 @@ Les autres places de marché du répertoire restent des pistes. Aucun scraping n
 - **Statut :** connecteur et tests ajoutés ; première exécution GitHub Actions à vérifier avant de déclarer la collecte opérationnelle.
 - **Implémentation :** [script](../scripts/collect_bodacc.py), [tests](../tests/test_collect_bodacc.py), [workflow quotidien](../.github/workflows/collect-bodacc.yml), flux `data/bodacc-business-sales.json`.
 
+### AGRASC — lien officiel uniquement (pas de collecteur)
+
+- **Page officielle :** [calendrier des ventes AGRASC](https://agrasc.gouv.fr/ventes-aux-encheres).
+- **Type de signal :** ventes publiques de biens saisis/confisqués, distinctes des surplus B2B.
+- **Décision :** aucun scraping ni collecte planifiée. Les mentions légales AGRASC affichent une licence ouverte mais interdisent aussi toute diffusion ou utilisation commerciale/publicitaire des informations. Tant que cette contradiction apparente n'est pas clarifiée par écrit par l'AGRASC, DealHunter se limite à un lien direct vers la page officielle.
+- **Dans l'application :** onglet « Ventes AGRASC » avec lien sortant et avertissement ; aucune donnée AGRASC n'est copiée, stockée, proposée aux acheteurs ou intégrée au matching.
+- **Pour réévaluer :** obtenir une clarification écrite sur les usages commerciaux autorisés ou identifier un jeu de données officiel distinct dont la licence permet explicitement la réutilisation commerciale.
+
 ## Autres sources — à vérifier avant toute connexion
 
 | Source candidate | Famille | Première vérification | Statut |
