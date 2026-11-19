@@ -511,8 +511,21 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
       success_url: base + "/?deal=" + encodeURIComponent(dealId) + "&payment=success",
       cancel_url: base + "/?deal=" + encodeURIComponent(dealId) + "&payment=cancelled",
       client_reference_id: dealId,
-      metadata: { dealId, buyerUid: uid, checkoutAttempt: String(attempt) },
-      payment_intent_data: { metadata: { dealId, buyerUid: uid }, transfer_group: "dealhunter_" + dealId }
+      metadata: {
+        dealId, buyerUid: uid, checkoutAttempt: String(attempt),
+        grossCents: String(amounts.totalCents),
+        commissionCents: String(amounts.commissionCents),
+        sellerNetCents: String(amounts.sellerNetCents)
+      },
+      payment_intent_data: {
+        metadata: {
+          dealId, buyerUid: uid,
+          grossCents: String(amounts.totalCents),
+          commissionCents: String(amounts.commissionCents),
+          sellerNetCents: String(amounts.sellerNetCents)
+        },
+        transfer_group: "dealhunter_" + dealId
+      }
     }, { idempotencyKey: "dh-checkout-" + dealId + "-" + attempt + "-" + amounts.totalCents });
     const saved = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
