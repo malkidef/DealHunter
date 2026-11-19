@@ -132,6 +132,13 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <h2>Administration · Réconciliation des paiements</h2>
 <p class="muted">Espace réservé aux comptes disposant du rôle Firebase admin. Consultation Stripe en lecture seule et journalisation des décisions. Aucun remboursement, transfert ou changement de paiement n'est déclenché ici.</p>
 <div class="status-note" id="adminAccessStatus" role="status">Vérification des droits administrateur…</div>
+<div class="item">
+  <h3>File des paiements à examiner</h3>
+  <p class="muted">Ventes signalées par les contrôles Stripe. Sélectionne une ligne pour préremplir l'inspection ; aucune action financière n'est lancée.</p>
+  <button type="button" class="secondary" id="adminRefreshQueueButton">Actualiser la file</button>
+  <p class="muted" id="adminQueueStatus" role="status" aria-live="polite">File non chargée.</p>
+  <div id="adminReconciliationQueue" class="cards"><div class="empty">Connecte-toi avec un compte administrateur pour charger la file.</div></div>
+</div>
 <form id="adminReconciliationInspectForm" class="item">
 <h3>Inspecter une vente</h3>
 <div class="field"><label for="adminDealId">Identifiant de vente (dealId)</label><input id="adminDealId" required maxlength="160" autocomplete="off"></div>
