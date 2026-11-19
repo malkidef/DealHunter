@@ -100,6 +100,15 @@ Dans l'interface, l'acheteur voit une action de paiement sur un accord accepté 
 
 Le code Stripe Connect / Checkout est présent dans `firebase/functions/src/payments.js`, mais les paiements sont **désactivés par défaut**. Ne pas activer ce parcours en production avant les tests de bout en bout et la revue juridique/sécurité.
 
+### Réconciliation administrative en lecture seule
+
+La callable `inspectDealPaymentReconciliation` compare une vente Firestore à une session Checkout Stripe fournie par son identifiant. Elle retourne les états de paiement et de transfert, le PaymentIntent, ainsi que les contrôles d'identité, de montant, de devise, de session courante et de tentative Checkout. Elle ne modifie aucune donnée et ne déclenche ni remboursement, ni transfert, ni confirmation de vente.
+
+- L'appel exige une authentification Firebase et le custom claim `admin: true`. Aucun rôle administrateur n'est attribué automatiquement par cette fonction ; l'attribution doit être réalisée par un processus serveur de confiance, jamais depuis le navigateur.
+- L'accès Stripe est en lecture seule dans cette callable. Les identifiants fournis doivent être ceux d'une vente et d'une session connue ; les secrets restent côté Cloud Functions.
+- Une session obsolète peut être examinée même si son numéro de tentative ne correspond plus, mais un résultat positif ne signifie pas qu'elle peut être automatiquement créditée.
+- Les écarts doivent être examinés manuellement. Cette première version n'autorise aucune régularisation ou action financière.
+
 ### Préparer un environnement de test isolé
 
 1. Utiliser un compte Stripe de test et ses clés commençant par `sk_test_` et `whsec_`. Ne jamais copier ces valeurs dans Git, dans le fichier web, dans un ticket ou dans une conversation.
