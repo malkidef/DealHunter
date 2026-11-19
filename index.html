@@ -510,7 +510,7 @@ function render(){
  }
  const publicMatchList=$('publicMatchList');
  if(publicMatchList){
-  const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','and','the','you','are']);
+  const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','you','are']);
   const tokens=value=>[...new Set(norm(value).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!stop.has(w)))];
   const sectorTerms={
    'high-tech':['computer','computers','informatique','electronique','electronic','software','network','server','ordinateur','logiciel'],
@@ -520,47 +520,54 @@ function render(){
    'alimentaire':['food','catering','meal','agri','agriculture','alimentaire','restauration'],
    'materiaux':['construction','building','material','materials','works','materiaux','batiment']
   };
-  const publicSignals=[
-   ...samNotices.map(n=>({...n,_source:'SAM.gov',_buyer:n.buyer_organization,_date:n.deadline_date,_url:n.source_url,_place:[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(' '),_sector:[n.naics_code,n.classification_code].filter(Boolean).join(' ')})),
-   ...tedNotices.map(n=>({...n,_source:'TED',_buyer:n.buyer||n.buyer_name||'',_date:n.deadline||n.deadline_date,_url:n.url||n.source_url,_place:n.country||n.buyer_country||'',_sector:n.noticeType||n.notice_type||''}))
-  ];
   const candidates=[];
-  sellers.forEach(s=>{
-   const wanted=tokens(s.product);
-   if(!wanted.length)return;
-   publicSignals.forEach(n=>{
-    const available=new Set(tokens(n.title||''));
-    const common=wanted.filter(w=>available.has(w));
-    const productRatio=common.length/Math.max(1,wanted.length);
-    if(productRatio<0.25)return;
-    const terms=sectorTerms[norm(s.category)]||[];
-    const sectorText=norm([n.title,n._buyer,n._sector].join(' '));
-    const sectorFit=terms.length>0&&terms.some(term=>sectorText.includes(norm(term)));
-    const sellerPlace=norm(s.location);
-    const noticePlace=norm(n._place);
-    const locationFit=!!sellerPlace&&!!noticePlace&&(noticePlace.includes(sellerPlace)||sellerPlace.includes(noticePlace));
-    const deadline=n._date?Date.parse(n._date):NaN;
-    const deadlineValid=Number.isFinite(deadline)&&deadline>=Date.now();
-    if(Number.isFinite(deadline)&&deadline<Date.now())return;
-    const score=Math.min(100,Math.round(productRatio*55)+(sectorFit?20:0)+(locationFit?15:0)+(deadlineValid?10:0));
-    const reasons=['produit '+Math.round(productRatio*100)+' %'];
-    if(sectorFit)reasons.push('secteur cohérent');
-    if(locationFit)reasons.push('zone géographique proche');
-    if(deadlineValid)reasons.push('échéance encore ouverte');
-    candidates.push({s,n,common,score,reasons,deadlineValid});
-   });
-  });
-  candidates.sort((a,b)=>b.score-a.score||a.s.product.localeCompare(b.s.product));
-  $('publicMatchSummary').textContent=candidates.length+' piste(s) classée(s) · '+sellers.length+' stock(s) comparé(s) à '+publicSignals.length+' avis publics. Le score mesure la proximité produit, secteur, zone et échéance.';
+  const addCandidate=(record,notice,source,role)=>{
+   const wanted=tokens(record.product);
+   const available=new Set(tokens(notice.title||''));
+   if(!wanted.length||!available.size)return;
+   const common=wanted.filter(w=>available.has(w));
+   const ratio=common.length/Math.max(1,wanted.length);
+   if(ratio<0.25)return;
+   const terms=sectorTerms[norm(record.category)]||[];
+   const sectorText=norm([notice.title,notice.buyer_organization,notice.buyer,notice.naics_code,notice.classification_code,notice.noticeType,notice.notice_type].join(' '));
+   const sectorFit=terms.length>0&&terms.some(term=>sectorText.includes(norm(term)));
+   const place=role==='seller'?(notice.country||notice.buyer_country||''):[notice.place_of_performance?.city,notice.place_of_performance?.state,notice.place_of_performance?.country].filter(Boolean).join(' ');
+   const recordPlace=norm(record.location);
+   const noticePlace=norm(place);
+   const locationFit=!!recordPlace&&!!noticePlace&&(noticePlace.includes(recordPlace)||recordPlace.includes(noticePlace));
+   const deadlineRaw=role==='seller'?(notice.deadline||notice.deadline_date):(notice.deadline_date||notice.responseDeadLine);
+   const deadline=deadlineRaw?Date.parse(deadlineRaw):NaN;
+   if(Number.isFinite(deadline)&&deadline<Date.now())return;
+   const deadlineValid=Number.isFinite(deadline);
+   const score=Math.min(100,Math.round(ratio*55)+(sectorFit?20:0)+(locationFit?15:0)+(deadlineValid?10:0));
+   const reasons=['produit '+Math.round(ratio*100)+' %'];
+   if(sectorFit)reasons.push('secteur cohérent');
+   if(locationFit)reasons.push('zone géographique concordante');
+   if(deadlineValid)reasons.push('échéance future');
+   candidates.push({record,notice,source,role,common,score,reasons,deadlineRaw});
+  };
+  // TED = avis de marchés : des acheteurs publics recherchent des fournisseurs.
+  // SAM.gov ptype=g = vente de biens excédentaires : les acheteurs DealHunter peuvent rechercher ces lots.
+  sellers.forEach(s=>tedNotices.forEach(n=>addCandidate(s,n,'TED','seller')));
+  buyers.forEach(b=>samNotices.forEach(n=>addCandidate(b,n,'SAM.gov','buyer')));
+  candidates.sort((a,b)=>b.score-a.score||String(a.record.product).localeCompare(String(b.record.product)));
+  $('publicMatchSummary').textContent=candidates.length+' piste(s) classée(s) · '+sellers.length+' stock(s) comparés aux avis TED et '+buyers.length+' besoin(s) comparés aux ventes de surplus SAM.gov. Sens du matching adapté à chaque source ; scores indicatifs.';
   publicMatchList.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
-   const link=typeof m.n._url==='string'&&/^https:\/\//i.test(m.n._url)?'<a href="'+escapeHtml(m.n._url)+'" target="_blank" rel="noopener noreferrer">Consulter la source</a>':'Source officielle indisponible';
+   const n=m.notice, r=m.record;
+   const url=m.source==='TED'?(n.url||n.source_url):(n.source_url||n.uiLink);
+   const link=typeof url==='string'&&/^https:\/\//i.test(url)?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Consulter la source officielle</a>':'Source officielle indisponible';
+   const title=n.title||'Avis public sans titre';
+   const counterparty=m.source==='TED'?(n.buyer||n.buyer_name||'Acheteur public non précisé'):(n.buyer_organization||'Organisme public non précisé');
+   const place=m.source==='TED'?(n.country||n.buyer_country||'non précisée'):[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(', ')||'non précisée';
+   const details=m.role==='seller'
+    ?'Stock vendeur : '+escapeHtml(r.qty)+' '+escapeHtml(r.unit||'unit')+' · Prix proposé : '+(Number.isFinite(Number(r.price))?Number(r.price).toFixed(2)+' € / unité':'non renseigné')
+    :'Besoin acheteur : '+escapeHtml(r.qty)+' '+escapeHtml(r.unit||'unit')+' · Budget maximum : '+(Number.isFinite(Number(r.budget))?Number(r.budget).toFixed(2)+' € / unité':'non renseigné');
    const missing=[];
-   if(!m.n.quantity&&!m.n.estimated_quantity)missing.push('quantité demandée non publiée');
-   if(!m.n.budget&&!m.n.estimated_value&&!m.n.award_value)missing.push('budget non disponible');
-   const status=m.deadlineValid?'Échéance future indiquée':'Échéance non renseignée';
-   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.n._source)+'</span><h3>'+escapeHtml(m.s.product)+' — stock de '+escapeHtml(m.s.company)+'</h3><div><strong>'+escapeHtml(m.n.title||'Avis public sans titre')+'</strong></div><div class="muted">Acheteur : '+escapeHtml(m.n._buyer||'non précisé')+' · Zone : '+escapeHtml(m.n._place||'non précisée')+'</div><div class="muted">Échéance : '+escapeHtml(m.n._date||'non précisée')+' · '+status+'</div><div class="match-score">Score de pertinence : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">Stock local : '+escapeHtml(m.s.qty)+' unités · Prix vendeur : '+Number(m.s.price).toFixed(2)+' € / unité</div><div class="muted">À confirmer sur l’avis original : '+escapeHtml(missing.join(' ; ')||'budget, quantité et conditions de livraison')+'. Le score ne valide ni prix ni quantité.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié. Vérification humaine indispensable.</div></article>';
-  }).join(''):'<div class="empty">Aucune piste publique suffisamment proche des stocks pour le moment.</div>';
-
+   if(m.role==='seller'&&!r.verified)missing.push('stock vendeur non vérifié');
+   if(m.role==='buyer')missing.push('quantité, état, prix final et conditions du lot SAM.gov à confirmer');
+   if(!m.deadlineRaw)missing.push('échéance non renseignée');
+   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.source)+'</span><h3>'+escapeHtml(r.product)+' — '+(m.role==='seller'?'stock vendeur':'besoin acheteur')+'</h3><div><strong>'+escapeHtml(title)+'</strong></div><div class="muted">Organisme : '+escapeHtml(counterparty)+' · Zone : '+escapeHtml(place)+'</div><div class="muted">Échéance : '+escapeHtml(m.deadlineRaw||'non précisée')+'</div><div class="match-score">Pertinence indicative : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">'+details+'</div><div class="muted">À vérifier manuellement : '+escapeHtml(missing.join(' ; ')||'conditions, disponibilité et conformité de l’avis')+'.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié : aucune commande, disponibilité ni transaction n’est confirmée.</div></article>';
+  }).join(''):'<div class="empty">Aucune piste publique suffisamment proche pour le moment. Les avis TED sont comparés aux stocks vendeurs ; les ventes de surplus SAM.gov sont comparées aux besoins acheteurs.</div>';
  }
 
  const bodaccList=$('bodaccList');
