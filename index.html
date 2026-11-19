@@ -64,6 +64,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
+<button type="button" class="secondary" data-tab="bodacc">Signaux BODACC</button>
 <button type="button" class="secondary" data-tab="sources">Sources</button>
 </div>
 <section id="account" class="panel hidden">
@@ -219,6 +220,14 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="marginResult" class="muted" role="status" aria-live="polite" style="margin-top:12px">Complète les montants pour obtenir une simulation. Les taxes, frais non saisis et risques de revente ne sont pas inclus.</div>
 </section>
 </section>
+<section id="bodacc" class="panel hidden">
+<h2>Signaux publics BODACC</h2>
+<p class="muted">Avis officiels de ventes et cessions d’entreprises ou de fonds, récupérés depuis l’API ouverte de la DILA. Ces annonces ne décrivent pas des stocks disponibles : elles restent des signaux économiques à examiner séparément.</p>
+<div id="bodaccSyncStatus" class="muted" role="status" aria-live="polite">Chargement du dernier flux BODACC…</div>
+<div class="field" style="margin:14px 0"><label for="bodaccSearch">Rechercher un signal (ville, département, date, type)</label><input id="bodaccSearch" type="search" placeholder="Ex. Lille, Nord, cession…"></div>
+<div id="bodaccSummary" class="muted"></div>
+<div id="bodaccList" class="cards"></div>
+</section>
 <section id="sources" class="panel hidden">
 <h2>Registre des sources</h2>
 <p class="muted">Centralise les plateformes et fournisseurs à examiner. Une source reste « À vérifier » tant que ses conditions et son mode d’accès autorisé ne sont pas confirmés.</p>
@@ -237,7 +246,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
 let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
-let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null;
+let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -538,6 +547,16 @@ function render(){
   }).join(''):'<div class="empty">Aucune piste publique suffisamment proche des stocks pour le moment.</div>';
 
  }
+
+ const bodaccList=$('bodaccList');
+ if(bodaccList){
+  const query=norm($('bodaccSearch')?.value||'');
+  const filtered=bodaccNotices.filter(n=>!query||norm([n.title,n.location,n.city,n.department,n.department_code,n.published_at].join(' ')).includes(query));
+  const summary=$('bodaccSummary');
+  if(summary)summary.textContent=filtered.length+' signal(aux) affiché(s) sur '+bodaccNotices.length+' · source : DILA / BODACC · Licence Ouverte 2.0.';
+  bodaccList.innerHTML=filtered.length?filtered.map(n=>'<article class="item"><span class="pill">Signal légal · à vérifier</span><h3>'+escapeHtml(n.title)+'</h3><div class="muted">'+escapeHtml(n.location||'Lieu non précisé')+' · Publication : '+escapeHtml(n.published_at||'date inconnue')+'</div><p class="muted">Une vente ou cession d’entreprise/fonds a été publiée. Cela ne confirme ni un surplus, ni une quantité, ni une marchandise disponible.</p><div class="muted"><a href="'+escapeHtml(n.source_url||'https://www.bodacc.fr/')+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel BODACC</a> · Identifiant '+escapeHtml(n.source_listing_id)+'</div></article>').join(''):'<div class="empty">Aucun signal BODACC ne correspond à cette recherche.</div>';
+ }
+
  const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();
  const ds=$('dashSellerCount');if(ds)ds.textContent=sellers.length;
@@ -650,6 +669,25 @@ async function syncGsaFeed(){
   status.textContent='Synchronisation automatique indisponible : '+err.message+' Tu peux utiliser l’import manuel de secours.';
  }
 }
+
+async function syncBodaccFeed(){
+ const status=$('bodaccSyncStatus');
+ try{
+  const response=await fetch('data/bodacc-business-sales.json',{cache:'no-store'});
+  if(!response.ok)throw new Error('Flux BODACC indisponible ('+response.status+').');
+  const data=await response.json();
+  if(!data||data.source!=='BODACC — API officielle DILA'||!Array.isArray(data.notices))throw new Error('Format du flux BODACC invalide.');
+  bodaccNotices=data.notices.filter(n=>n&&typeof n==='object'&&n.source_listing_id&&n.title&&n.is_inventory===false);
+  bodaccFeedMeta=data;
+  render();
+  status.textContent=bodaccNotices.length+' avis de ventes/cessions chargés · collecte du '+(data.collected_at||'date inconnue')+'. Aucun avis n’est présenté comme un stock.';
+ }catch(err){
+  status.textContent='Flux BODACC pas encore disponible : '+err.message+' Il apparaîtra après la première collecte réussie.';
+  render();
+ }
+}
+$('bodaccSearch').addEventListener('input',render);
+
 $('csvFile').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
  const msg=$('importMessage');msg.textContent='Lecture du fichier…';
@@ -802,6 +840,7 @@ render();
 syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
+syncBodaccFeed();
 </script>
 <script type="module" src="auth.js?v=20261118-19"></script>
 </body></html>
