@@ -60,19 +60,43 @@ function assertDealPayable(deal) {
   return amounts;
 }
 
-function assertCheckoutSessionMatchesDeal(deal, session, dealId) {
+function assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId) {
   if (!deal || !session || !dealId) throw new TypeError("Session de paiement invalide.");
   const amounts = getDealAmounts(deal);
   if (session.metadata?.dealId !== dealId ||
       session.metadata?.buyerUid !== deal.buyerUid ||
-      (session.metadata?.checkoutAttempt !== undefined &&
-       Number(session.metadata.checkoutAttempt) !== Number(deal.checkoutAttempt)) ||
       session.client_reference_id !== dealId ||
       session.amount_total !== amounts.totalCents ||
       String(session.currency || "").toLowerCase() !== amounts.currency) {
     throw new TypeError("Les montants ou participants du paiement ne correspondent pas à la vente.");
   }
   return amounts;
+}
+
+function assertCheckoutSessionMatchesDeal(deal, session, dealId) {
+  const amounts = assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId);
+  if (session.metadata?.checkoutAttempt !== undefined &&
+      Number(session.metadata.checkoutAttempt) !== Number(deal.checkoutAttempt)) {
+    throw new TypeError("La tentative de paiement ne correspond plus à la vente.");
+  }
+  return amounts;
+}
+
+function resolveCheckoutPaymentEvent(deal, session, dealId) {
+  assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId);
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent : session.payment_intent?.id || null;
+  const currentPaymentIntentId = deal.stripePaymentIntentId || null;
+  if (deal.paymentStatus === "paid") {
+    return currentPaymentIntentId === paymentIntentId
+      ? { action: "already_paid", paymentIntentId }
+      : { action: "duplicate_payment", paymentIntentId };
+  }
+  if (session.metadata?.checkoutAttempt !== undefined &&
+      Number(session.metadata.checkoutAttempt) !== Number(deal.checkoutAttempt)) {
+    return { action: "stale_checkout_paid", paymentIntentId };
+  }
+  return { action: "mark_paid", paymentIntentId };
 }
 
 function participantRole(deal, uid) {
@@ -214,10 +238,11 @@ function canReleaseToSeller(deal) {
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
   return Boolean(deal && deal.status === "completed" &&
     deal.sellerConfirmed === true && deal.buyerConfirmed === true &&
-    deal.paymentStatus === "paid" && disputeClear && refundClear);
+    deal.paymentStatus === "paid" && disputeClear && refundClear &&
+    (!deal.paymentReviewStatus || deal.paymentReviewStatus === "none"));
 }
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 };
