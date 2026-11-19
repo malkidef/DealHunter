@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -74,6 +74,18 @@ test("Checkout webhook must match the exact deal, buyer, amount and currency", (
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, currency: "usd" }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, buyerUid: "attacker" } }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, client_reference_id: "other-deal" }, "deal-1"));
+});
+
+test("Checkout identity validation permits stale attempts only for reconciliation", () => {
+  const staleDeal = { ...deal, checkoutAttempt: 5 };
+  const staleSession = {
+    metadata: { dealId: "deal-1", buyerUid: "buyer-1", checkoutAttempt: "4" },
+    client_reference_id: "deal-1", amount_total: 20000, currency: "eur",
+    payment_intent: "pi_old"
+  };
+  assert.equal(assertCheckoutSessionIdentityMatchesDeal(staleDeal, staleSession, "deal-1").totalCents, 20000);
+  assert.throws(() => assertCheckoutSessionMatchesDeal(staleDeal, staleSession, "deal-1"), /tentative de paiement/);
+  assert.throws(() => assertCheckoutSessionIdentityMatchesDeal(staleDeal, { ...staleSession, metadata: { ...staleSession.metadata, buyerUid: "other" } }, "deal-1"));
 });
 
 test("paid stale Checkout attempts are held for review, and duplicate paid sessions are detected", () => {
