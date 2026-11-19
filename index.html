@@ -513,13 +513,18 @@ function render(){
   const stop=new Set(['avec','pour','dans','sans','sur','les','des','une','aux','the','and','for','lot','item','used','new','other','from','this','that','all','you','are']);
   const tokens=value=>[...new Set(norm(value).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!stop.has(w)))];
   const sectorTerms={
-   'high-tech':['computer','computers','informatique','electronique','electronic','software','network','server','ordinateur','logiciel'],
-   'maison':['furniture','furnishing','household','home','mobilier','ameublement'],
-   'mode':['clothing','textile','garment','uniform','apparel','vetement','habillement'],
-   'auto':['vehicle','vehicles','automotive','car','truck','transport','vehicule','automobile'],
-   'alimentaire':['food','catering','meal','agri','agriculture','alimentaire','restauration'],
-   'materiaux':['construction','building','material','materials','works','materiaux','batiment']
+   'informatique et electronique':['computer','computers','informatique','electronique','electronic','software','network','server','ordinateur','logiciel','laptop','printer'],
+   'vehicules et transport':['vehicle','vehicles','automotive','car','truck','transport','vehicule','automobile','fleet'],
+   'machines et equipements industriels':['machine','machinery','industrial','equipment','equipement','manufacturing'],
+   'construction et materiaux':['construction','building','material','materials','works','materiaux','batiment','cement'],
+   'mobilier et bureau':['furniture','furnishing','household','home','mobilier','ameublement','office','desk','chair'],
+   'agriculture':['agriculture','agri','farm','farming','crop','tractor'],
+   'alimentation et boissons':['food','catering','meal','alimentaire','restauration','beverage'],
+   'textile et habillement':['clothing','textile','garment','uniform','apparel','vetement','habillement'],
+   'emballage et logistique':['packaging','pack','carton','pallet','logistics','emballage','logistique'],
+   'maison et biens de consommation':['furniture','household','home','consumer','mobilier','maison']
   };
+  const categoryKey=value=>norm(value).replace(/[^a-z0-9]+/g,' ').trim();
   const candidates=[];
   const addCandidate=(record,notice,source,role)=>{
    const wanted=tokens(record.product);
@@ -528,8 +533,9 @@ function render(){
    const common=wanted.filter(w=>available.has(w));
    const ratio=common.length/Math.max(1,wanted.length);
    if(ratio<0.25)return;
-   const terms=sectorTerms[norm(record.category)]||[];
-   const sectorText=norm([notice.title,notice.buyer_organization,notice.buyer,notice.naics_code,notice.classification_code,notice.noticeType,notice.notice_type].join(' '));
+   const category=categoryKey(record.category);
+   const terms=sectorTerms[category]||[];
+   const sectorText=norm([notice.title,notice.description,notice.buyer_organization,notice.buyer,notice.naics_code,notice.classification_code,notice.cpv,notice.noticeType,notice.notice_type].join(' '));
    const sectorFit=terms.length>0&&terms.some(term=>sectorText.includes(norm(term)));
    const place=role==='seller'?(notice.country||notice.buyer_country||''):[notice.place_of_performance?.city,notice.place_of_performance?.state,notice.place_of_performance?.country].filter(Boolean).join(' ');
    const recordPlace=norm(record.location);
