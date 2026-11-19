@@ -19,6 +19,8 @@
 
 10. Le contrat du moteur de matching est également incompatible au niveau des champs : `scorePair` exige notamment une unité (`unit`), un statut de demande `open`, un nom de produit `productName`, et un budget `maxUnitPrice`. Les fiches publiques actuelles utilisent `product`, `maxUnitBudget`, `location` et un statut `active` pour les besoins, et les règles de publication n'autorisent pas le champ `unit`. Il ne suffit donc pas de changer le nom des déclencheurs pour rendre le matching opérationnel.
 
+11. Le client marque actuellement une transaction `completed` dès que les deux participants ont coché leurs confirmations, sans vérifier un événement Stripe signé ni un champ `paymentStatus=paid`. Le statut `completed` observé dans la capture prouve donc seulement l'état enregistré par l'application ; il ne prouve pas qu'un paiement a été encaissé.
+
 ## Blocages avant paiement
 
 - Définir une source fiable d'identité d'entreprise et son cycle de vérification. Ne pas fabriquer des sociétés à partir d'un simple nom libre ni d'un profil utilisateur incomplet.
