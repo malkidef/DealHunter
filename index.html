@@ -814,7 +814,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
         }
         return '<article class="item"><span class="pill">'+label+'</span><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' × '+Number(d.unitPrice||0).toFixed(2)+' € = <strong>'+amount+'</strong></div><div class="muted">Commission indicative (5 %) : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+actions+'</article>';
       }).join(''):'<div class="muted">Aucun accord de vente proposé pour cette mise en relation.</div>')+
-      (dealList.length?'':'<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p class="muted">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form>')+'</section>';
+      (dealList.length?'':'<form data-deal-proposal="'+escapeHtml(r.id)+'"><div class="field"><label>Quantité convenue</label><input name="quantity" type="number" min="1" step="1" required placeholder="Ex. 50"></div><div class="field"><label>Prix unitaire convenu (€)</label><input name="unitPrice" type="number" min="0.01" step="0.01" required placeholder="Ex. 4,00"></div><button type="submit">Proposer les conditions de vente</button><p data-deal-proposal-status class="muted" role="status" aria-live="polite">L’autre entreprise devra accepter. Aucun paiement n’est demandé.</p></form>')+'</section>';
     }else{
       details=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
         ? '<p><button type="button" data-match-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button> <button type="button" class="secondary" data-match-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button></p>'
@@ -828,9 +828,11 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-share-cont
 document.addEventListener('submit',e=>{
  const form=e.target.closest('form[data-deal-proposal]');if(!form)return;
  e.preventDefault();
- const button=form.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Envoi…';
- window.dispatchEvent(new CustomEvent('dealhunter-propose-deal',{detail:{requestId:form.dataset.dealProposal,quantity:form.elements.quantity.value,unitPrice:form.elements.unitPrice.value}}));
- setTimeout(()=>{button.disabled=false;button.textContent='Proposer les conditions de vente';},1200);
+ const button=form.querySelector('button[type="submit"]');const feedback=form.querySelector('[data-deal-proposal-status]');button.disabled=true;button.textContent='Envoi…';
+ window.dispatchEvent(new CustomEvent('dealhunter-propose-deal',{detail:{
+  requestId:form.dataset.dealProposal,quantity:form.elements.quantity.value,unitPrice:form.elements.unitPrice.value,
+  onResult:message=>{if(feedback)feedback.textContent=message;button.disabled=false;button.textContent='Proposer les conditions de vente';}
+ }}));
 });
 document.addEventListener('click',e=>{
  const pay=e.target.closest('[data-deal-pay]');
