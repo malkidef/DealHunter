@@ -65,6 +65,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
 <button type="button" class="secondary" data-tab="bodacc">Signaux BODACC</button>
+<button type="button" class="secondary" data-tab="agrasc">Ventes AGRASC</button>
 <button type="button" class="secondary" data-tab="sources">Sources</button>
 </div>
 <section id="account" class="panel hidden">
@@ -227,6 +228,18 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field" style="margin:14px 0"><label for="bodaccSearch">Rechercher un signal (ville, département, date, type)</label><input id="bodaccSearch" type="search" placeholder="Ex. Lille, Nord, cession…"></div>
 <div id="bodaccSummary" class="muted"></div>
 <div id="bodaccList" class="cards"></div>
+</section>
+<section id="agrasc" class="panel hidden">
+<h2>Ventes publiques AGRASC</h2>
+<p class="muted">Calendrier officiel des ventes aux enchères de biens saisis ou confisqués. Ces ventes publiques ne sont pas des annonces de surplus d’entreprises et ne sont pas intégrées aux stocks vendeurs ni au matching DealHunter.</p>
+<div class="item">
+<span class="pill">Source officielle · consultation directe</span>
+<h3>Agence de gestion et de recouvrement des avoirs saisis et confisqués (AGRASC)</h3>
+<p class="muted">Consulte directement le calendrier AGRASC pour vérifier les dates, lieux, catégories, conditions de vente et éventuels catalogues publiés par l’organisateur.</p>
+<p><a href="https://agrasc.gouv.fr/ventes-aux-encheres" target="_blank" rel="noopener noreferrer">Ouvrir le calendrier officiel des ventes AGRASC</a></p>
+<p class="muted">Limite de réutilisation : les mentions légales AGRASC indiquent que ses contenus ne peuvent pas être utilisés à des fins commerciales ou publicitaires. DealHunter ne collecte donc pas et ne republie pas automatiquement les annonces, descriptions, photos ou catalogues de ce site. Seul le lien vers la page officielle est proposé ici.</p>
+<p class="muted">Source juridique : <a href="https://agrasc.gouv.fr/index.php/mentions-legales" target="_blank" rel="noopener noreferrer">mentions légales AGRASC</a> · Vérification : 19 novembre 2026.</p>
+</div>
 </section>
 <section id="sources" class="panel hidden">
 <h2>Registre des sources</h2>
@@ -830,7 +843,7 @@ window.addEventListener('dealhunter-deals',e=>{
     }
   }}));
  });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
