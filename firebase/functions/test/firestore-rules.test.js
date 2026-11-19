@@ -55,6 +55,11 @@ test("allows a request tied to real active listings owned by both parties", asyn
   await assertSucceeds(addDoc(collection(db, "matchRequests"), requestData()));
 });
 
+test("rejects a match request when its measurement unit differs from the listings", async () => {
+  const db = env.authenticatedContext("seller-1").firestore();
+  await assertFails(addDoc(collection(db, "matchRequests"), requestData({ unit: "kg" })));
+});
+
 test("rejects a forged seller identity", async () => {
   const db = env.authenticatedContext("seller-1").firestore();
   await assertFails(addDoc(collection(db, "matchRequests"), requestData({ sellerUid: "attacker" })));
