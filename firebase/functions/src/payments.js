@@ -18,6 +18,11 @@ function requireAuth(request) {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Connexion requise.");
   return request.auth.uid;
 }
+function requirePaymentsEnabled() {
+  if (process.env.DEALHUNTER_PAYMENTS_ENABLED !== "true") {
+    throw new HttpsError("failed-precondition", "Les paiements DealHunter sont désactivés tant que le modèle de transactions n'a pas été raccordé et validé.");
+  }
+}
 async function ownedCompany(uid, companyId) {
   const snap = await db.collection("companies").doc(companyId).get();
   if (!snap.exists || snap.data().ownerUid !== uid) {
@@ -78,6 +83,8 @@ exports.getCompanyDashboard = onCall(async (request) => {
 });
 
 exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (request) => {
+  requirePaymentsEnabled();
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const companyId = String(request.data?.companyId || "");
   const companySnap = await ownedCompany(uid, companyId);
@@ -115,6 +122,7 @@ exports.createSellerOnboardingLink = onCall({ secrets: [stripeSecret] }, async (
 });
 
 exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (request) => {
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const dealId = String(request.data?.dealId || "");
   const ref = db.collection("deals").doc(dealId);
@@ -153,6 +161,7 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
 });
 
 exports.confirmDealCompletion = onCall(async (request) => {
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const dealId = String(request.data?.dealId || "");
   const role = String(request.data?.role || "");
@@ -172,6 +181,7 @@ exports.confirmDealCompletion = onCall(async (request) => {
 });
 
 exports.openDealDispute = onCall(async (request) => {
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const dealId = String(request.data?.dealId || "");
   const reason = String(request.data?.reason || "").trim();
@@ -213,6 +223,7 @@ exports.openDealDispute = onCall(async (request) => {
 });
 
 async function tryReleaseDeal(dealId) {
+  if (process.env.DEALHUNTER_PAYMENTS_ENABLED !== "true") return;
   const ref = db.collection("deals").doc(dealId);
   const snap = await ref.get();
   if (!snap.exists) return;
@@ -257,6 +268,7 @@ exports.releaseDealOnConfirmation = onDocumentWritten("deals/{dealId}", async (e
 });
 
 exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret] }, async (req, res) => {
+  if (process.env.DEALHUNTER_PAYMENTS_ENABLED !== "true") return res.status(503).send("DealHunter payments disabled");
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
   let event;
   try {
