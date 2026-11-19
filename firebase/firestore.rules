@@ -24,7 +24,7 @@ service cloud.firestore {
       function validOffer() {
         return request.resource.data.keys().hasOnly([
           "ownerUid", "company", "product", "category", "quantity",
-          "unitPrice", "location", "status", "createdAt"
+          "unitPrice", "unit", "location", "status", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
           "ownerUid", "company", "product", "category", "quantity",
@@ -36,6 +36,7 @@ service cloud.firestore {
         && request.resource.data.category is string
         && request.resource.data.quantity is number
         && request.resource.data.unitPrice is number
+        && (!("unit" in request.resource.data) || request.resource.data.unit is string)
         && request.resource.data.location is string
         && request.resource.data.status == "active"
         && request.resource.data.createdAt is timestamp;
@@ -56,7 +57,7 @@ service cloud.firestore {
       function validNeed() {
         return request.resource.data.keys().hasOnly([
           "ownerUid", "company", "product", "category", "quantity",
-          "maxUnitBudget", "location", "status", "createdAt"
+          "maxUnitBudget", "unit", "location", "status", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
           "ownerUid", "company", "product", "category", "quantity",
@@ -68,6 +69,7 @@ service cloud.firestore {
         && request.resource.data.category is string
         && request.resource.data.quantity is number
         && request.resource.data.maxUnitBudget is number
+        && (!("unit" in request.resource.data) || request.resource.data.unit is string)
         && request.resource.data.location is string
         && request.resource.data.status == "active"
         && request.resource.data.createdAt is timestamp;
