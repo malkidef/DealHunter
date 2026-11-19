@@ -80,6 +80,24 @@ function participantRole(deal, uid) {
   return null;
 }
 
+function assertCanConfirmCompletion(deal, uid) {
+  const role = participantRole(deal, uid);
+  if (!role) throw new TypeError("Vous ne participez pas à cette vente.");
+  if (!["agreed", "completed"].includes(deal.status)) {
+    throw new TypeError("La vente doit être acceptée avant la confirmation de réalisation.");
+  }
+  if (deal.paymentStatus !== "paid") {
+    throw new TypeError("Le paiement doit être confirmé avant la validation finale.");
+  }
+  if (deal.disputeStatus && !["none", "won"].includes(deal.disputeStatus)) {
+    throw new TypeError("La confirmation est suspendue pendant le traitement du litige.");
+  }
+  if (deal.refundStatus && deal.refundStatus !== "none") {
+    throw new TypeError("La confirmation est impossible pendant ou après un remboursement.");
+  }
+  return role;
+}
+
 function canReleaseToSeller(deal) {
   const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
@@ -90,5 +108,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, canReleaseToSeller
 };
