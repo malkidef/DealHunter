@@ -40,6 +40,8 @@ if (!ready) {
   const getSellerConnectStatusCall = httpsCallable(functions, "getSellerConnectStatus");
   const createSellerOnboardingLinkCall = httpsCallable(functions, "createSellerOnboardingLink");
   const openDealDisputeCall = httpsCallable(functions, "openDealDispute");
+  const inspectDealPaymentReconciliationCall = httpsCallable(functions, "inspectDealPaymentReconciliation");
+  const recordDealPaymentReconciliationReviewCall = httpsCallable(functions, "recordDealPaymentReconciliationReview");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
@@ -465,16 +467,94 @@ if (!ready) {
 
   getRedirectResult(auth).catch(showError);
 
+
+  const adminTabButton = document.getElementById("adminTabButton");
+  const adminAccessStatus = document.getElementById("adminAccessStatus");
+  const adminInspectForm = document.getElementById("adminReconciliationInspectForm");
+  const adminReviewForm = document.getElementById("adminReconciliationReviewForm");
+  const adminInspectStatus = document.getElementById("adminInspectStatus");
+  const adminReviewStatus = document.getElementById("adminReviewStatus");
+  const adminResult = document.getElementById("adminReconciliationResult");
+  const adminRecordButton = document.getElementById("adminRecordReviewButton");
+  let adminInspectionReady = false;
+  let inspectedDealId = "";
+  let inspectedSessionId = "";
+
+  adminInspectForm?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
+    const dealId = document.getElementById("adminDealId").value.trim();
+    const checkoutSessionId = document.getElementById("adminCheckoutSessionId").value.trim();
+    const button = document.getElementById("adminInspectButton");
+    button.disabled = true;
+    adminInspectionReady = false;
+    adminRecordButton.disabled = true;
+    adminInspectStatus.textContent = "Inspection Stripe en cours…";
+    adminResult.textContent = "Chargement…";
+    try {
+      const result = await inspectDealPaymentReconciliationCall({ dealId, checkoutSessionId });
+      inspectedDealId = dealId;
+      inspectedSessionId = checkoutSessionId;
+      adminInspectionReady = true;
+      adminRecordButton.disabled = false;
+      adminResult.textContent = JSON.stringify(result.data, null, 2);
+      adminInspectStatus.textContent = "Inspection terminée. Vérifie les écarts avant de consigner une décision.";
+      adminReviewStatus.textContent = "Inspection disponible. Une décision humaine et une note sont requises.";
+    } catch (error) {
+      adminResult.textContent = "Inspection impossible : " + (error.message || error.code || "erreur inconnue");
+      adminInspectStatus.textContent = "Échec de l’inspection. Aucune décision ne peut être enregistrée.";
+    } finally { button.disabled = false; }
+  });
+
+  adminReviewForm?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!adminInspectionReady || !inspectedDealId || !inspectedSessionId) {
+      adminReviewStatus.textContent = "Effectue une inspection avant d’enregistrer une décision.";
+      return;
+    }
+    const decision = document.getElementById("adminReviewDecision").value;
+    const notes = document.getElementById("adminReviewNotes").value.trim();
+    adminRecordButton.disabled = true;
+    adminReviewStatus.textContent = "Enregistrement du journal d’audit…";
+    try {
+      const result = await recordDealPaymentReconciliationReviewCall({
+        dealId: inspectedDealId, checkoutSessionId: inspectedSessionId, decision, notes
+      });
+      adminReviewStatus.textContent = result.data?.recorded
+        ? "Décision enregistrée. Aucune action financière n’a été exécutée. Référence : " + result.data.auditId
+        : "Le serveur n’a pas confirmé l’enregistrement.";
+      document.getElementById("adminReviewNotes").value = "";
+      adminInspectionReady = false;
+    } catch (error) {
+      adminReviewStatus.textContent = "Enregistrement refusé : " + (error.message || error.code || "erreur inconnue");
+    } finally { adminRecordButton.disabled = !adminInspectionReady; }
+  });
+
   onAuthStateChanged(auth, async user => {
     [unsubscribeOffers, unsubscribeNeeds, unsubscribeMatches].forEach(stop => { if (stop) stop(); });
     unsubscribeOffers = null; unsubscribeNeeds = null; unsubscribeMatches = null;
     cloudSellers = []; cloudBuyers = []; cloudMatchDocs = [];
     window.dealhunterUserUid = user?.uid || '';
+    if (adminTabButton) adminTabButton.classList.add('hidden');
+    adminInspectionReady = false;
+    inspectedDealId = ''; inspectedSessionId = '';
+    if (adminRecordButton) adminRecordButton.disabled = true;
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
       : "Aucun utilisateur connecté.";
     if (user) {
+      try {
+        const token = await user.getIdTokenResult(true);
+        const isAdmin = token.claims.admin === true;
+        if (adminTabButton) adminTabButton.classList.toggle("hidden", !isAdmin);
+        if (adminAccessStatus) adminAccessStatus.textContent = isAdmin
+          ? "Accès administrateur confirmé par le jeton Firebase."
+          : "Accès refusé : ce compte ne possède pas le rôle administrateur.";
+      } catch (error) {
+        if (adminAccessStatus) adminAccessStatus.textContent = "Impossible de vérifier le rôle administrateur.";
+      }
       const label = document.createElement("span");
       label.className = "auth-user";
       label.textContent = "Connecté : " + (user.email || user.displayName || "compte utilisateur");
@@ -507,6 +587,7 @@ if (!ready) {
         status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
       }
     } else {
+      if (adminAccessStatus) adminAccessStatus.textContent = "Connecte-toi avec un compte administrateur pour accéder à cet espace.";
       [unsubscribeOffers, unsubscribeNeeds, unsubscribeMatches].forEach(stop => { if (stop) stop(); });
       unsubscribeOffers = null; unsubscribeNeeds = null; unsubscribeMatches = null;
       cloudSellers = []; cloudBuyers = []; cloudMatchDocs = [];
