@@ -16,6 +16,9 @@
 8. Le dépôt ne fournissait pas de contrôle CI visible dans les résultats récupérés pour le commit audité. Le statut combiné du commit consulté ne renvoyait aucun contrôle.
 9. Le script lint ne vérifiait que `src/index.js`, pas `src/payments.js`. La branche d'audit corrige ce contrôle statique et ajoute une CI dédiée.
 
+
+10. Le contrat du moteur de matching est également incompatible au niveau des champs : `scorePair` exige notamment une unité (`unit`), un statut de demande `open`, un nom de produit `productName`, et un budget `maxUnitPrice`. Les fiches publiques actuelles utilisent `product`, `maxUnitBudget`, `location` et un statut `active` pour les besoins, et les règles de publication n'autorisent pas le champ `unit`. Il ne suffit donc pas de changer le nom des déclencheurs pour rendre le matching opérationnel.
+
 ## Blocages avant paiement
 
 - Définir une source fiable d'identité d'entreprise et son cycle de vérification. Ne pas fabriquer des sociétés à partir d'un simple nom libre ni d'un profil utilisateur incomplet.
