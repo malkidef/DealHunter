@@ -112,17 +112,24 @@ def collect(api_key, days=45, limit=1000, max_pages=5, today=None, opener=urlope
     posted_from, posted_to = date_range(days, today)
     notices, seen = [], set()
     total = None
+    pages_fetched = 0
     for page in range(max_pages):
         payload = fetch_page(api_key.strip(), posted_from, posted_to, page * limit, limit, opener)
+        pages_fetched += 1
         if total is None:
-            total = int(payload.get("totalRecords") or 0)
+            raw_total = payload.get("totalRecords")
+            try:
+                parsed_total = int(raw_total) if raw_total not in (None, "") else None
+                total = parsed_total if parsed_total is not None and parsed_total >= 0 else None
+            except (TypeError, ValueError):
+                total = None
         rows = payload["opportunitiesData"]
         for row in rows:
             notice = normalize_notice(row)
             if notice and notice["notice_id"] not in seen:
                 seen.add(notice["notice_id"])
                 notices.append(notice)
-        if not rows or len(rows) < limit or len(notices) >= total:
+        if not rows or len(rows) < limit or (total is not None and len(notices) >= total):
             break
     return {
         "source": SOURCE,
@@ -133,7 +140,7 @@ def collect(api_key, days=45, limit=1000, max_pages=5, today=None, opener=urlope
         "collected_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "count": len(notices),
         "total_matching_notices": total,
-        "pages_collected": min(max_pages, (len(notices) + limit - 1) // limit) if notices else 1,
+        "pages_collected": pages_fetched,
         "review_status": "pending",
         "notices": notices,
     }
