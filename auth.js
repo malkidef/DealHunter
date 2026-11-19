@@ -35,6 +35,7 @@ if (!ready) {
   const acceptDealProposalCall = httpsCallable(functions, "acceptDealProposal");
   const declineDealProposalCall = httpsCallable(functions, "declineDealProposal");
   const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
+  const cancelDealCall = httpsCallable(functions, "cancelDeal");
   const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
   const createSellerConnectAccountCall = httpsCallable(functions, "createSellerConnectAccount");
   const getSellerConnectStatusCall = httpsCallable(functions, "getSellerConnectStatus");
@@ -230,6 +231,21 @@ if (!ready) {
       await loadMatchRequests(user);
       status.textContent="Proposition refusée. Aucun paiement n’a été déclenché.";
     }catch(err){console.error(err);status.textContent="Refus impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-cancel-deal",async e=>{
+    const user=auth.currentUser,{dealId}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      const result=await cancelDealCall({dealId});
+      await loadMatchRequests(user);
+      status.textContent=result.data?.cancelled
+        ?"Vente annulée. La session de paiement a été expirée si elle existait."
+        :"Annulation enregistrée et en attente de vérification Stripe.";
+    }catch(err){
+      console.error(err);
+      await loadMatchRequests(user);
+      status.textContent="Annulation non finalisée : "+(err.message||err.code)+". Si une vérification Stripe est en cours, aucun versement vendeur ne sera déclenché.";
+    }
   });
   window.addEventListener("dealhunter-pay-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
