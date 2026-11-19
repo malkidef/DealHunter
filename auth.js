@@ -30,8 +30,24 @@ if (!ready) {
   const auth = getAuth(app);
   const db = getFirestore(app);
   let unsubscribeMatches = null;
+  let unsubscribeOffers = null;
+  let unsubscribeNeeds = null;
   let cloudSellers = [];
   let cloudBuyers = [];
+  let cloudMatchDocs = [];
+  const publishCloudData = () => {
+    const sellerById = new Map(cloudSellers.map(item => [item.id, item]));
+    const buyerById = new Map(cloudBuyers.map(item => [item.id, item]));
+    const serverMatches = cloudMatchDocs.map(item => {
+      const seller = sellerById.get(item.listingId);
+      const buyer = buyerById.get(item.requestId);
+      if (!seller || !buyer || item.status !== "suggested") return null;
+      return { id: item.id, s: seller, b: buyer, score: Number(item.compatibilityScore) || 0 };
+    }).filter(Boolean).sort((left, right) => right.score - left.score);
+    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+      detail: { sellers: cloudSellers, buyers: cloudBuyers, serverMatches, serverMatchesLoaded: true }
+    }));
+  };
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const signInWithProvider = async provider => {
     if (isMobileBrowser) return signInWithRedirect(auth, provider);
@@ -295,33 +311,57 @@ if (!ready) {
       };
     });
 
-    // Les suggestions calculées par Cloud Functions deviennent la source du matching affiché.
+    // Écoute en temps réel des catalogues et des suggestions générées par Cloud Functions.
+    [unsubscribeOffers, unsubscribeNeeds, unsubscribeMatches].forEach(stop => { if (stop) stop(); });
     cloudSellers = sellers;
     cloudBuyers = buyers;
-    if (unsubscribeMatches) unsubscribeMatches();
-    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers, serverMatches: [], serverMatchesLoaded: true }
-    }));
+    cloudMatchDocs = [];
+    publishCloudData();
+
+    unsubscribeOffers = onSnapshot(collection(db, "publicOffers"), snapshot => {
+      cloudSellers = snapshot.docs.filter(item => item.data().status === "active").map(item => {
+        const data = item.data();
+        return {
+          id: item.id, ownerUid: data.ownerUid || "",
+          company: data.company || "", product: data.product || "",
+          category: data.category || "Autre / à classer",
+          qty: Number(data.quantity ?? 0), unit: data.unit || "unit",
+          price: Number(data.unitPrice ?? 0), location: data.location || ""
+        };
+      });
+      publishCloudData();
+    }, error => {
+      console.error("Impossible de suivre les offres publiques :", error);
+      status.textContent = "Suivi des offres indisponible : " + (error.code || error.message);
+    });
+
+    unsubscribeNeeds = onSnapshot(collection(db, "publicNeeds"), snapshot => {
+      cloudBuyers = snapshot.docs.filter(item => item.data().status === "active").map(item => {
+        const data = item.data();
+        return {
+          id: item.id, ownerUid: data.ownerUid || "",
+          company: data.company || "", product: data.product || "",
+          category: data.category || "Autre / à classer",
+          qty: Number(data.quantity ?? 0), unit: data.unit || "unit",
+          budget: Number(data.maxUnitBudget ?? 0), location: data.location || ""
+        };
+      });
+      publishCloudData();
+    }, error => {
+      console.error("Impossible de suivre les besoins publics :", error);
+      status.textContent = "Suivi des besoins indisponible : " + (error.code || error.message);
+    });
+
     const matchesQuery = query(
       collection(db, "matches"),
       where("participantUids", "array-contains", user.uid)
     );
-    unsubscribeMatches = onSnapshot(matchesQuery, matchSnapshot => {
-      const sellerById = new Map(cloudSellers.map(item => [item.id, item]));
-      const buyerById = new Map(cloudBuyers.map(item => [item.id, item]));
-      const serverMatches = matchSnapshot.docs.map(item => {
-        const data = item.data();
-        const seller = sellerById.get(data.listingId);
-        const buyer = buyerById.get(data.requestId);
-        if (!seller || !buyer || data.status !== "suggested") return null;
-        return { id: item.id, s: seller, b: buyer, score: Number(data.compatibilityScore) || 0 };
-      }).filter(Boolean).sort((left, right) => right.score - left.score);
-      window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-        detail: { sellers: cloudSellers, buyers: cloudBuyers, serverMatches, serverMatchesLoaded: true }
-      }));
+    unsubscribeMatches = onSnapshot(matchesQuery, snapshot => {
+      cloudMatchDocs = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      publishCloudData();
     }, error => {
       console.error("Impossible de suivre les correspondances Firebase :", error);
-      status.textContent = "Annonces synchronisées, mais suivi des correspondances indisponible : " + (error.code || error.message);
+      status.textContent = "Suivi des correspondances indisponible : " + (error.code || error.message);
     });
   };
 
@@ -440,8 +480,9 @@ if (!ready) {
         status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
       }
     } else {
-      if (unsubscribeMatches) { unsubscribeMatches(); unsubscribeMatches = null; }
-      cloudSellers = []; cloudBuyers = [];
+      [unsubscribeOffers, unsubscribeNeeds, unsubscribeMatches].forEach(stop => { if (stop) stop(); });
+      unsubscribeOffers = null; unsubscribeNeeds = null; unsubscribeMatches = null;
+      cloudSellers = []; cloudBuyers = []; cloudMatchDocs = [];
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
       window.dispatchEvent(new CustomEvent('dealhunter-cloud-data', { detail: { sellers: [], buyers: [], serverMatches: [], serverMatchesLoaded: false } }));
