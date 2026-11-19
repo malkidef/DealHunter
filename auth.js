@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -150,22 +150,26 @@ if (!ready) {
     const user=auth.currentUser,{dealId}=e.detail||{};
     if(!user||!dealId)return;
     try{
-      const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
-      if(!snap.exists())throw new Error("Vente introuvable.");
-      const deal=snap.data();
-      if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
-      const isSeller=user.uid===deal.sellerUid;
-      const field=isSeller?"sellerConfirmed":"buyerConfirmed";
-      if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
-      const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
-      await updateDoc(ref,{
-        [field]:true,
-        [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
-        status:otherConfirmed?"completed":"agreed",
-        updatedAt:serverTimestamp()
+      const ref=doc(db,"deals",dealId);
+      const result=await runTransaction(db,async transaction=>{
+        const snap=await transaction.get(ref);
+        if(!snap.exists())throw new Error("Vente introuvable.");
+        const deal=snap.data();
+        if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
+        const isSeller=user.uid===deal.sellerUid;
+        const field=isSeller?"sellerConfirmed":"buyerConfirmed";
+        if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
+        const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
+        transaction.update(ref,{
+          [field]:true,
+          [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
+          status:otherConfirmed?"completed":"agreed",
+          updatedAt:serverTimestamp()
+        });
+        return Boolean(otherConfirmed);
       });
       await loadMatchRequests(user);
-      status.textContent=otherConfirmed?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
+      status.textContent=result?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
     }catch(err){console.error(err);status.textContent="Confirmation impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-send-message",async e=>{
