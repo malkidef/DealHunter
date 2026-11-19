@@ -856,7 +856,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
           else actions='<div class="muted">Ta confirmation est enregistrée. En attente de l’autre entreprise.</div>';
           if(d.paymentStatus!=='paid'&&d.paymentStatus!=='manual_review'&&(!d.paymentReviewStatus||d.paymentReviewStatus==='none')&&(!d.disputeStatus||d.disputeStatus==='none')&&(!d.refundStatus||d.refundStatus==='none'))actions+='<p><button type="button" class="secondary" data-deal-cancel="'+escapeHtml(d.id)+'">Annuler cette vente avant paiement</button></p>';
         }
-        if(d.status==='cancellation_pending')actions+='<div class="muted">Annulation en cours de vérification avec Stripe. Aucun versement vendeur ne peut être déclenché.</div>';
+        if(d.status==='cancellation_pending')actions+='<div class="muted">Annulation en cours de vérification avec Stripe. Aucun versement vendeur ne peut être déclenché.</div><p><button type="button" class="secondary" data-deal-cancel-retry="'+escapeHtml(d.id)+'">Réessayer la vérification Stripe</button></p>';
         if(d.status==='cancelled')actions+='<div class="muted">Cette vente est annulée.</div>';
         if(d.paymentStatus==='paid'&&d.disputeStatus!=='open'&&(!d.refundStatus||d.refundStatus==='none')){
           actions+='<p><button type="button" class="secondary" data-deal-dispute="'+escapeHtml(d.id)+'">Signaler un problème / ouvrir un litige</button></p>';
@@ -907,6 +907,14 @@ document.addEventListener('click',e=>{
  cancel.disabled=true;
  cancel.textContent='Annulation en cours…';
  window.dispatchEvent(new CustomEvent('dealhunter-cancel-deal',{detail:{dealId:cancel.dataset.dealCancel}}));
+});
+document.addEventListener('click',e=>{
+ const retry=e.target.closest('[data-deal-cancel-retry]');
+ if(!retry)return;
+ if(!window.confirm('Relancer la vérification de cette annulation auprès de Stripe ? Aucun paiement ni versement ne sera initié.'))return;
+ retry.disabled=true;
+ retry.textContent='Vérification en cours…';
+ window.dispatchEvent(new CustomEvent('dealhunter-cancel-deal',{detail:{dealId:retry.dataset.dealCancelRetry}}));
 });
 document.addEventListener('click',e=>{
  const dispute=e.target.closest('[data-deal-dispute]');
