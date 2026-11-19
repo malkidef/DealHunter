@@ -48,7 +48,6 @@ test("payment rejects invalid participants, currency and commission", () => {
   assert.throws(() => assertDealPayable({ ...deal, currency: "usd" }));
   assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "paid" }));
   assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "refunded" }));
-  assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "checkout_creating" }));
   assert.throws(() => assertDealPayable({ ...deal, paymentStatus: "manual_review" }));
   for (const state of ["pending", "checkout_creating", "checkout_created", "checkout_failed", "checkout_expired"]) {
     assert.doesNotThrow(() => assertDealPayable({ ...deal, paymentStatus: state }));
