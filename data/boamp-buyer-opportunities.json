@@ -70,7 +70,7 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110920",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
+      "category": "Énergie et combustibles",
       "kind": "produits",
       "relevance": "à étudier",
       "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
@@ -126,7 +126,7 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111063",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
+      "category": "Alimentation",
       "kind": "produits",
       "relevance": "à étudier",
       "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
@@ -140,10 +140,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111078",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
+      "category": "Services et prestations",
+      "kind": "services",
       "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111034",
@@ -182,10 +182,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110900",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110972",
@@ -238,10 +238,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111093",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111357",
@@ -252,10 +252,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111357",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
+      "category": "Services et prestations",
+      "kind": "services",
       "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111376",
@@ -294,10 +294,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111535",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
+      "category": "Services et prestations",
+      "kind": "services",
       "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111496",
@@ -336,7 +336,7 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111408",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
+      "category": "Équipements industriels et scientifiques",
       "kind": "produits",
       "relevance": "à étudier",
       "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
@@ -406,10 +406,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111693",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Alimentation",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111760",
@@ -560,10 +560,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111824",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110941",
@@ -602,10 +602,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111074",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110905",
@@ -630,10 +630,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110917",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110928",
@@ -644,10 +644,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110928",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Énergie et combustibles",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110939",
@@ -658,10 +658,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110939",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "EPI et sécurité",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110978",
@@ -672,10 +672,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110978",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111072",
@@ -770,10 +770,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111113",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_110981",
@@ -784,10 +784,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110981",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Informatique et télécommunications",
+      "kind": "produits",
+      "relevance": "à étudier",
+      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
     },
     {
       "id": "26_111118",
@@ -924,10 +924,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111396",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "EPI et sécurité",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111410",
@@ -938,7 +938,7 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111410",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
+      "category": "Alimentation",
       "kind": "produits",
       "relevance": "à étudier",
       "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
@@ -966,10 +966,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111525",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Matériaux et composants",
+      "kind": "produits",
+      "relevance": "à étudier",
+      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
     },
     {
       "id": "26_111497",
@@ -1008,10 +1008,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111554",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111557",
@@ -1022,10 +1022,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111557",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
+      "category": "Services et prestations",
+      "kind": "services",
       "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111540",
@@ -1078,10 +1078,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111631",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111659",
@@ -1190,10 +1190,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110980",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111012",
@@ -1232,10 +1232,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110956",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
+      "category": "Services et prestations",
+      "kind": "services",
       "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111015",
@@ -1246,10 +1246,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111015",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
-      "kind": "produits",
-      "relevance": "à étudier",
-      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111046",
@@ -1260,10 +1260,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111046",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
     },
     {
       "id": "26_111056",
@@ -1316,10 +1316,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111100",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Alimentation",
+      "kind": "produits",
+      "relevance": "à étudier",
+      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
     },
     {
       "id": "26_110906",
@@ -1330,10 +1330,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110906",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Équipements industriels et scientifiques",
+      "kind": "produits",
+      "relevance": "à étudier",
+      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
     },
     {
       "id": "26_110913",
@@ -1344,7 +1344,7 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-110913",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "Fournitures et consommables",
+      "category": "Équipements industriels et scientifiques",
       "kind": "produits",
       "relevance": "à étudier",
       "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
@@ -1372,10 +1372,10 @@
       "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-111104",
       "source": "BOAMP / DILA",
       "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+      "category": "Matériaux et composants",
+      "kind": "produits",
+      "relevance": "à étudier",
+      "reason": "Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."
     },
     {
       "id": "26_111114",
@@ -1405,5 +1405,6 @@
       "relevance": "faible",
       "reason": "Marché principalement lié à une prestation de services."
     }
-  ]
+  ],
+  "classification_version": 2
 }
