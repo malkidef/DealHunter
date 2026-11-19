@@ -37,7 +37,7 @@ function assertDealPayable(deal) {
   if (!deal || deal.status !== "agreed") {
     throw new TypeError("Le paiement est possible uniquement après accord des deux entreprises.");
   }
-  const allowedPaymentStates = [undefined, null, "none", "pending", "checkout_creating", "checkout_created", "checkout_failed", "checkout_expired"];
+  const allowedPaymentStates = [undefined, null, "none", "pending", "checkout_creating", "checkout_created", "checkout_creating", "checkout_failed", "checkout_expired"];
   if (!allowedPaymentStates.includes(deal.paymentStatus)) {
     throw new TypeError("L'état de paiement de cet accord ne permet pas un nouveau paiement.");
   }
