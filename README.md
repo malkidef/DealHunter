@@ -36,7 +36,7 @@ Le connecteur `scripts/collect_sam.py` utilise l'API publique officielle « Get 
 
 - Documentation officielle : https://open.gsa.gov/api/get-opportunities-public-api/
 - Endpoint : `https://api.sam.gov/opportunities/v2/search`
-- La clé API personnelle est obligatoire. Créer une clé depuis la page Account Details de SAM.gov, puis l'enregistrer dans GitHub Actions sous le nom `SAM_GOV_API_KEY`. Ne jamais la placer dans le dépôt, l'interface web ou une conversation.
+- La clé API personnelle est obligatoire. Créer une clé depuis la page Account Details de SAM.gov, puis l'enregistrer dans GitHub Actions sous le nom `SAM_GOV_API_KEY` (nom recommandé). Le workflow accepte aussi l'ancien nom `SAM_API_KEY` pour compatibilité. Ne jamais la placer dans le dépôt, l'interface web ou une conversation.
 - Le workflow `.github/workflows/collect-sam.yml` prévoit une collecte quotidienne et un lancement manuel. En l'absence du secret, il saute la collecte sans écraser le flux existant.
 - La collecte est limitée par défaut aux 45 derniers jours, au type de vente de surplus, et à cinq pages maximum. Les avis sont dédupliqués et marqués `verified=false`.
 - L'interface n'ajoute pas automatiquement ces avis aux besoins privés ni au matching commercial validé.
