@@ -106,3 +106,13 @@ Ces services ne sont pas tous des places de marché de surplus. Ils peuvent aide
 - **Phase 4 :** enrichissement d'entreprises et matching acheteurs-vendeurs, avec contrôle de qualité et validation avant contact.
 
 Le répertoire est évolutif. La couverture mondiale et multi-secteurs est un objectif de recherche; elle ne garantit ni exhaustivité ni disponibilité des données.
+
+
+## 5. Sources institutionnelles ouvertes — signaux économiques
+
+| Source | Couverture / spécialités | Accès et notes |
+|---|---|---|
+| [BODACC / DILA](https://www.bodacc.fr/pages/donnees-ouvertes-et-api/) | France ; ventes et cessions, créations, procédures collectives et annonces légales | API publique gratuite, Licence Ouverte 2.0. DealHunter collecte uniquement les avis de ventes/cessions dans un flux distinct. Ces avis ne sont pas des stocks de marchandises. Les champs contenant des données personnelles non nécessaires ne sont pas récupérés. |
+| [BOAMP / DILA](https://www.boamp.fr/) | France ; avis de marchés publics et besoins d'acheteurs | API open data officielle ; flux de besoins publics, distinct des surplus privés. |
+| [TED — Tenders Electronic Daily](https://ted.europa.eu/) | Union européenne ; avis de marchés publics | API officielle de recherche ; flux de besoins publics, distinct des surplus privés. |
+
