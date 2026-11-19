@@ -6,6 +6,7 @@ DealHunter vise à rapprocher des entreprises qui disposent de stocks excédenta
 
 - `index.html` : interface responsive pour mobile et ordinateur, offres vendeurs, besoins acheteurs, matching indicatif, import CSV et registre local des sources.
 - **Firebase Authentication et Firestore** : le code d'authentification et de synchronisation des profils, offres, besoins et demandes de mise en relation est présent dans `auth.js`, `firebase-web-config.js` et `firebase/firestore.rules`. Le déploiement effectif des règles et le parcours complet doivent encore être vérifiés dans le projet Firebase.
+- **BODACC** : connecteur officiel ajouté pour les avis de ventes et cessions, publié séparément dans `data/bodacc-business-sales.json` et l’onglet « Signaux BODACC ». Ces avis ne sont pas des offres de stocks ; ils restent des signaux à vérifier et les données personnelles non nécessaires sont exclues.
 - **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
 - Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
 
