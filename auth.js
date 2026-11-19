@@ -37,6 +37,7 @@ if (!ready) {
   const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
   const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
   const createSellerConnectAccountCall = httpsCallable(functions, "createSellerConnectAccount");
+  const getSellerConnectStatusCall = httpsCallable(functions, "getSellerConnectStatus");
   const createSellerOnboardingLinkCall = httpsCallable(functions, "createSellerOnboardingLink");
   const openDealDisputeCall = httpsCallable(functions, "openDealDispute");
   let unsubscribeMatches = null;
@@ -488,6 +489,18 @@ if (!ready) {
         firestoreStep = "demandes de mise en relation";
         await loadMatchRequests(user);
         status.dataset.firestore = "saved";
+        if (sellerStripeStatus) {
+          try {
+            const stripeState = (await getSellerConnectStatusCall({})).data;
+            sellerStripeStatus.textContent = !stripeState.configured
+              ? "Compte vendeur Stripe non configuré."
+              : stripeState.payoutsEnabled
+                ? "Stripe Connect opérationnel : versements vendeur activés."
+                : "Compte Stripe créé : vérification entreprise / coordonnées bancaires en attente (" + stripeState.onboardingStatus + ").";
+          } catch (stripeStatusError) {
+            console.warn("État Stripe vendeur indisponible :", stripeStatusError);
+          }
+        }
       } catch (error) {
         console.error("Erreur Firestore (" + firestoreStep + ") :", error);
         status.dataset.firestore = "error";
