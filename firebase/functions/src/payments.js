@@ -953,7 +953,6 @@ async function processStripeEvent(event) {
         });
         if (applied) await tryReleaseDeal(doc.id);
       }
-    }
   } else if (event.type === "charge.refunded") {
     const charge = event.data.object;
     if (!charge.payment_intent) {
@@ -1016,7 +1015,6 @@ async function processStripeEvent(event) {
           console.error("DealHunter refund reversal requires review", doc.id, error.message);
         }
       }
-    }
   }
 }
 
