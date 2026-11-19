@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -176,6 +176,73 @@ exports.getCompanyDashboard = onCall(async (request) => {
   };
 });
 
+
+// Read-only Stripe/Firestore reconciliation. Requires an explicitly granted Firebase admin custom claim.
+exports.inspectDealPaymentReconciliation = onCall({ secrets: [stripeSecret] }, async (request) => {
+  requireAuth(request);
+  if (request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Accès réservé aux administrateurs DealHunter.");
+  }
+  const dealId = validId(request.data?.dealId, "Vente");
+  const sessionId = validId(request.data?.checkoutSessionId, "Session Checkout");
+  const ref = db.collection("deals").doc(dealId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+  const deal = snap.data();
+  let session;
+  try {
+    session = await stripeClient().checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent"]
+    });
+  } catch (error) {
+    console.error("DealHunter reconciliation Stripe lookup failed", dealId, error.message);
+    throw new HttpsError("unavailable", "Impossible de consulter cette session Stripe pour le moment.");
+  }
+  let identityMatches = false;
+  let expectedAmounts = null;
+  try {
+    expectedAmounts = assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId);
+    identityMatches = true;
+  } catch (_) {
+    identityMatches = false;
+  }
+  const paymentIntent = session.payment_intent && typeof session.payment_intent === "object"
+    ? session.payment_intent : null;
+  const paymentIntentId = paymentIntent?.id ||
+    (typeof session.payment_intent === "string" ? session.payment_intent : null);
+  return {
+    dealId,
+    firestore: {
+      paymentStatus: deal.paymentStatus || "pending",
+      paymentReviewStatus: deal.paymentReviewStatus || "none",
+      checkoutAttempt: Number(deal.checkoutAttempt || 0),
+      stripeCheckoutSessionId: deal.stripeCheckoutSessionId || null,
+      stripePaymentIntentId: deal.stripePaymentIntentId || null,
+      transferStatus: deal.transferStatus || "none"
+    },
+    stripe: {
+      sessionId: session.id,
+      sessionStatus: session.status || null,
+      paymentStatus: session.payment_status || null,
+      amountTotal: Number.isSafeInteger(session.amount_total) ? session.amount_total : null,
+      currency: String(session.currency || "").toLowerCase() || null,
+      paymentIntentId,
+      paymentIntentStatus: paymentIntent?.status || null
+    },
+    checks: {
+      identityMatches,
+      amountMatches: identityMatches && session.amount_total === expectedAmounts.totalCents,
+      currencyMatches: identityMatches && String(session.currency || "").toLowerCase() === expectedAmounts.currency,
+      currentSession: deal.stripeCheckoutSessionId === session.id,
+      checkoutAttemptMatches: session.metadata?.checkoutAttempt === undefined ||
+        Number(session.metadata.checkoutAttempt) === Number(deal.checkoutAttempt || 0),
+      paidInStripe: session.payment_status === "paid",
+      paidInDealHunter: deal.paymentStatus === "paid",
+      paymentIntentMatches: Boolean(paymentIntentId && deal.stripePaymentIntentId === paymentIntentId)
+    },
+    actionTaken: false
+  };
+});
 
 exports.getSellerConnectStatus = onCall(async (request) => {
   const uid = requireAuth(request);
