@@ -84,8 +84,17 @@ Les scores restent indicatifs : ils ne certifient ni l'existence d'un stock, ni 
 2. **Référentiel** : normalisation des produits, unités, quantités, prix, localisation et dates de validité.
 3. **Matching** : compatibilité produit, catégorie, quantité, budget, zone et délais.
 4. **Mise en relation** : consentement, acceptation/refus et journal d'audit.
-5. **Commande et paiement** : intégration future d'un prestataire adapté ; commission envisagée de 5 % uniquement après confirmation contractuelle de la vente.
+5. **Commande et paiement** : parcours DealHunter structuré avec proposition, accord, Checkout Stripe et commission de 5 % calculée côté serveur, puis transfert vendeur uniquement après paiement et double confirmation.
 6. **Confiance et conformité** : vérification des entreprises, sécurité, RGPD, prévention de la fraude et gestion des désinscriptions.
+
+
+## Accords commerciaux — mutations serveur
+
+La création d'une proposition et son acceptation passent par les Cloud Functions callable `createDealProposal` et `acceptDealProposal`. Le serveur relit la mise en relation acceptée, l'offre et le besoin actifs, puis vérifie les propriétaires, le produit, l'unité, les quantités disponibles et le budget acheteur avant d'enregistrer l'accord. Une seule proposition est autorisée par demande de mise en relation.
+
+Les clients peuvent lire un accord uniquement s'ils figurent parmi ses participants. Les règles Firestore interdisent désormais aux clients de créer, modifier ou supprimer directement un document `deals`. Les confirmations passent par `confirmDealCompletion` et exigent un paiement confirmé, un statut admissible et l'absence de litige ou de remboursement bloquant.
+
+Dans l'interface, l'acheteur voit une action de paiement sur un accord accepté ; elle appelle `createDealCheckoutSession` et ouvre la page Stripe Checkout sécurisée. Cette action reste indisponible tant que le mode paiements n'est pas explicitement activé dans un environnement de test configuré. Aucun déploiement ou test Stripe réel n'est impliqué par ces changements de code.
 
 ## Paiements Stripe — préparation du mode test
 
