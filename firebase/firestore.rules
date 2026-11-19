@@ -247,7 +247,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.product == request.resource.data.product
-          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.unit == request.resource.data.unit
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.get("unit", "unit") == request.resource.data.unit
           && exists(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId))
           && exists(/databases/$(database)/documents/publicNeeds/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerId))
           && get(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId)).data.product == request.resource.data.product
