@@ -198,6 +198,11 @@ function resolveTransferCompletion(deal, transferId) {
 }
 
 
+function isCurrentCheckoutAttempt(deal, attempt) {
+  return Boolean(deal && Number.isSafeInteger(Number(attempt)) &&
+    Number(attempt) > 0 && Number(deal.checkoutAttempt || 0) === Number(attempt));
+}
+
 function canCreateSellerTransfer(deal) {
   return Boolean(deal && !deal.stripeTransferId &&
     !["paid", "reversed", "reversal_pending"].includes(deal.transferStatus) &&
@@ -214,5 +219,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 };
