@@ -150,6 +150,31 @@ function assertCanConfirmCompletion(deal, uid) {
   return role;
 }
 
+function assertCanCancelDeal(deal, uid) {
+  const role = participantRole(deal, uid);
+  if (!role) throw new TypeError("Vous ne participez pas à cette vente.");
+  if (!["agreed", "cancellation_pending"].includes(deal.status)) {
+    throw new TypeError("Seule une vente acceptée et non terminée peut être annulée.");
+  }
+  if (deal.paymentStatus === "paid" || deal.paymentStatus === "manual_review" ||
+      deal.paymentReviewStatus && deal.paymentReviewStatus !== "none") {
+    throw new TypeError("Cette vente a un paiement confirmé ou à vérifier : une annulation simple est impossible.");
+  }
+  if (deal.paymentStatus === "checkout_creating") {
+    throw new TypeError("Une session de paiement est en cours de création. Réessayez dans deux minutes.");
+  }
+  if (deal.disputeStatus && deal.disputeStatus !== "none") {
+    throw new TypeError("Une vente avec un litige ne peut pas être annulée par ce parcours.");
+  }
+  if (deal.refundStatus && deal.refundStatus !== "none") {
+    throw new TypeError("Une vente avec un remboursement ne peut pas être annulée par ce parcours.");
+  }
+  if (deal.status === "cancellation_pending" && !deal.stripeCheckoutSessionId) {
+    throw new TypeError("La session de paiement à annuler est introuvable.");
+  }
+  return role;
+}
+
 function assertCanOpenDispute(deal, uid) {
   const role = participantRole(deal, uid);
   if (!role) throw new TypeError("Vous ne participez pas à cette vente.");
@@ -270,5 +295,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 };
