@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -517,22 +517,27 @@ async function processStripeEvent(event) {
     if (dispute.payment_intent) {
       const matches = await db.collection("deals").where("stripePaymentIntentId", "==", dispute.payment_intent).limit(1).get();
       for (const doc of matches.docs) {
-        if (event.type === "charge.dispute.created") {
-          await doc.ref.update({
-            disputeStatus: "open", stripeDisputeId: dispute.id,
-            transferStatus: "blocked_dispute", disputeOpenedAt: FieldValue.serverTimestamp(),
+        const applied = await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return false;
+          const transition = resolveDisputeEvent(fresh.data(), event.type, dispute, event.created);
+          if (!transition.apply) return false;
+          const update = {
+            disputeStatus: transition.status,
+            stripeDisputeId: transition.disputeId,
+            stripeDisputeEventCreated: transition.eventCreated,
+            transferStatus: transition.transferStatus,
             updatedAt: FieldValue.serverTimestamp()
-          });
-        } else {
-          const won = dispute.status === "won";
-          await doc.ref.update({
-            disputeStatus: won ? "won" : "lost",
-            stripeDisputeClosedAt: FieldValue.serverTimestamp(),
-            transferStatus: won ? "pending" : "blocked_dispute_lost",
-            updatedAt: FieldValue.serverTimestamp()
-          });
-          if (won) await tryReleaseDeal(doc.id);
-        }
+          };
+          if (event.type === "charge.dispute.created") {
+            update.disputeOpenedAt = FieldValue.serverTimestamp();
+          } else {
+            update.stripeDisputeClosedAt = FieldValue.serverTimestamp();
+          }
+          tx.update(doc.ref, update);
+          return transition.shouldRetryPayout === true;
+        });
+        if (applied) await tryReleaseDeal(doc.id);
       }
     }
   } else if (event.type === "charge.refunded") {
