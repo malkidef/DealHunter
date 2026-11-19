@@ -120,7 +120,12 @@ test("rejects a deal proposal with a forged seller or altered commission", async
     buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
   };
   await assertFails(setDoc(doc(db, "deals/forged"), { ...base, sellerUid: "attacker" }));
-  await assertFails(setDoc(doc(db, "deals/wrong-commission"), { ...base, commissionRate: 1 }));
+  await assertFails(setDoc(doc(db, "deals/wrong-commission-rate"), { ...base, commissionRate: 1 }));
+  await assertFails(setDoc(doc(db, "deals/wrong-commission-amount"), { ...base, commissionAmount: 1 }));
+  await assertFails(setDoc(doc(db, "deals/inflated-total"), { ...base, totalAmount: 999 }));
+  await assertFails(setDoc(doc(db, "deals/over-budget"), { ...base, unitPrice: 11 }));
+  await assertFails(setDoc(doc(db, "deals/over-stock"), { ...base, quantity: 101 }));
+  await assertFails(setDoc(doc(db, "deals/wrong-product"), { ...base, product: "Ordinateurs" }));
 });
 
 test("only the other participant can accept a proposed deal", async () => {
