@@ -9,7 +9,7 @@ OUT="data/boamp-buyer-opportunities.json"
 HEADERS={"User-Agent":"DealHunter/0.2 (open-data reuse)"}
 
 RULES=[
-("Équipements industriels et scientifiques","produits",[r"\bmicroscope",r"\banalyseur",r"\bequipement industriel",r"\bmachine(s)?",r"\boutillage",r"\bcompresseur",r"\bpompe(s)?"]),
+("Équipements industriels et scientifiques","produits",[r"\bmicroscope",r"\banalyseur",r"\bcapture volumetrique",r"\bsonorisation",r"\beclairage scenique",r"\bsechoir(s)?",r"\bplieur(s)?",r"\bequipement industriel",r"\bmachine(s)?",r"\boutillage",r"\bcompresseur",r"\bpompe(s)?"]),
 ("Informatique et télécommunications","produits",[r"\binformatique",r"\bordinateur",r"\bserveur(s)?",r"\blogiciel",r"\btelephone(s)?",r"\btelecommunication",r"\bphotocopieur",r"\bimprimante(s)?"]),
 ("Mobilier et stockage","produits",[r"\bmobilier",r"\bmeuble(s)?",r"\brayonnage",r"\bstockage",r"\barmoire(s)?",r"\btable(s)?",r"\bchaise(s)?",r"\brangement"]),
 ("Emballage et logistique","produits",[r"\bemballage",r"\bcarton(s)?",r"\bpalette(s)?",r"\bconditionnement",r"\bconteneur(s)?"]),
