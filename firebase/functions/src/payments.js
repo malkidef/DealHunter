@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -538,6 +538,88 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
     if (error instanceof HttpsError) throw error;
     paymentError("Création de la session de paiement impossible", error);
   }
+});
+
+exports.cancelDeal = onCall({ secrets: [stripeSecret] }, async (request) => {
+  const uid = requireAuth(request);
+  const dealId = validId(request.data?.dealId, "Vente");
+  const ref = db.collection("deals").doc(dealId);
+  const reservation = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+    const deal = snap.data();
+    try {
+      assertCanCancelDeal(deal, uid);
+    } catch (error) {
+      const permission = error.message === "Vous ne participez pas à cette vente.";
+      throw new HttpsError(permission ? "permission-denied" : "failed-precondition", error.message);
+    }
+    const sessionId = deal.stripeCheckoutSessionId || null;
+    if (deal.paymentStatus === "checkout_created" && !sessionId) {
+      throw new HttpsError("failed-precondition", "La session Stripe enregistrée est introuvable. Une vérification est nécessaire.");
+    }
+    if (sessionId) {
+      if (deal.status !== "cancellation_pending") {
+        tx.update(ref, {
+          status: "cancellation_pending",
+          cancellationRequestedByUid: uid,
+          cancellationRequestedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      }
+      return { sessionId, alreadyPending: deal.status === "cancellation_pending" };
+    }
+    tx.update(ref, {
+      status: "cancelled",
+      cancelledByUid: uid,
+      cancelledAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+    return { sessionId: null, cancelled: true };
+  });
+
+  if (!reservation.sessionId) return { accepted: true, cancelled: true };
+
+  let session;
+  try {
+    session = await stripeClient().checkout.sessions.retrieve(reservation.sessionId);
+    if (session.payment_status === "paid" || session.status === "complete") {
+      throw new HttpsError("failed-precondition", "Le paiement semble avoir abouti. La vente reste bloquée pour vérification, sans versement vendeur.");
+    }
+    if (session.status === "open") {
+      session = await stripeClient().checkout.sessions.expire(reservation.sessionId);
+    }
+    if (session.status !== "expired") {
+      throw new HttpsError("failed-precondition", "Stripe n'a pas confirmé l'expiration de la session. L'annulation reste en attente.");
+    }
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    console.error("DealHunter Checkout cancellation could not be verified", dealId, error.message);
+    throw new HttpsError("unavailable", "Impossible de vérifier l'expiration du paiement. L'annulation reste en attente et peut être relancée.");
+  }
+
+  const cancelled = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+    const deal = snap.data();
+    if (deal.status !== "cancellation_pending" ||
+        ["paid", "manual_review"].includes(deal.paymentStatus) ||
+        (deal.paymentReviewStatus && deal.paymentReviewStatus !== "none")) {
+      return false;
+    }
+    tx.update(ref, {
+      status: "cancelled",
+      paymentStatus: "checkout_expired",
+      cancelledByUid: uid,
+      cancelledAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    });
+    return true;
+  });
+  if (!cancelled) {
+    throw new HttpsError("failed-precondition", "Un événement de paiement nécessite une vérification. Aucun versement vendeur ne sera déclenché.");
+  }
+  return { accepted: true, cancelled: true, checkoutExpired: true };
 });
 
 exports.confirmDealCompletion = onCall(async (request) => {
