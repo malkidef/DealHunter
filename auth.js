@@ -229,7 +229,7 @@ if (!ready) {
         return setDoc(doc(db, "publicOffers", item.id), {
           ownerUid: user.uid, company: data.company || "", product: data.product || "",
           category: data.category || "Autre / à classer",
-          quantity: Number(data.quantity ?? data.qty ?? 0),
+          quantity: Number(data.quantity ?? data.qty ?? 0), unit: data.unit || "unit",
           unitPrice: Number(data.unitPrice ?? data.price ?? 0),
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
@@ -240,7 +240,7 @@ if (!ready) {
         return setDoc(doc(db, "publicNeeds", item.id), {
           ownerUid: user.uid, company: data.company || "", product: data.product || "",
           category: data.category || "Autre / à classer",
-          quantity: Number(data.quantity ?? data.qty ?? 0),
+          quantity: Number(data.quantity ?? data.qty ?? 0), unit: data.unit || "unit",
           maxUnitBudget: Number(data.maxUnitBudget ?? data.budget ?? 0),
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
@@ -277,7 +277,7 @@ if (!ready) {
         id: item.id, ownerUid: data.ownerUid || "",
         company: data.company || "", product: data.product || "",
         category: data.category || "Autre / à classer",
-        qty: Number(data.quantity ?? 0), price: Number(data.unitPrice ?? 0),
+        qty: Number(data.quantity ?? 0), unit: data.unit || "unit", price: Number(data.unitPrice ?? 0),
         location: data.location || ""
       };
     });
@@ -287,7 +287,7 @@ if (!ready) {
         id: item.id, ownerUid: data.ownerUid || "",
         company: data.company || "", product: data.product || "",
         category: data.category || "Autre / à classer",
-        qty: Number(data.quantity ?? 0), budget: Number(data.maxUnitBudget ?? 0),
+        qty: Number(data.quantity ?? 0), unit: data.unit || "unit", budget: Number(data.maxUnitBudget ?? 0),
         location: data.location || ""
       };
     });
@@ -322,7 +322,7 @@ if (!ready) {
         throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
       }
       const original = privateSnap.data();
-      const updated = { company, product, category, quantity, unitPrice, location };
+      const updated = { company, product, category, quantity, unit: String(record.unit || "unit"), unitPrice, location };
       const batch = writeBatch(db);
       batch.update(privateRef, updated);
       batch.set(publicRef, {
@@ -488,8 +488,8 @@ if (!ready) {
       const isSeller = collectionName === "sellerOffers";
       const publicCollection = isSeller ? "publicOffers" : "publicNeeds";
       const publicRecord = isSeller
-        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, location: record.location, status: "active", createdAt: serverTimestamp() }
-        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, location: record.location, status: "active", createdAt: serverTimestamp() };
+        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unit: record.unit || "unit", unitPrice: record.unitPrice, location: record.location, status: "active", createdAt: serverTimestamp() }
+        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unit: record.unit || "unit", maxUnitBudget: record.maxUnitBudget, location: record.location, status: "active", createdAt: serverTimestamp() };
       await setDoc(doc(db, publicCollection, privateRef.id), publicRecord);
       await loadCloudRecords(user);
       status.textContent = collectionName === "sellerOffers"
@@ -508,12 +508,12 @@ if (!ready) {
     if (event.target === sellerForm) {
       saveBusinessRecord(event, sellerForm, "sellerOffers", [
         ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
-        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["location", "sLocation"]
+        ["quantity", "sQty", "number"], ["unit", "sUnit"], ["unitPrice", "sPrice", "number"], ["location", "sLocation"]
       ]);
     } else if (event.target === buyerForm) {
       saveBusinessRecord(event, buyerForm, "buyerNeeds", [
         ["company", "bCompany"], ["product", "bProduct"], ["category", "bCategory"],
-        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["location", "bLocation"]
+        ["quantity", "bQty", "number"], ["unit", "bUnit"], ["maxUnitBudget", "bBudget", "number"], ["location", "bLocation"]
       ]);
     }
   }, true);
