@@ -808,7 +808,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
         const transferLabel=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Versement bloqué : vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
         const issueLabel=d.disputeStatus==='open'?'Litige ouvert':d.disputeStatus==='won'?'Litige clôturé en faveur du vendeur':d.disputeStatus==='lost'?'Litige clôturé en défaveur de DealHunter':d.refundStatus==='refunded'?'Paiement remboursé':d.refundStatus==='partial_refund_manual_review'?'Remboursement partiel à examiner':d.refundStatus==='manual_review'?'Remboursement en examen':'Aucun litige ou remboursement signalé';
         let actions='';
-        if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button></p>';
+        if(d.status==='proposed'&&d.accepterUid===(window.dealhunterUserUid||''))actions='<p><button type="button" data-deal-accept="'+escapeHtml(d.id)+'">Accepter les conditions</button> <button type="button" class="secondary" data-deal-decline="'+escapeHtml(d.id)+'">Refuser la proposition</button></p>';
         if(d.status==='agreed'){
           const seller=(window.dealhunterUserUid||'')===d.sellerUid;
           const confirmed=seller?d.sellerConfirmed:d.buyerConfirmed;
@@ -850,6 +850,14 @@ document.addEventListener('click',e=>{
  pay.disabled=true;
  pay.textContent='Ouverture du paiement…';
  window.dispatchEvent(new CustomEvent('dealhunter-pay-deal',{detail:{dealId:pay.dataset.dealPay}}));
+});
+document.addEventListener('click',e=>{
+ const decline=e.target.closest('[data-deal-decline]');
+ if(!decline)return;
+ if(!window.confirm('Refuser définitivement cette proposition de vente ?'))return;
+ decline.disabled=true;
+ decline.textContent='Refus…';
+ window.dispatchEvent(new CustomEvent('dealhunter-decline-deal',{detail:{dealId:decline.dataset.dealDecline}}));
 });
 document.addEventListener('click',e=>{
  const dispute=e.target.closest('[data-deal-dispute]');
