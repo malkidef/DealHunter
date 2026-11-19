@@ -34,6 +34,7 @@ if (!ready) {
   const createDealProposalCall = httpsCallable(functions, "createDealProposal");
   const acceptDealProposalCall = httpsCallable(functions, "acceptDealProposal");
   const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
+  const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
@@ -155,6 +156,16 @@ if (!ready) {
       await loadMatchRequests(user);
       status.textContent="Accord enregistré. Les conditions sont désormais verrouillées.";
     }catch(err){console.error(err);status.textContent="Acceptation impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-pay-deal",async e=>{
+    const user=auth.currentUser,{dealId}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      const result=await createDealCheckoutSessionCall({dealId});
+      const url=result.data?.url;
+      if(!url||!/^https:\/\//i.test(url))throw new Error("Lien de paiement sécurisé invalide.");
+      window.location.assign(url);
+    }catch(err){console.error(err);status.textContent="Paiement indisponible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-confirm-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
