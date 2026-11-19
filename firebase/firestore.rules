@@ -3,8 +3,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Profil privé : chaque entreprise ne lit et ne modifie que son propre profil.
     match /users/{userId} {
-      allow read, create, update: if request.auth != null
-        && request.auth.uid == userId;
+      // Les identifiants et états Stripe sont écrits exclusivement par Cloud Functions.
+      function noClientStripeMutation() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "stripeAccountId", "stripeOnboardingStatus", "stripePayoutsEnabled", "stripeChargesEnabled"
+        ]);
+      }
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny([
+          "stripeAccountId", "stripeOnboardingStatus", "stripePayoutsEnabled", "stripeChargesEnabled"
+        ]);
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && noClientStripeMutation();
       allow delete: if false;
 
       match /sellerOffers/{offerId} {
