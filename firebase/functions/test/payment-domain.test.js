@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -89,4 +89,32 @@ test("seller payout requires completed status, both confirmations and paid funds
     { refundStatus: "refunded" }, { refundStatus: "partial_refund_manual_review" },
     { refundStatus: "manual_review" }
   ]) assert.equal(canReleaseToSeller({ ...releasable, ...patch }), false);
+});
+
+test("completion confirmation requires a paid agreed deal and a valid participant", () => {
+  const paid = { ...deal, status: "agreed", paymentStatus: "paid" };
+  assert.equal(assertCanConfirmCompletion(paid, "seller-1"), "seller");
+  assert.equal(assertCanConfirmCompletion(paid, "buyer-1"), "buyer");
+  assert.throws(() => assertCanConfirmCompletion(paid, "intruder"), /ne participez pas/);
+  assert.throws(() => assertCanConfirmCompletion({ ...paid, paymentStatus: "pending" }, "seller-1"), /paiement doit être confirmé/);
+  assert.throws(() => assertCanConfirmCompletion({ ...paid, status: "proposed" }, "seller-1"), /acceptée avant/);
+  assert.throws(() => assertCanConfirmCompletion({ ...paid, status: "cancelled" }, "seller-1"), /acceptée avant/);
+});
+
+test("completion confirmation is blocked during disputes and after any refund", () => {
+  const paid = { ...deal, status: "agreed", paymentStatus: "paid" };
+  for (const disputeStatus of ["open", "lost", "under_review"]) {
+    assert.throws(
+      () => assertCanConfirmCompletion({ ...paid, disputeStatus }, "buyer-1"),
+      /litige/
+    );
+  }
+  for (const refundStatus of ["refunded", "partial_refund_manual_review", "manual_review"]) {
+    assert.throws(
+      () => assertCanConfirmCompletion({ ...paid, refundStatus }, "buyer-1"),
+      /remboursement/
+    );
+  }
+  assert.equal(assertCanConfirmCompletion({ ...paid, disputeStatus: "won" }, "buyer-1"), "buyer");
+  assert.equal(assertCanConfirmCompletion({ ...paid, disputeStatus: "none", refundStatus: "none" }, "buyer-1"), "buyer");
 });
