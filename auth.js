@@ -33,6 +33,7 @@ if (!ready) {
   const functions = getFunctions(app);
   const createDealProposalCall = httpsCallable(functions, "createDealProposal");
   const acceptDealProposalCall = httpsCallable(functions, "acceptDealProposal");
+  const declineDealProposalCall = httpsCallable(functions, "declineDealProposal");
   const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
   const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
   const createSellerConnectAccountCall = httpsCallable(functions, "createSellerConnectAccount");
@@ -161,6 +162,15 @@ if (!ready) {
       await loadMatchRequests(user);
       status.textContent="Accord enregistré. Les conditions sont désormais verrouillées.";
     }catch(err){console.error(err);status.textContent="Acceptation impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-decline-deal",async e=>{
+    const user=auth.currentUser,{dealId}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      await declineDealProposalCall({dealId});
+      await loadMatchRequests(user);
+      status.textContent="Proposition refusée. Aucun paiement n’a été déclenché.";
+    }catch(err){console.error(err);status.textContent="Refus impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-pay-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
