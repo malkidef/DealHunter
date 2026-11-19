@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -391,7 +391,7 @@ async function tryReleaseDeal(dealId) {
   const snap = await ref.get();
   if (!snap.exists || !isDealReleaseEligible(snap.data())) return;
   const deal = snap.data();
-  if (deal.transferStatus === "paid") return;
+  if (deal.transferStatus === "paid" || deal.transferStatus === "reversed") return;
   if (deal.transferStatus === "processing") {
     const started = deal.transferProcessingAt?.toMillis?.() || 0;
     if (Date.now() - started < 10 * 60 * 1000) return;
@@ -405,28 +405,35 @@ async function tryReleaseDeal(dealId) {
   const sellerSnap = await db.collection("users").doc(deal.sellerUid).get();
   const seller = sellerSnap.data() || {};
   const accountId = seller.stripeAccountId;
-  if (!accountId || seller.stripeOnboardingStatus !== "complete") {
+  if (!accountId || seller.stripeOnboardingStatus !== "complete" || seller.stripePayoutsEnabled !== true) {
     await ref.update({ transferStatus: "blocked_seller_onboarding", updatedAt: FieldValue.serverTimestamp() });
     return;
   }
   const claimed = await db.runTransaction(async (tx) => {
     const fresh = await tx.get(ref);
-    if (!fresh.exists || !isDealReleaseEligible(fresh.data()) || fresh.data().transferStatus === "paid") return false;
+    if (!fresh.exists || !isDealReleaseEligible(fresh.data()) ||
+        ["paid", "reversed", "reversal_pending"].includes(fresh.data().transferStatus)) return false;
     if (fresh.data().transferStatus === "processing") {
       const started = fresh.data().transferProcessingAt?.toMillis?.() || 0;
       if (Date.now() - started < 10 * 60 * 1000) return false;
     }
+    const freshAmounts = getDealAmounts(fresh.data());
     tx.update(ref, {
       transferStatus: "processing",
       transferProcessingAt: FieldValue.serverTimestamp(),
-      commissionCents: amounts.commissionCents,
-      sellerNetCents: amounts.sellerNetCents,
+      commissionCents: freshAmounts.commissionCents,
+      sellerNetCents: freshAmounts.sellerNetCents,
       updatedAt: FieldValue.serverTimestamp()
     });
     return true;
   });
   if (!claimed) return;
+
   try {
+    // Last Firestore check before the external Stripe side effect. A race can
+    // still occur after this read; the post-transfer reconciliation below handles it.
+    const preflight = await ref.get();
+    if (!preflight.exists || !isDealReleaseEligible(preflight.data())) return;
     const transfer = await stripeClient().transfers.create({
       amount: amounts.sellerNetCents,
       currency: amounts.currency,
@@ -434,10 +441,46 @@ async function tryReleaseDeal(dealId) {
       transfer_group: "dealhunter_" + dealId,
       metadata: { dealId, commissionCents: String(amounts.commissionCents), grossCents: String(amounts.totalCents) }
     }, { idempotencyKey: "dh-transfer-" + dealId });
-    await ref.update({
-      transferStatus: "paid", stripeTransferId: transfer.id,
-      transferredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
+
+    const reconciliation = await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) throw new Error("Vente supprimée après création du transfert Stripe");
+      const state = resolveTransferCompletion(fresh.data(), transfer.id);
+      tx.update(ref, {
+        transferStatus: state.status,
+        stripeTransferId: transfer.id,
+        transferredAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      });
+      return state;
     });
+
+    if (reconciliation.shouldReverse) {
+      try {
+        await stripeClient().transfers.createReversal(
+          transfer.id, {}, { idempotencyKey: "dh-refund-reversal-" + dealId }
+        );
+        await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(ref);
+          if (fresh.exists && fresh.data().stripeTransferId === transfer.id &&
+              fresh.data().refundStatus === "refunded") {
+            tx.update(ref, {
+              transferStatus: "reversed",
+              refundReversedAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          }
+        });
+      } catch (error) {
+        await ref.update({
+          refundStatus: "manual_review",
+          transferStatus: "manual_review_after_transfer",
+          refundErrorCode: String(error.code || "stripe_error").slice(0, 80),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        console.error("DealHunter post-transfer reversal requires review", dealId, error.message);
+      }
+    }
   } catch (error) {
     await ref.update({
       transferStatus: "pending_funds_or_review",
@@ -545,36 +588,54 @@ async function processStripeEvent(event) {
     if (charge.payment_intent) {
       const matches = await db.collection("deals").where("stripePaymentIntentId", "==", charge.payment_intent).limit(1).get();
       for (const doc of matches.docs) {
-        const deal = doc.data();
-        const refund = resolveRefundState(deal, charge);
-        if (refund.alreadyFinal) continue;
-        if (!refund.fullyRefunded) {
-          await doc.ref.update({
-            refundStatus: refund.status,
-            refundedAmountCents: refund.refundedAmountCents,
-            updatedAt: FieldValue.serverTimestamp()
-          });
-          continue;
-        }
-        if (deal.stripeTransferId) {
-          try {
-            await stripeClient().transfers.createReversal(deal.stripeTransferId, {}, { idempotencyKey: "dh-refund-reversal-" + doc.id });
-          } catch (error) {
-            await doc.ref.update({
-              refundStatus: "manual_review",
+        const refundAction = await db.runTransaction(async (tx) => {
+          const fresh = await tx.get(doc.ref);
+          if (!fresh.exists) return { action: "none" };
+          const deal = fresh.data();
+          const refund = resolveRefundState(deal, charge);
+          if (refund.status !== "refunded") {
+            tx.update(doc.ref, {
+              refundStatus: refund.status,
               refundedAmountCents: refund.refundedAmountCents,
-              refundErrorCode: String(error.code || "stripe_error").slice(0, 80),
               updatedAt: FieldValue.serverTimestamp()
             });
-            continue;
+            return { action: "partial" };
           }
-        }
-        await doc.ref.update({
-          refundStatus: "refunded",
-          refundedAmountCents: refund.refundedAmountCents,
-          transferStatus: deal.stripeTransferId ? "reversed" : (deal.transferStatus || "none"),
-          refundedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
+          const transferId = deal.stripeTransferId || null;
+          tx.update(doc.ref, {
+            refundStatus: "refunded",
+            refundedAmountCents: refund.refundedAmountCents,
+            transferStatus: transferId ? "reversal_pending" : (deal.transferStatus || "none"),
+            refundedAt: deal.refundedAt || FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+          return transferId ? { action: "reverse", transferId } : { action: "refunded" };
         });
+        if (refundAction.action !== "reverse") continue;
+        try {
+          await stripeClient().transfers.createReversal(
+            refundAction.transferId, {}, { idempotencyKey: "dh-refund-reversal-" + doc.id }
+          );
+          await db.runTransaction(async (tx) => {
+            const fresh = await tx.get(doc.ref);
+            if (fresh.exists && fresh.data().stripeTransferId === refundAction.transferId &&
+                fresh.data().refundStatus === "refunded") {
+              tx.update(doc.ref, {
+                transferStatus: "reversed",
+                refundReversedAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp()
+              });
+            }
+          });
+        } catch (error) {
+          await doc.ref.update({
+            refundStatus: "manual_review",
+            transferStatus: "manual_review_after_transfer",
+            refundErrorCode: String(error.code || "stripe_error").slice(0, 80),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+          console.error("DealHunter refund reversal requires review", doc.id, error.message);
+        }
       }
     }
   }
