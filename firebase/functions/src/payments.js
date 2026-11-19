@@ -38,6 +38,7 @@ function money(amount) {
 }
 
 exports.getCompanyDashboard = onCall(async (request) => {
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const companyId = String(request.data?.companyId || "");
   if (!companyId || companyId.length > 160) {
