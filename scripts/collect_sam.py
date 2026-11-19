@@ -8,7 +8,7 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 API = "https://api.sam.gov/opportunities/v2/search"
@@ -55,8 +55,10 @@ def normalize_notice(row):
     }
     place = {key: value for key, value in place.items() if value not in (None, "")}
     official_url = str(get_field(row, "uiLink", default="") or "").strip()
-    if not official_url.startswith("https://"):
-        official_url = f"https://sam.gov/opp/{notice_id}/view"
+    parsed_url = urlsplit(official_url)
+    host = (parsed_url.hostname or "").lower()
+    if parsed_url.scheme != "https" or not (host == "sam.gov" or host.endswith(".sam.gov")):
+        official_url = f"https://sam.gov/opp/{quote(notice_id, safe='')}/view"
     return {
         "notice_id": notice_id,
         "title": title,
