@@ -1,0 +1,25 @@
+# Dependencies and generated build output
+node_modules/
+**/node_modules/
+coverage/
+dist/
+build/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.firebase/
+.runtimeconfig.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.pem
+*service-account*.json
+*serviceAccount*.json
+
+# Local editor / OS files
+.DS_Store
+.idea/
+.vscode/
