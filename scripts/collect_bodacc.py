@@ -22,6 +22,7 @@ def get_json(url):
 
 def build_api_url(limit=100):
     params = {
+        "select": "id,familleavis,familleavis_lib,ville,departement_nom_officiel,numerodepartement,dateparution,url_complete",
         "limit": str(limit),
         "order_by": "dateparution desc",
         "where": "familleavis = 'vente'",
