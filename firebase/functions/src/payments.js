@@ -520,6 +520,14 @@ async function processStripeEvent(event) {
       const deal = snap.data();
       const decision = resolveCheckoutPaymentEvent(deal, session, dealId);
       if (decision.action === "already_paid") return;
+      if (decision.action === "missing_payment_intent") {
+        tx.update(ref, {
+          paymentStatus: "manual_review",
+          paymentReviewStatus: "missing_payment_intent",
+          updatedAt: FieldValue.serverTimestamp()
+        });
+        return;
+      }
       if (decision.action === "duplicate_payment") {
         tx.update(ref, {
           paymentReviewStatus: "duplicate_payment",
