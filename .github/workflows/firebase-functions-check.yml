@@ -1,0 +1,25 @@
+name: Firebase Functions checks
+
+on:
+  push:
+    paths:
+      - "firebase/functions/**"
+      - ".github/workflows/firebase-functions-check.yml"
+  pull_request:
+    paths:
+      - "firebase/functions/**"
+      - ".github/workflows/firebase-functions-check.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firebase/functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --ignore-scripts
+      - run: npm run lint
