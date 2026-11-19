@@ -38,6 +38,14 @@ class SamCollectorTests(unittest.TestCase):
         self.assertEqual(notice["source_url"], "https://sam.gov/opp/abc123/view")
         self.assertFalse(notice["verified"])
 
+    def test_rejects_non_sam_external_notice_url(self):
+        notice = normalize_notice({
+            "noticeId": "lot/123",
+            "title": "Surplus lot",
+            "uiLink": "https://sam-gov.example/phishing",
+        })
+        self.assertEqual(notice["source_url"], "https://sam.gov/opp/lot%2F123/view")
+
     def test_ignores_rows_without_identity_or_title(self):
         self.assertIsNone(normalize_notice({"noticeId": "missing-title"}))
         self.assertIsNone(normalize_notice({"title": "Missing ID"}))
