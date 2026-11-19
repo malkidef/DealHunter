@@ -7,6 +7,7 @@ import {
 import {
   getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, onSnapshot, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
 const status = document.getElementById("authStatus");
@@ -29,6 +30,10 @@ if (!ready) {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const functions = getFunctions(app);
+  const createDealProposalCall = httpsCallable(functions, "createDealProposal");
+  const acceptDealProposalCall = httpsCallable(functions, "acceptDealProposal");
+  const confirmDealCompletionCall = httpsCallable(functions, "confirmDealCompletion");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
@@ -133,23 +138,11 @@ if (!ready) {
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
     const quantity=Number(d.quantity),unitPrice=Number(d.unitPrice);
-    if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<=0){status.textContent="Saisis une quantité entière et un prix unitaire positif.";return;}
+    if(!Number.isSafeInteger(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<=0){
+      status.textContent="Saisis une quantité entière et un prix unitaire positif.";return;
+    }
     try{
-      const requestSnap=await getDoc(doc(db,"matchRequests",d.requestId));
-      if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
-      const match=requestSnap.data();
-      if(match.status!=="accepted"||!(match.participantUids||[]).includes(user.uid))throw new Error("Une mise en relation acceptée est nécessaire.");
-      const totalAmount=Math.round(quantity*unitPrice*100)/100;
-      const isSeller=user.uid===match.sellerUid;
-      await addDoc(collection(db,"deals"),{
-        requestId:d.requestId,sellerUid:match.sellerUid,buyerUid:match.buyerUid,
-        participantUids:[match.sellerUid,match.buyerUid],proposerUid:user.uid,
-        accepterUid:isSeller?match.buyerUid:match.sellerUid,
-        product:String(match.product||"Produit").slice(0,160),unit:match.unit||"unit",quantity,unitPrice,
-        totalAmount,commissionRate:5,commissionAmount:Math.round(totalAmount*0.05*100)/100,
-        status:"proposed",sellerConfirmed:false,buyerConfirmed:false,
-        createdAt:serverTimestamp(),updatedAt:serverTimestamp()
-      });
+      const result=await createDealProposalCall({requestId:d.requestId,quantity,unitPrice});
       await loadMatchRequests(user);
       status.textContent="Proposition envoyée. Elle devra être acceptée par l’autre entreprise.";
     }catch(err){console.error(err);status.textContent="Proposition impossible : "+(err.message||err.code);}
@@ -158,37 +151,20 @@ if (!ready) {
     const user=auth.currentUser,{dealId}=e.detail||{};
     if(!user||!dealId)return;
     try{
-      const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
-      if(!snap.exists()||snap.data().status!=="proposed"||snap.data().accepterUid!==user.uid)throw new Error("Cette proposition ne peut pas être acceptée par ce compte.");
-      await updateDoc(ref,{status:"agreed",agreedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+      await acceptDealProposalCall({dealId});
       await loadMatchRequests(user);
-      status.textContent="Accord enregistré : les deux entreprises ont validé les conditions.";
+      status.textContent="Accord enregistré. Les conditions sont désormais verrouillées.";
     }catch(err){console.error(err);status.textContent="Acceptation impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-confirm-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
     if(!user||!dealId)return;
     try{
-      const ref=doc(db,"deals",dealId);
-      const result=await runTransaction(db,async transaction=>{
-        const snap=await transaction.get(ref);
-        if(!snap.exists())throw new Error("Vente introuvable.");
-        const deal=snap.data();
-        if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
-        const isSeller=user.uid===deal.sellerUid;
-        const field=isSeller?"sellerConfirmed":"buyerConfirmed";
-        if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
-        const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
-        transaction.update(ref,{
-          [field]:true,
-          [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
-          status:otherConfirmed?"completed":"agreed",
-          updatedAt:serverTimestamp()
-        });
-        return Boolean(otherConfirmed);
-      });
+      const result=await confirmDealCompletionCall({dealId});
       await loadMatchRequests(user);
-      status.textContent=result?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
+      status.textContent=result.data?.completed
+        ?"Les deux confirmations sont enregistrées. Vente terminée."
+        :"Confirmation enregistrée. En attente de l’autre entreprise.";
     }catch(err){console.error(err);status.textContent="Confirmation impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-send-message",async e=>{
