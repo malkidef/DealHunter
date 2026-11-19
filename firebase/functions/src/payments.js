@@ -95,7 +95,7 @@ exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (
     country: stripeCountry(user),
     email: request.auth.token.email || undefined,
     business_type: "company",
-    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    capabilities: { transfers: { requested: true } },
     metadata: { dealhunterUserUid: uid }
   }, { idempotencyKey: "dh-connect-user-" + uid });
   await userRef.update({
@@ -134,6 +134,7 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
   let amounts;
   try { amounts = assertDealPayable(deal); }
   catch (error) { throw new HttpsError("failed-precondition", error.message); }
+  if (amounts.totalCents < 50) throw new HttpsError("failed-precondition", "Le montant minimum d'un paiement est de 0,50 €.");
   if (deal.paymentStatus === "checkout_created" && deal.stripeCheckoutSessionId) {
     const existing = await stripeClient().checkout.sessions.retrieve(deal.stripeCheckoutSessionId);
     if (existing.status === "open" && existing.url) return { url: existing.url };
@@ -353,7 +354,12 @@ async function processStripeEvent(event) {
     const account = event.data.object;
     const uid = account.metadata?.dealhunterUserUid;
     if (uid) {
-      await db.collection("users").doc(uid).update({
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      if (!userSnap.exists || userSnap.data().stripeAccountId !== account.id) {
+        throw new Error("Compte Stripe Connect non associé au profil utilisateur attendu");
+      }
+      await userRef.update({
         stripeOnboardingStatus: account.details_submitted && account.payouts_enabled ? "complete" : "pending",
         stripePayoutsEnabled: Boolean(account.payouts_enabled),
         stripeChargesEnabled: Boolean(account.charges_enabled),
