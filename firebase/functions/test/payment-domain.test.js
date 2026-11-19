@@ -350,7 +350,7 @@ test("reconciliation decisions require fresh Stripe evidence and never imply a f
   const currentPaid = {
     identityMatches: true, currentSession: true, checkoutAttemptMatches: true,
     paidInStripe: true, paymentIntentId: "pi_1", paymentIntentMatches: true,
-    paidInDealHunter: false
+    dealStatus: "agreed", paidInDealHunter: false
   };
   assert.equal(validateReconciliationDecision("payment_confirmed", currentPaid), true);
   assert.equal(validateReconciliationDecision("refund_review", currentPaid), true);
@@ -359,6 +359,12 @@ test("reconciliation decisions require fresh Stripe evidence and never imply a f
   }));
   assert.throws(() => validateReconciliationDecision("payment_confirmed", {
     ...currentPaid, checkoutAttemptMatches: false
+  }));
+  assert.throws(() => validateReconciliationDecision("payment_confirmed", {
+    ...currentPaid, paymentIntentMatches: false
+  }));
+  assert.throws(() => validateReconciliationDecision("payment_confirmed", {
+    ...currentPaid, dealStatus: "rejected"
   }));
   assert.throws(() => validateReconciliationDecision("refund_review", {
     ...currentPaid, paidInStripe: false
