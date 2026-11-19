@@ -67,6 +67,17 @@ Le répertoire multi-secteurs se trouve dans [docs/SOURCES.md](docs/SOURCES.md).
 
 Le pipeline et les règles de validation sont décrits dans [docs/PIPELINE_SOURCES.md](docs/PIPELINE_SOURCES.md).
 
+## Qualité des pistes publiques et matching
+
+Les rapprochements TED et SAM.gov sont des pistes de prospection, pas des commandes ni des offres certifiées. Le moteur :
+- écarte les échéances reconnues comme expirées ;
+- conserve les dates absentes ou illisibles en les signalant « à confirmer », sans les interpréter comme une échéance future ;
+- déduplique les résultats par source, rôle, fiche vendeur/acheteur et identifiant d'avis ;
+- n'affiche un lien cliquable que si son hôte HTTPS appartient au domaine officiel TED ou SAM.gov ;
+- maintient une revue humaine avant tout contact ou engagement commercial.
+
+Les scores restent indicatifs : ils ne certifient ni l'existence d'un stock, ni la disponibilité, l'état, le prix final ou l'éligibilité d'un acheteur.
+
 ## Architecture cible
 
 1. **Sources autorisées** : API officielles, flux partenaires, exports autorisés et imports manuels.
