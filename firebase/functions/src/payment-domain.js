@@ -65,6 +65,8 @@ function assertCheckoutSessionMatchesDeal(deal, session, dealId) {
   const amounts = getDealAmounts(deal);
   if (session.metadata?.dealId !== dealId ||
       session.metadata?.buyerUid !== deal.buyerUid ||
+      (session.metadata?.checkoutAttempt !== undefined &&
+       Number(session.metadata.checkoutAttempt) !== Number(deal.checkoutAttempt)) ||
       session.client_reference_id !== dealId ||
       session.amount_total !== amounts.totalCents ||
       String(session.currency || "").toLowerCase() !== amounts.currency) {
