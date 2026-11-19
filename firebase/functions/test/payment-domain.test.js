@@ -24,7 +24,7 @@ test("commission is fixed at 5% and calculated in integer cents", () => {
 });
 
 test("rounds commission to nearest cent", () => {
-  assert.equal(getDealAmounts({ ...deal, quantity: 1, unitPrice: 10.01, totalAmount: 10.01 }).commissionCents, 50);
+  assert.equal(getDealAmounts({ ...deal, quantity: 1, unitPrice: 10.01, totalAmount: 10.01, commissionAmount: 0.50 }).commissionCents, 50);
 });
 
 test("all amount calculations reject persisted commission metadata that differs from 5%", () => {
