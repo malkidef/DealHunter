@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -270,4 +270,19 @@ test("transfer completion rechecks refunds and disputes after Stripe creates the
     });
   }
   assert.throws(() => resolveTransferCompletion(eligible, ""));
+});
+
+
+test("seller transfer cannot be created twice when a Stripe transfer ID already exists", () => {
+  const eligible = {
+    status: "completed", sellerConfirmed: true, buyerConfirmed: true,
+    paymentStatus: "paid", disputeStatus: "none", refundStatus: "none"
+  };
+  assert.equal(canCreateSellerTransfer(eligible), true);
+  assert.equal(canCreateSellerTransfer({ ...eligible, transferStatus: "processing" }), true);
+  assert.equal(canCreateSellerTransfer({ ...eligible, stripeTransferId: "tr_existing" }), false);
+  for (const transferStatus of ["paid", "reversed", "reversal_pending"]) {
+    assert.equal(canCreateSellerTransfer({ ...eligible, transferStatus }), false);
+  }
+  assert.equal(canCreateSellerTransfer({ ...eligible, disputeStatus: "open" }), false);
 });
