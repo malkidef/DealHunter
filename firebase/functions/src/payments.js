@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, assertRefundChargeMatchesDeal, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, resolveCheckoutPaymentEvent, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -967,6 +967,7 @@ async function processStripeEvent(event) {
           const fresh = await tx.get(doc.ref);
           if (!fresh.exists) return { action: "none" };
           const deal = fresh.data();
+          assertRefundChargeMatchesDeal(deal, charge);
           const refund = resolveRefundState(deal, charge);
           if (refund.status !== "refunded") {
             tx.update(doc.ref, {
