@@ -131,7 +131,7 @@ function resolveRefundState(deal, charge) {
   // Stripe events can arrive out of order: never move the recorded refund backwards.
   const refundedAmountCents = Math.max(incomingRefunded, previousRefunded);
   const fullyRefunded = refundedAmountCents >= charged;
-  if (deal.refundStatus === "refunded" && fullyRefunded) {
+  if (deal.refundStatus === "refunded") {
     return { status: "refunded", refundedAmountCents, fullyRefunded: true, alreadyFinal: true };
   }
   if (fullyRefunded) {
