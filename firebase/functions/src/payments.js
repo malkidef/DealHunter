@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -300,8 +300,9 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
       const fresh = await tx.get(ref);
       if (!fresh.exists) throw new Error("Vente supprimée pendant la création du paiement");
       const current = fresh.data();
+      if (Number(current.checkoutAttempt || 0) !== attempt || current.paymentStatus === "paid") return;
       tx.update(ref, {
-        paymentStatus: current.paymentStatus === "paid" ? "paid" : "checkout_created",
+        paymentStatus: "checkout_created",
         stripeCheckoutSessionId: session.id,
         updatedAt: FieldValue.serverTimestamp()
       });
@@ -310,7 +311,8 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
   } catch (error) {
     await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
-      if (fresh.exists && fresh.data().paymentStatus !== "paid") {
+      if (fresh.exists && fresh.data().paymentStatus !== "paid" &&
+          Number(fresh.data().checkoutAttempt || 0) === attempt) {
         tx.update(ref, { paymentStatus: "checkout_failed", updatedAt: FieldValue.serverTimestamp() });
       }
     }).catch(() => {});
@@ -389,7 +391,7 @@ async function tryReleaseDeal(dealId) {
   if (process.env.DEALHUNTER_PAYMENTS_ENABLED !== "true") return;
   const ref = db.collection("deals").doc(dealId);
   const snap = await ref.get();
-  if (!snap.exists || !isDealReleaseEligible(snap.data())) return;
+  if (!snap.exists || !canCreateSellerTransfer(snap.data())) return;
   const deal = snap.data();
   if (deal.transferStatus === "paid" || deal.transferStatus === "reversed") return;
   if (deal.transferStatus === "processing") {
@@ -411,8 +413,7 @@ async function tryReleaseDeal(dealId) {
   }
   const claimed = await db.runTransaction(async (tx) => {
     const fresh = await tx.get(ref);
-    if (!fresh.exists || !isDealReleaseEligible(fresh.data()) ||
-        ["paid", "reversed", "reversal_pending"].includes(fresh.data().transferStatus)) return false;
+    if (!fresh.exists || !canCreateSellerTransfer(fresh.data())) return false;
     if (fresh.data().transferStatus === "processing") {
       const started = fresh.data().transferProcessingAt?.toMillis?.() || 0;
       if (Date.now() - started < 10 * 60 * 1000) return false;
