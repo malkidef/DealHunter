@@ -350,7 +350,7 @@ exports.getDealPaymentReconciliationAdminDashboard = onCall(async (request) => {
     ["paymentReviewStatus", ["missing_payment_intent", "duplicate_payment", "stale_checkout_paid", "paid_checkout_in_ineligible_deal"]],
     ["refundStatus", ["partial_refund_manual_review", "manual_review"]],
     ["disputeStatus", ["open", "under_review", "lost"]],
-    ["transferStatus", ["manual_review_after_transfer", "reversal_pending", "blocked_refund", "blocked_dispute_lost"]]
+    ["transferStatus", ["manual_review_after_transfer", "reversal_pending", "blocked_refund", "blocked_dispute", "blocked_dispute_lost", "blocked_invalid_amounts", "blocked_seller_onboarding", "pending_funds_or_review", "processing"]]
   ];
   const snapshots = await Promise.all(queries.map(([field, statuses]) =>
     db.collection("deals").where(field, "in", statuses).limit(50).get()
