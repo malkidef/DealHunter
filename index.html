@@ -298,7 +298,7 @@ function score(s,b){
  if(!priceFit||!qtyFit||!locationFit||!productFit)return 0;
  return Math.min(100,35+(productExact?30:20)+15+10+10);
 }
-function matches(){if(serverMatchesLoaded)return serverMatches;const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
+function matches(){if(typeof serverMatchesLoaded!=='undefined'&&serverMatchesLoaded)return typeof serverMatches!=='undefined'?serverMatches:[];const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function classifyGsaSector(x){
