@@ -94,6 +94,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.ownerUid == request.resource.data.buyerUid
           && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
           && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
+          && request.resource.data.product == get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.product
           && request.resource.data.requesterCompany == (
             request.auth.uid == request.resource.data.sellerUid
               ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
