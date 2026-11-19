@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -384,4 +384,25 @@ test("reconciliation decisions require fresh Stripe evidence and never imply a f
   assert.throws(() => validateReconciliationDecision("not_paid", {
     identityMatches: true, paidInStripe: true
   }));
+});
+
+
+test("cancellation is restricted to unpaid agreed deals and their participants", () => {
+  assert.equal(assertCanCancelDeal({ ...deal, paymentStatus: "pending" }, "buyer-1"), "buyer");
+  assert.equal(assertCanCancelDeal({ ...deal, paymentStatus: "checkout_created", stripeCheckoutSessionId: "cs_1" }, "seller-1"), "seller");
+  assert.equal(assertCanCancelDeal({ ...deal, status: "cancellation_pending", paymentStatus: "checkout_created", stripeCheckoutSessionId: "cs_1" }, "buyer-1"), "buyer");
+  for (const patch of [
+    { status: "proposed" },
+    { status: "completed" },
+    { paymentStatus: "paid" },
+    { paymentStatus: "manual_review" },
+    { paymentStatus: "checkout_creating" },
+    { disputeStatus: "open" },
+    { refundStatus: "partial_refund_manual_review" },
+    { paymentReviewStatus: "duplicate_payment" }
+  ]) {
+    assert.throws(() => assertCanCancelDeal({ ...deal, ...patch }, "buyer-1"));
+  }
+  assert.throws(() => assertCanCancelDeal({ ...deal, paymentStatus: "pending" }, "intruder"));
+  assert.throws(() => assertCanCancelDeal({ ...deal, status: "cancellation_pending" }, "buyer-1"));
 });
