@@ -12,14 +12,14 @@ const MAX_SCAN = 5000;
 function asListing(id, data) {
   return {
     $id: id,
-    companyId: data.companyId,
-    productName: data.productName,
+    companyId: data.ownerUid,
+    productName: data.product,
     category: data.category,
     quantity: data.quantity,
-    unit: data.unit,
+    unit: data.unit || "unit",
     unitPrice: data.unitPrice,
     currency: data.currency || "EUR",
-    city: data.city || "",
+    city: data.location || "",
     countryCode: data.countryCode || "FR",
     status: data.status,
     availableUntil: data.availableUntil || null
@@ -29,16 +29,16 @@ function asListing(id, data) {
 function asRequest(id, data) {
   return {
     $id: id,
-    companyId: data.companyId,
-    productName: data.productName,
+    companyId: data.ownerUid,
+    productName: data.product,
     category: data.category,
     quantity: data.quantity,
-    unit: data.unit,
-    maxUnitPrice: data.maxUnitPrice ?? null,
+    unit: data.unit || "unit",
+    maxUnitPrice: data.maxUnitBudget ?? null,
     currency: data.currency || "EUR",
-    city: data.city || "",
+    city: data.location || "",
     countryCode: data.countryCode || "FR",
-    status: data.status,
+    status: "open",
     neededBy: data.neededBy || null
   };
 }
@@ -90,20 +90,20 @@ async function createSuggestions(listingDoc, requestDocs) {
   return created;
 }
 
-exports.matchOnSellerWrite = onDocumentWritten("seller_listings/{listingId}", async (event) => {
+exports.matchOnSellerWrite = onDocumentWritten("publicOffers/{listingId}", async (event) => {
   if (!event.data?.after?.exists) return;
   const data = event.data.after.data();
   if (data.status !== "active") return;
-  const requests = await loadByStatus("buyer_requests", "open");
+  const requests = await loadByStatus("publicNeeds", "active");
   const created = await createSuggestions(event.data.after, requests);
   console.log(JSON.stringify({ event: "seller_write", listingId: event.params.listingId, scannedRequests: requests.length, created }));
 });
 
-exports.matchOnBuyerWrite = onDocumentWritten("buyer_requests/{requestId}", async (event) => {
+exports.matchOnBuyerWrite = onDocumentWritten("publicNeeds/{requestId}", async (event) => {
   if (!event.data?.after?.exists) return;
   const data = event.data.after.data();
   if (data.status !== "open") return;
-  const listings = await loadByStatus("seller_listings", "active");
+  const listings = await loadByStatus("publicOffers", "active");
   const created = await createSuggestionsFromRequest(listings, event.data.after);
   console.log(JSON.stringify({ event: "buyer_write", requestId: event.params.requestId, scannedListings: listings.length, created }));
 });
