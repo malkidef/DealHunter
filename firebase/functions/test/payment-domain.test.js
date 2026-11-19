@@ -92,6 +92,10 @@ test("Checkout webhook must match the exact deal, buyer, amount and currency", (
   assert.throws(() => assertCheckoutSessionMatchesDeal(attemptBoundDeal, { ...attemptBoundSession, metadata: { ...attemptBoundSession.metadata, checkoutAttempt: "2" } }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, amount_total: 19999 }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, currency: "usd" }, "deal-1"));
+  const feeMetadata = { grossCents: "20000", commissionCents: "1000", sellerNetCents: "19000" };
+  assert.doesNotThrow(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, ...feeMetadata } }, "deal-1"));
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, ...feeMetadata, commissionCents: "999" } }, "deal-1"));
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, ...feeMetadata, sellerNetCents: "20000" } }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, buyerUid: "attacker" } }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, client_reference_id: "other-deal" }, "deal-1"));
 });
