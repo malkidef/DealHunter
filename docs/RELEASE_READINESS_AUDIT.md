@@ -42,6 +42,25 @@
 - Aucun compte Connect, paiement, remboursement ou transfert n'a été créé ou exécuté.
 - Aucune fusion vers `main` n'a été effectuée.
 
+
+## Vérification Stripe (lecture seule, compte de test)
+
+Compte sélectionné dans la session Stripe : `acct_1UdcaWR8ylAXqLYd`, nommé « New business ».
+
+Réponse de l'API Stripe consultée le 19 novembre 2026 :
+- `livemode=false` : compte en mode test.
+- `type=standard` : ce n'est pas un compte plateforme Connect actif.
+- `charges_enabled=false` et `payouts_enabled=false`.
+- `details_submitted=false`, aucune capacité activée et `requirements.disabled_reason=requirements.pending_verification`.
+- Liste des comptes connectés vide (`data=[]`).
+- Liste des webhooks du compte vide (`data=[]`).
+
+**Conclusion Stripe :** aucun parcours Connect ni webhook n'est actuellement configuré sur ce compte. Aucune opération de paiement ne doit être tentée avec l'état actuel. Les vérifications de l'API ont été strictement en lecture seule.
+
+## Vérification Firebase
+
+Aucun connecteur Firebase/Firestore/Cloud Functions n'est disponible dans cette session et aucune session de console n'a été partagée sous une forme permettant un accès technique. Les éléments Firebase sont donc vérifiés à partir de la capture fournie et des fichiers du dépôt, pas par lecture directe de la configuration déployée. Les règles publiées, index, secrets et déploiements restent à vérifier dans le projet réel.
+
 ## Critère de validation finale
 
 Le projet ne sera considéré validé qu'après réussite de la CI, tests des règles et fonctions sur émulateur, vérification de la configuration Firebase réelle, parcours Stripe Connect de bout en bout en mode test, tests de webhooks et remboursements, puis validation du parcours complet de l'application.
