@@ -138,6 +138,19 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   });
 
   it("autorise une demande valide et refuse l'usurpation du demandeur", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "publicOffers", "seller-record-1"), {
+        ownerUid: "alice", company: "Entreprise A", product: "Cartons",
+        category: "Emballage", quantity: 50, unitPrice: 2.5,
+        location: "Lille", status: "active", createdAt: new Date()
+      });
+      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), {
+        ownerUid: "bob", company: "Entreprise B", product: "Cartons",
+        category: "Emballage", quantity: 20, maxUnitBudget: 15,
+        location: "Lille", status: "active", createdAt: new Date()
+      });
+    });
     const alice = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
     await assertFails(setDoc(doc(alice, "matchRequests", "request-2"), requestData("bob", "alice")));
