@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, assertRefundChargeMatchesDeal, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -211,6 +211,15 @@ test("a dispute cannot be reopened or opened during or after a refund", () => {
   assert.equal(assertCanOpenDispute({ ...paid, disputeStatus: "none", refundStatus: "none" }, "buyer-1"), "buyer");
 });
 
+
+test("refund charge must match the deal's exact gross amount and currency", () => {
+  const charge = { amount: 20000, amount_refunded: 5000, currency: "eur" };
+  assert.equal(assertRefundChargeMatchesDeal(deal, charge).totalCents, 20000);
+  assert.throws(() => assertRefundChargeMatchesDeal(deal, { ...charge, amount: 19999 }));
+  assert.throws(() => assertRefundChargeMatchesDeal(deal, { ...charge, currency: "usd" }));
+  assert.throws(() => assertRefundChargeMatchesDeal(deal, { ...charge, amount_refunded: 20001 }));
+  assert.throws(() => assertRefundChargeMatchesDeal(deal, { ...charge, amount_refunded: -1 }));
+});
 
 test("refund amounts are monotonic when Stripe events arrive out of order", () => {
   const partial = resolveRefundState(
