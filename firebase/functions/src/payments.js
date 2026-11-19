@@ -212,12 +212,121 @@ exports.openDealDispute = onCall(async (request) => {
   return { accepted: true, message: "Litige enregistré. Le versement vendeur est suspendu pendant son examen." };
 });
 
+function requireAdmin(request) {
+  const uid = requireAuth(request);
+  if (request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Accès réservé à l'administration DealHunter.");
+  }
+  return uid;
+}
+
+exports.adminResolveDealDispute = onCall({ secrets: [stripeSecret] }, async (request) => {
+  const adminUid = requireAdmin(request);
+  const dealId = String(request.data?.dealId || "").trim();
+  const decision = String(request.data?.decision || "");
+  const note = String(request.data?.note || "").trim();
+  if (!dealId || dealId.length > 160 || !["refund", "release"].includes(decision) || note.length < 5 || note.length > 1000) {
+    throw new HttpsError("invalid-argument", "Dossier, décision ou note invalide.");
+  }
+
+  const ref = db.collection("deals").doc(dealId);
+  const disputeRef = ref.collection("disputes");
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+  const deal = snap.data();
+  if (deal.disputeStatus !== "open") {
+    throw new HttpsError("failed-precondition", "Aucun litige ouvert à résoudre.");
+  }
+  if (decision === "refund") {
+    if (deal.paymentStatus !== "paid" || !deal.stripePaymentIntentId) {
+      throw new HttpsError("failed-precondition", "Aucun paiement Stripe remboursable n'est associé à cette vente.");
+    }
+    if (deal.transferStatus === "paid") {
+      throw new HttpsError("failed-precondition", "Le versement vendeur a déjà été effectué : traitement manuel requis avant remboursement.");
+    }
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      const current = fresh.data();
+      if (current?.disputeStatus !== "open" || current.refundStatus === "processing" || current.refundStatus === "refunded") {
+        throw new HttpsError("aborted", "Le dossier a changé ou un remboursement est déjà en cours.");
+      }
+      tx.update(ref, {
+        refundStatus: "processing",
+        refundRequestedBy: adminUid,
+        refundDecisionNote: note,
+        transferStatus: "blocked_refund",
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    });
+    try {
+      const refund = await stripeClient().refunds.create({
+        payment_intent: deal.stripePaymentIntentId,
+        reason: "requested_by_customer",
+        metadata: { dealId, resolvedBy: adminUid, decision: "admin_full_refund" }
+      }, { idempotencyKey: `dh-admin-refund-${dealId}` });
+      await ref.update({
+        stripeRefundId: refund.id,
+        refundStatus: refund.status === "succeeded" ? "refunded" : "pending",
+        disputeStatus: "resolved_refund",
+        disputeResolvedBy: adminUid,
+        disputeResolutionNote: note,
+        disputeResolvedAt: FieldValue.serverTimestamp(),
+        refundedAt: refund.status === "succeeded" ? FieldValue.serverTimestamp() : null,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+      const openDisputes = await disputeRef.where("status", "==", "open").get();
+      const batch = db.batch();
+      openDisputes.docs.forEach((doc) => batch.update(doc.ref, {
+        status: "resolved_refund",
+        resolvedBy: adminUid,
+        resolutionNote: note,
+        resolvedAt: FieldValue.serverTimestamp()
+      }));
+      await batch.commit();
+      return { accepted: true, refundId: refund.id, refundStatus: refund.status };
+    } catch (error) {
+      await ref.update({
+        refundStatus: "failed",
+        refundErrorCode: String(error.code || "stripe_error").slice(0, 80),
+        updatedAt: FieldValue.serverTimestamp()
+      });
+      throw new HttpsError("internal", "Le remboursement Stripe a échoué. Le dossier reste à traiter.", { code: String(error.code || "stripe_error") });
+    }
+  }
+
+  await db.runTransaction(async (tx) => {
+    const fresh = await tx.get(ref);
+    if (fresh.data()?.disputeStatus !== "open" || fresh.data()?.refundStatus === "processing") {
+      throw new HttpsError("aborted", "Le dossier a changé pendant sa résolution.");
+    }
+    tx.update(ref, {
+      disputeStatus: "resolved_release",
+      disputeResolvedBy: adminUid,
+      disputeResolutionNote: note,
+      disputeResolvedAt: FieldValue.serverTimestamp(),
+      transferStatus: "pending",
+      updatedAt: FieldValue.serverTimestamp()
+    });
+  });
+  const openDisputes = await disputeRef.where("status", "==", "open").get();
+  const batch = db.batch();
+  openDisputes.docs.forEach((doc) => batch.update(doc.ref, {
+    status: "resolved_release",
+    resolvedBy: adminUid,
+    resolutionNote: note,
+    resolvedAt: FieldValue.serverTimestamp()
+  }));
+  await batch.commit();
+  await tryReleaseDeal(dealId);
+  return { accepted: true, decision: "release" };
+});
+
 async function tryReleaseDeal(dealId) {
   const ref = db.collection("deals").doc(dealId);
   const snap = await ref.get();
   if (!snap.exists) return;
   const deal = snap.data();
-  if (deal.paymentStatus !== "paid" || !deal.sellerConfirmedAt || !deal.buyerConfirmedAt || deal.disputeStatus === "open" || deal.disputeStatus === "lost" || deal.transferStatus === "paid" || deal.transferStatus === "processing" || deal.refundStatus === "refunded") return;
+  if (deal.paymentStatus !== "paid" || !deal.sellerConfirmedAt || !deal.buyerConfirmedAt || deal.disputeStatus === "open" || deal.disputeStatus === "lost" || deal.transferStatus === "paid" || deal.transferStatus === "processing" || ["processing", "pending", "refunded", "partial_refund_manual_review", "manual_review"].includes(deal.refundStatus)) return;
   const seller = await db.collection("companies").doc(deal.sellerCompanyId).get();
   const accountId = seller.data()?.stripeAccountId;
   if (!accountId || seller.data()?.stripeOnboardingStatus !== "complete") {
@@ -231,7 +340,7 @@ async function tryReleaseDeal(dealId) {
     const fresh = await tx.get(ref);
     const d = fresh.data();
     if (d.transferStatus === "paid" || d.transferStatus === "processing") return;
-    if (d.paymentStatus !== "paid" || !d.sellerConfirmedAt || !d.buyerConfirmedAt || d.disputeStatus === "open" || d.disputeStatus === "lost") return;
+    if (d.paymentStatus !== "paid" || !d.sellerConfirmedAt || !d.buyerConfirmedAt || d.disputeStatus === "open" || d.disputeStatus === "lost" || ["processing", "pending", "refunded", "partial_refund_manual_review", "manual_review"].includes(d.refundStatus)) return;
     tx.update(ref, { transferStatus: "processing", commissionCents: commission, sellerNetCents: sellerNet, updatedAt: FieldValue.serverTimestamp() });
   });
   const locked = (await ref.get()).data();
