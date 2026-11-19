@@ -841,8 +841,8 @@ window.addEventListener('dealhunter-match-requests',e=>{
       details+='<section class="item" style="margin-top:12px"><h3>Accord de vente</h3>'+(dealList.length?dealList.map(d=>{
         const amount=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
         const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
-        const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
-        const paymentLabel=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':'Paiement en attente';
+        const label=d.status==='proposed'?'Proposition en attente':d.status==='agreed'?'Accord accepté':d.status==='cancellation_pending'?'Annulation en cours de vérification':d.status==='cancelled'?'Vente annulée':d.status==='completed'?'Vente confirmée des deux côtés':'Proposition refusée';
+        const paymentLabel=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':d.paymentStatus==='checkout_expired'?'Session de paiement expirée':d.paymentStatus==='manual_review'?'Paiement à vérifier':'Paiement en attente';
         const transferLabel=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Versement bloqué : vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
         const issueLabel=d.disputeStatus==='open'?'Litige ouvert':d.disputeStatus==='won'?'Litige clôturé en faveur du vendeur':d.disputeStatus==='lost'?'Litige clôturé en défaveur de DealHunter':d.refundStatus==='refunded'?'Paiement remboursé':d.refundStatus==='partial_refund_manual_review'?'Remboursement partiel à examiner':d.refundStatus==='manual_review'?'Remboursement en examen':'Aucun litige ou remboursement signalé';
         let actions='';
@@ -854,7 +854,10 @@ window.addEventListener('dealhunter-match-requests',e=>{
           else if(d.paymentStatus!=='paid'&&seller)actions='<div class="muted">En attente du paiement sécurisé de l’acheteur.</div>';
           else if(!confirmed)actions='<p><button type="button" data-deal-confirm="'+escapeHtml(d.id)+'">'+(seller?'Confirmer la réalisation (vendeur)':'Confirmer la réception (acheteur)')+'</button></p>';
           else actions='<div class="muted">Ta confirmation est enregistrée. En attente de l’autre entreprise.</div>';
+          if(d.paymentStatus!=='paid'&&d.paymentStatus!=='manual_review'&&(!d.paymentReviewStatus||d.paymentReviewStatus==='none')&&(!d.disputeStatus||d.disputeStatus==='none')&&(!d.refundStatus||d.refundStatus==='none'))actions+='<p><button type="button" class="secondary" data-deal-cancel="'+escapeHtml(d.id)+'">Annuler cette vente avant paiement</button></p>';
         }
+        if(d.status==='cancellation_pending')actions+='<div class="muted">Annulation en cours de vérification avec Stripe. Aucun versement vendeur ne peut être déclenché.</div>';
+        if(d.status==='cancelled')actions+='<div class="muted">Cette vente est annulée.</div>';
         if(d.paymentStatus==='paid'&&d.disputeStatus!=='open'&&(!d.refundStatus||d.refundStatus==='none')){
           actions+='<p><button type="button" class="secondary" data-deal-dispute="'+escapeHtml(d.id)+'">Signaler un problème / ouvrir un litige</button></p>';
         } else if(d.disputeStatus==='open'){
@@ -896,6 +899,14 @@ document.addEventListener('click',e=>{
  decline.disabled=true;
  decline.textContent='Refus…';
  window.dispatchEvent(new CustomEvent('dealhunter-decline-deal',{detail:{dealId:decline.dataset.dealDecline}}));
+});
+document.addEventListener('click',e=>{
+ const cancel=e.target.closest('[data-deal-cancel]');
+ if(!cancel)return;
+ if(!window.confirm('Annuler cette vente ? Cette action est réservée aux ventes non payées. Une session Stripe existante sera expirée avant la confirmation de l’annulation.'))return;
+ cancel.disabled=true;
+ cancel.textContent='Annulation en cours…';
+ window.dispatchEvent(new CustomEvent('dealhunter-cancel-deal',{detail:{dealId:cancel.dataset.dealCancel}}));
 });
 document.addEventListener('click',e=>{
  const dispute=e.target.closest('[data-deal-dispute]');
@@ -942,7 +953,7 @@ window.addEventListener('dealhunter-deals',e=>{
  list.innerHTML=deals.length?deals.map(d=>{
   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
-  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
+  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'Accord accepté':d.status==='cancellation_pending'?'Annulation en vérification':d.status==='cancelled'?'Annulée':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
   const paymentState=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':'Paiement en attente';
   const transferState=d.transferStatus==='paid'?'Versement vendeur effectué':d.transferStatus==='processing'?'Versement en cours':d.transferStatus==='blocked_seller_onboarding'?'Vérification vendeur requise':d.transferStatus==='pending_funds_or_review'?'Versement en attente de fonds ou de contrôle':d.transferStatus==='blocked_dispute'?'Versement suspendu (litige)':'Versement non déclenché';
   const paymentAction=d.buyerUid===uid&&d.status==='agreed'&&d.paymentStatus!=='paid'
