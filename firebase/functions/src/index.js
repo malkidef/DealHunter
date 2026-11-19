@@ -74,16 +74,21 @@ async function createSuggestions(listingDoc, requestDocs) {
     const ref = db.collection("matches").doc(id);
     await db.runTransaction(async (tx) => {
       const existing = await tx.get(ref);
-      if (existing.exists) return;
-      tx.create(ref, {
+      const matchData = {
         listingId: listing.$id,
         requestId: request.$id,
-        sellerCompanyId: listing.companyId,
-        buyerCompanyId: request.companyId,
+        sellerUid: listing.companyId,
+        buyerUid: request.companyId,
+        participantUids: [listing.companyId, request.companyId],
         compatibilityScore: score,
         status: "suggested",
-        createdAt: FieldValue.serverTimestamp()
-      });
+        updatedAt: FieldValue.serverTimestamp()
+      };
+      if (existing.exists) {
+        tx.update(ref, matchData);
+        return;
+      }
+      tx.create(ref, { ...matchData, createdAt: FieldValue.serverTimestamp() });
       created += 1;
     });
   }
@@ -121,16 +126,21 @@ async function createSuggestionsFromRequest(listingDocs, requestDoc) {
     const ref = db.collection("matches").doc(id);
     await db.runTransaction(async (tx) => {
       const existing = await tx.get(ref);
-      if (existing.exists) return;
-      tx.create(ref, {
+      const matchData = {
         listingId: listing.$id,
         requestId: request.$id,
-        sellerCompanyId: listing.companyId,
-        buyerCompanyId: request.companyId,
+        sellerUid: listing.companyId,
+        buyerUid: request.companyId,
+        participantUids: [listing.companyId, request.companyId],
         compatibilityScore: score,
         status: "suggested",
-        createdAt: FieldValue.serverTimestamp()
-      });
+        updatedAt: FieldValue.serverTimestamp()
+      };
+      if (existing.exists) {
+        tx.update(ref, matchData);
+        return;
+      }
+      tx.create(ref, { ...matchData, createdAt: FieldValue.serverTimestamp() });
       created += 1;
     });
   }
