@@ -22,6 +22,13 @@ function getDealAmounts(deal) {
     throw new TypeError("Le montant total ne correspond pas à la quantité et au prix unitaire.");
   }
   const commissionCents = Math.round(totalCents * COMMISSION_BPS / 10000);
+  if (deal.commissionRate !== undefined && Number(deal.commissionRate) !== COMMISSION_BPS / 100) {
+    throw new TypeError("Le taux de commission DealHunter doit être de 5 %.");
+  }
+  if (deal.commissionAmount !== undefined &&
+      toCents(deal.commissionAmount, "Commission") !== commissionCents) {
+    throw new TypeError("Le montant de commission ne correspond pas au taux DealHunter.");
+  }
   return {
     currency: String(deal.currency || "eur").toLowerCase(),
     quantity,
@@ -50,13 +57,6 @@ function assertDealPayable(deal) {
   }
   const amounts = getDealAmounts(deal);
   if (!ALLOWED_CURRENCIES.has(amounts.currency)) throw new TypeError("Devise non prise en charge.");
-  if (deal.commissionRate !== undefined && Number(deal.commissionRate) !== 5) {
-    throw new TypeError("Le taux de commission DealHunter doit être de 5 %.");
-  }
-  if (deal.commissionAmount !== undefined &&
-      toCents(deal.commissionAmount, "Commission") !== amounts.commissionCents) {
-    throw new TypeError("Le montant de commission ne correspond pas au taux DealHunter.");
-  }
   return amounts;
 }
 
