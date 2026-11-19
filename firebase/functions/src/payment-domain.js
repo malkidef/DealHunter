@@ -60,6 +60,19 @@ function assertDealPayable(deal) {
   return amounts;
 }
 
+function assertCheckoutSessionMatchesDeal(deal, session, dealId) {
+  if (!deal || !session || !dealId) throw new TypeError("Session de paiement invalide.");
+  const amounts = getDealAmounts(deal);
+  if (session.metadata?.dealId !== dealId ||
+      session.metadata?.buyerUid !== deal.buyerUid ||
+      session.client_reference_id !== dealId ||
+      session.amount_total !== amounts.totalCents ||
+      String(session.currency || "").toLowerCase() !== amounts.currency) {
+    throw new TypeError("Les montants ou participants du paiement ne correspondent pas à la vente.");
+  }
+  return amounts;
+}
+
 function participantRole(deal, uid) {
   if (!deal || !uid || !Array.isArray(deal.participantUids) || !deal.participantUids.includes(uid)) return null;
   if (deal.sellerUid === uid) return "seller";
@@ -77,5 +90,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  participantRole, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, canReleaseToSeller
 };
