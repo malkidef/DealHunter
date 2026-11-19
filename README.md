@@ -10,7 +10,7 @@ DealHunter vise à rapprocher des entreprises qui disposent de stocks excédenta
 - **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
 - Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
 
-Le connecteur TED (`scripts/collect_ted.py`) et un instantané (`data/ted-buyer-opportunities.json`) sont présents sur cette branche ; l'interface peut afficher cet instantané, mais aucune collecte TED planifiée n'est configurée ici et les avis restent non qualifiés (`verified=false`). Ce flux est donc **disponible en consultation, pas encore automatisé ni validé commercialement**. Le connecteur SAM.gov et son fichier de données ne sont pas présents sur cette branche ; SAM.gov n'est donc **pas compté comme opérationnel**.
+Le connecteur TED (`scripts/collect_ted.py`) et son workflow (`.github/workflows/collect-ted.yml`) assurent une collecte quotidienne des avis publics. Le flux (`data/ted-buyer-opportunities.json`) reste non qualifié (`verified=false`) : il signale des besoins potentiels, pas des stocks ni des commandes confirmées. Le workflow TED ne s'exécutera selon son calendrier qu'après intégration dans la branche par défaut ; un lancement manuel est disponible sur la branche de travail.
 
 ## Backend actuel : Firebase
 
@@ -23,6 +23,19 @@ Le backend en cours est **Firebase Authentication + Cloud Firestore** :
 Les offres et besoins privés sont associés au compte connecté. Le code publie également des fiches minimales dans les catalogues partagés, sans coordonnées personnelles. Les demandes de mise en relation sont gérées dans Firestore ; le partage de coordonnées est conditionné à l'acceptation et à une action explicite. Vérifier dans Firebase Console que les règles et index du dépôt sont bien déployés.
 
 `docs/APPWRITE_SCHEMA.md` est un ancien schéma de conception : Appwrite n'est pas le backend actuellement utilisé par le code.
+
+## Connecteur SAM.gov — ventes de biens excédentaires
+
+Le connecteur `scripts/collect_sam.py` utilise l'API publique officielle « Get Opportunities » v2 et filtre le type `ptype=g` (« Sale of Surplus Property »). Il alimente le fichier `data/sam-buyer-opportunities.json`, déjà consommé par la section SAM.gov de l'interface. Les avis sont des signaux publics à vérifier, jamais des stocks ni des commandes confirmées.
+
+- Documentation officielle : https://open.gsa.gov/api/get-opportunities-public-api/
+- Endpoint : `https://api.sam.gov/opportunities/v2/search`
+- La clé API personnelle est obligatoire. Créer une clé depuis la page Account Details de SAM.gov, puis l'enregistrer dans GitHub Actions sous le nom `SAM_GOV_API_KEY`. Ne jamais la placer dans le dépôt, l'interface web ou une conversation.
+- Le workflow `.github/workflows/collect-sam.yml` prévoit une collecte quotidienne et un lancement manuel. En l'absence du secret, il saute la collecte sans écraser le flux existant.
+- La collecte est limitée par défaut aux 45 derniers jours, au type de vente de surplus, et à cinq pages maximum. Les avis sont dédupliqués et marqués `verified=false`.
+- L'interface n'ajoute pas automatiquement ces avis aux besoins privés ni au matching commercial validé.
+
+La clé API et un premier appel réussi sont encore nécessaires avant de considérer SAM.gov comme une source synchronisée en production.
 
 ## Premier connecteur de collecte : GSA Auctions
 
