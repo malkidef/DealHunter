@@ -38,6 +38,7 @@
 - Tester les événements webhook et leurs nouvelles tentatives.
 - Vérifier le solde disponible de la plateforme et sa capacité à financer remboursements et contestations.
 - La callable `adminResolveDealDispute` est réservée aux comptes Firebase portant le custom claim `admin: true`. Tester le refus sans ce claim et l'autorisation avec ce claim.
+- Attribuer ce claim uniquement depuis un environnement serveur de confiance avec Firebase Admin SDK, après vérification humaine de l'identité de l'administrateur ; conserver les autres claims existants et forcer le renouvellement du jeton de session. Ne jamais exposer cette opération dans l'application cliente.
 - Tester les deux décisions d'administration : `release` (après note obligatoire, puis versement si les deux parties ont confirmé) et `refund` (remboursement intégral Stripe idempotent, transfert bloqué).
 - Les remboursements partiels restent en revue manuelle. Si un transfert vendeur est déjà payé, l'arbitrage automatique de remboursement est refusé : une réconciliation opérateur est nécessaire.
 - L'interface d'administration n'est pas encore construite ; la callable backend ne suffit pas à rendre le parcours opérable par une équipe métier.
