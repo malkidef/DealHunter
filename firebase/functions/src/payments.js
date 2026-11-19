@@ -244,6 +244,89 @@ exports.inspectDealPaymentReconciliation = onCall({ secrets: [stripeSecret] }, a
   };
 });
 
+
+});
+
+// Records an administrator's reconciliation decision. This is an append-only audit entry;
+// it deliberately does not change payment state or initiate refunds/transfers.
+exports.recordDealPaymentReconciliationReview = onCall({ secrets: [stripeSecret] }, async (request) => {
+  const adminUid = requireAuth(request);
+  if (request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Accès réservé aux administrateurs DealHunter.");
+  }
+  const dealId = validId(request.data?.dealId, "Vente");
+  const sessionId = validId(request.data?.checkoutSessionId, "Session Checkout");
+  const decision = String(request.data?.decision || "");
+  const notes = String(request.data?.notes || "").trim();
+  if (notes.length < 10 || notes.length > 1000) {
+    throw new HttpsError("invalid-argument", "Une note de revue de 10 à 1 000 caractères est requise.");
+  }
+  const ref = db.collection("deals").doc(dealId);
+  let session;
+  try {
+    session = await stripeClient().checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent"]
+    });
+  } catch (error) {
+    console.error("DealHunter reconciliation review Stripe lookup failed", dealId, error.message);
+    throw new HttpsError("unavailable", "Impossible de consulter cette session Stripe pour le moment.");
+  }
+  const paymentIntent = session.payment_intent && typeof session.payment_intent === "object"
+    ? session.payment_intent : null;
+  const paymentIntentId = paymentIntent?.id ||
+    (typeof session.payment_intent === "string" ? session.payment_intent : null);
+  const auditRef = ref.collection("payment_reconciliation_audit").doc();
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
+      const deal = snap.data();
+      let identityMatches = false;
+      try {
+        assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId);
+        identityMatches = true;
+      } catch (_) {}
+      const evidence = {
+        identityMatches,
+        currentSession: deal.stripeCheckoutSessionId === session.id,
+        checkoutAttemptMatches: session.metadata?.checkoutAttempt === undefined ||
+          Number(session.metadata.checkoutAttempt) === Number(deal.checkoutAttempt || 0),
+        paidInStripe: session.payment_status === "paid",
+        paidInDealHunter: deal.paymentStatus === "paid",
+        paymentIntentId,
+        paymentIntentMatches: Boolean(paymentIntentId && deal.stripePaymentIntentId === paymentIntentId)
+      };
+      try {
+        validateReconciliationDecision(decision, evidence);
+      } catch (error) {
+        throw new HttpsError("failed-precondition", error.message);
+      }
+      tx.create(auditRef, {
+        dealId,
+        adminUid,
+        decision,
+        notes,
+        checkoutSessionId: session.id,
+        evidence: {
+          ...evidence,
+          sessionStatus: session.status || null,
+          paymentStatus: session.payment_status || null,
+          amountTotal: Number.isSafeInteger(session.amount_total) ? session.amount_total : null,
+          currency: String(session.currency || "").toLowerCase() || null,
+          paymentIntentStatus: paymentIntent?.status || null
+        },
+        recordedAt: FieldValue.serverTimestamp(),
+        actionTaken: false
+      });
+    });
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    console.error("DealHunter reconciliation audit write failed", dealId, error.message);
+    throw new HttpsError("internal", "Impossible d'enregistrer la revue de réconciliation.");
+  }
+  return { recorded: true, dealId, auditId: auditRef.id, actionTaken: false };
+});
+
 exports.getSellerConnectStatus = onCall(async (request) => {
   const uid = requireAuth(request);
   const snap = await db.collection("users").doc(uid).get();
