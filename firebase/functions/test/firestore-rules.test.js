@@ -144,3 +144,33 @@ test("only the other participant can accept a proposed deal", async () => {
     status: "agreed", agreedAt: Timestamp.now(), updatedAt: Timestamp.now()
   }));
 });
+
+test("requires each participant to confirm their own side before completion", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "deals/deal-confirm"), {
+      requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
+      participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
+      accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+      unitPrice: 4, totalAmount: 200, commissionRate: 5,
+      commissionAmount: 10, status: "agreed", sellerConfirmed: false,
+      buyerConfirmed: false, createdAt: Timestamp.now(),
+      agreedAt: Timestamp.now(), updatedAt: Timestamp.now()
+    });
+  });
+  const sellerDb = env.authenticatedContext("seller-1").firestore();
+  const buyerDb = env.authenticatedContext("buyer-1").firestore();
+  const { updateDoc } = require("firebase/firestore");
+  await assertFails(updateDoc(doc(sellerDb, "deals/deal-confirm"), {
+    sellerConfirmed: true, sellerConfirmedAt: Timestamp.now(),
+    buyerConfirmed: true, buyerConfirmedAt: Timestamp.now(),
+    status: "completed", updatedAt: Timestamp.now()
+  }));
+  await assertSucceeds(updateDoc(doc(sellerDb, "deals/deal-confirm"), {
+    sellerConfirmed: true, sellerConfirmedAt: Timestamp.now(),
+    status: "agreed", updatedAt: Timestamp.now()
+  }));
+  await assertSucceeds(updateDoc(doc(buyerDb, "deals/deal-confirm"), {
+    buyerConfirmed: true, buyerConfirmedAt: Timestamp.now(),
+    status: "completed", updatedAt: Timestamp.now()
+  }));
+});
