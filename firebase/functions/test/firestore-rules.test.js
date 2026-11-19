@@ -131,6 +131,7 @@ test("rejects a deal proposal with a forged seller or altered commission", async
   await assertFails(setDoc(doc(db, "deals/over-budget"), { ...base, unitPrice: 11 }));
   await assertFails(setDoc(doc(db, "deals/over-stock"), { ...base, quantity: 101 }));
   await assertFails(setDoc(doc(db, "deals/wrong-product"), { ...base, product: "Ordinateurs" }));
+  await assertFails(setDoc(doc(db, "deals/wrong-unit"), { ...base, unit: "kg" }));
 });
 
 test("only the other participant can accept a proposed deal", async () => {
