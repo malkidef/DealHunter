@@ -291,8 +291,24 @@ if (!ready) {
         location: data.location || ""
       };
     });
+
+    // Les suggestions calculées par Cloud Functions deviennent la source du matching affiché.
+    const matchSnapshot = await getDocs(query(
+      collection(db, "matches"),
+      where("participantUids", "array-contains", user.uid)
+    ));
+    const sellerById = new Map(sellers.map(item => [item.id, item]));
+    const buyerById = new Map(buyers.map(item => [item.id, item]));
+    const serverMatches = matchSnapshot.docs.map(item => {
+      const data = item.data();
+      const seller = sellerById.get(data.listingId);
+      const buyer = buyerById.get(data.requestId);
+      if (!seller || !buyer || data.status !== "suggested") return null;
+      return { id: item.id, s: seller, b: buyer, score: Number(data.compatibilityScore) || 0 };
+    }).filter(Boolean).sort((left, right) => right.score - left.score);
+
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { sellers, buyers, serverMatches, serverMatchesLoaded: true }
     }));
   };
 
@@ -413,6 +429,7 @@ if (!ready) {
     } else {
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
+      window.dispatchEvent(new CustomEvent('dealhunter-cloud-data', { detail: { sellers: [], buyers: [], serverMatches: [], serverMatchesLoaded: false } }));
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
       signOutButton.classList.add("hidden");
