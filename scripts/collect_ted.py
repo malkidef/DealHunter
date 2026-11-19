@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import urllib.request
+from urllib.parse import quote, urlsplit
 from datetime import datetime, timedelta, timezone
 
 API = "https://api.ted.europa.eu/v3/notices/search"
@@ -67,8 +68,10 @@ def parse_payload(payload, query, collected_at=None):
         url = ""
         if isinstance(html_links, dict):
             url = html_links.get("fra") or html_links.get("eng") or next(iter(html_links.values()), "")
-        if not url:
-            url = f"https://ted.europa.eu/en/notice/-/detail/{number}"
+        parsed_url = urlsplit(str(url))
+        host = (parsed_url.hostname or "").lower()
+        if parsed_url.scheme != "https" or not (host == "ted.europa.eu" or host.endswith(".ted.europa.eu")):
+            url = f"https://ted.europa.eu/en/notice/-/detail/{quote(number, safe='')}"
         notices.append({
             "id": number,
             "title": title,
