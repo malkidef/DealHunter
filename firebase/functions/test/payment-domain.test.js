@@ -67,6 +67,8 @@ test("seller payout requires completed status, both confirmations and paid funds
   for (const patch of [
     { status: "agreed" }, { sellerConfirmed: false }, { buyerConfirmed: false },
     { paymentStatus: "pending" }, { disputeStatus: "open" },
-    { disputeStatus: "lost" }, { refundStatus: "refunded" }
+    { disputeStatus: "lost" }, { disputeStatus: "under_review" },
+    { refundStatus: "refunded" }, { refundStatus: "partial_refund_manual_review" },
+    { refundStatus: "manual_review" }
   ]) assert.equal(canReleaseToSeller({ ...releasable, ...patch }), false);
 });
