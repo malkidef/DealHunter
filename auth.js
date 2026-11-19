@@ -499,7 +499,6 @@ if (!ready) {
   document.addEventListener("submit", event => {
     if (event.target === sellerForm && sellerForm.dataset.editingId) {
       event.preventDefault();
-      event.stopImmediatePropagation();
       return;
     }
     if (event.target === sellerForm) {
