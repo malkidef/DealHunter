@@ -253,8 +253,15 @@ if (!ready) {
     try{
       const result=await createDealCheckoutSessionCall({dealId});
       const url=result.data?.url;
-      if(!url||!/^https:\/\//i.test(url))throw new Error("Lien de paiement sécurisé invalide.");
-      window.location.assign(url);
+      let checkoutUrl;
+      try { checkoutUrl = new URL(url); } catch (_) {
+        throw new Error("Lien de paiement sécurisé invalide.");
+      }
+      if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "checkout.stripe.com" ||
+          checkoutUrl.username || checkoutUrl.password) {
+        throw new Error("Le lien reçu ne correspond pas à la page officielle Stripe Checkout.");
+      }
+      window.location.assign(checkoutUrl.href);
     }catch(err){console.error(err);status.textContent="Paiement indisponible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-open-dispute",async e=>{
