@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -74,6 +74,31 @@ test("Checkout webhook must match the exact deal, buyer, amount and currency", (
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, currency: "usd" }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, buyerUid: "attacker" } }, "deal-1"));
   assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, client_reference_id: "other-deal" }, "deal-1"));
+});
+
+test("paid stale Checkout attempts are held for review, and duplicate paid sessions are detected", () => {
+  const current = { ...deal, checkoutAttempt: 4, paymentStatus: "checkout_created" };
+  const staleSession = {
+    metadata: { dealId: "deal-1", buyerUid: "buyer-1", checkoutAttempt: "3" },
+    client_reference_id: "deal-1", amount_total: 20000, currency: "eur",
+    payment_intent: "pi_stale"
+  };
+  assert.deepEqual(resolveCheckoutPaymentEvent(current, staleSession, "deal-1"), {
+    action: "stale_checkout_paid", paymentIntentId: "pi_stale"
+  });
+  assert.deepEqual(resolveCheckoutPaymentEvent(
+    { ...current, paymentStatus: "paid", stripePaymentIntentId: "pi_current" },
+    { ...staleSession, metadata: { ...staleSession.metadata, checkoutAttempt: "4" }, payment_intent: "pi_current" },
+    "deal-1"
+  ), { action: "already_paid", paymentIntentId: "pi_current" });
+  assert.deepEqual(resolveCheckoutPaymentEvent(
+    { ...current, paymentStatus: "paid", stripePaymentIntentId: "pi_current" },
+    { ...staleSession, metadata: { ...staleSession.metadata, checkoutAttempt: "4" }, payment_intent: "pi_duplicate" },
+    "deal-1"
+  ), { action: "duplicate_payment", paymentIntentId: "pi_duplicate" });
+  assert.throws(() => resolveCheckoutPaymentEvent(
+    current, { ...staleSession, amount_total: 19999 }, "deal-1"
+  ), /montants ou participants/);
 });
 
 test("participant role is derived only from participant UID fields", () => {
