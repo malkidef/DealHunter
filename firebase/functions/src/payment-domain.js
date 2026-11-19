@@ -87,6 +87,7 @@ function resolveCheckoutPaymentEvent(deal, session, dealId) {
   const paymentIntentId = typeof session.payment_intent === "string"
     ? session.payment_intent : session.payment_intent?.id || null;
   const currentPaymentIntentId = deal.stripePaymentIntentId || null;
+  if (!paymentIntentId) return { action: "missing_payment_intent", paymentIntentId: null };
   if (deal.paymentStatus === "paid") {
     return currentPaymentIntentId === paymentIntentId
       ? { action: "already_paid", paymentIntentId }
