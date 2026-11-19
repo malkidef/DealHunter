@@ -210,8 +210,24 @@ exports.inspectDealPaymentReconciliation = onCall({ secrets: [stripeSecret] }, a
     ? session.payment_intent : null;
   const paymentIntentId = paymentIntent?.id ||
     (typeof session.payment_intent === "string" ? session.payment_intent : null);
+  const auditSnap = await ref.collection("payment_reconciliation_audit")
+    .orderBy("recordedAt", "desc").limit(20).get();
+  const reconciliationAudit = auditSnap.docs.map(item => {
+    const entry = item.data();
+    return {
+      auditId: item.id,
+      adminUid: entry.adminUid || null,
+      decision: entry.decision || null,
+      notes: entry.notes || "",
+      checkoutSessionId: entry.checkoutSessionId || null,
+      evidence: entry.evidence || {},
+      recordedAt: entry.recordedAt?.toDate?.().toISOString?.() || null,
+      actionTaken: entry.actionTaken === true
+    };
+  });
   return {
     dealId,
+    reconciliationAudit,
     firestore: {
       paymentStatus: deal.paymentStatus || "pending",
       paymentReviewStatus: deal.paymentReviewStatus || "none",
