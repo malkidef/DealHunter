@@ -118,6 +118,44 @@ function assertCanOpenDispute(deal, uid) {
   return role;
 }
 
+function resolveDisputeEvent(deal, eventType, dispute, eventCreated) {
+  if (!deal || !dispute || !dispute.id ||
+      !["charge.dispute.created", "charge.dispute.closed"].includes(eventType) ||
+      !Number.isSafeInteger(Number(eventCreated)) || Number(eventCreated) <= 0) {
+    throw new TypeError("Événement de litige invalide.");
+  }
+  const incomingAt = Number(eventCreated);
+  const previousAt = Number(deal.stripeDisputeEventCreated || 0);
+  const currentId = deal.stripeDisputeId || null;
+  const isCreated = eventType === "charge.dispute.created";
+  if (incomingAt < previousAt) return { apply: false, reason: "stale_event" };
+  if (currentId && currentId !== dispute.id) {
+    if (!isCreated || !["won", "lost"].includes(deal.disputeStatus)) {
+      return { apply: false, reason: "different_dispute" };
+    }
+  }
+  if (isCreated) {
+    if (currentId === dispute.id && ["won", "lost"].includes(deal.disputeStatus)) {
+      return { apply: false, reason: "already_closed" };
+    }
+    return {
+      apply: true, status: "open", transferStatus: "blocked_dispute",
+      disputeId: dispute.id, eventCreated: incomingAt
+    };
+  }
+  if (currentId && currentId !== dispute.id) return { apply: false, reason: "different_dispute" };
+  if (dispute.status === "won") {
+    return { apply: true, status: "won", transferStatus: "pending",
+      disputeId: dispute.id, eventCreated: incomingAt, shouldRetryPayout: true };
+  }
+  if (dispute.status === "lost") {
+    return { apply: true, status: "lost", transferStatus: "blocked_dispute_lost",
+      disputeId: dispute.id, eventCreated: incomingAt };
+  }
+  return { apply: true, status: "under_review", transferStatus: "blocked_dispute",
+    disputeId: dispute.id, eventCreated: incomingAt };
+}
+
 function resolveRefundState(deal, charge) {
   if (!deal || !charge) throw new TypeError("Données de remboursement invalides.");
   const charged = Number(charge.amount || 0);
@@ -155,5 +193,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller
 };
