@@ -526,7 +526,30 @@ function render(){
   };
   const categoryKey=value=>norm(value).replace(/[^a-z0-9]+/g,' ').trim();
   const candidates=[];
+  const seenPublicMatches=new Set();
+  const parsePublicDeadline=raw=>{
+   if(raw===null||raw===undefined||raw==='')return {timestamp:null,state:'missing'};
+   const value=String(raw).trim();
+   if(!value)return {timestamp:null,state:'missing'};
+   let parsed=NaN;
+   const iso=value.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[T\\s].*)?$/);
+   const us=value.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})(?:\\s+.*)?$/);
+   if(iso){
+    const year=Number(iso[1]),month=Number(iso[2]),day=Number(iso[3]);
+    const check=new Date(Date.UTC(year,month-1,day));
+    if(check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day)parsed=Date.parse(value.length===10?value+'T23:59:59Z':value);
+   }else if(us){
+    const month=Number(us[1]),day=Number(us[2]),year=Number(us[3]);
+    const check=new Date(Date.UTC(year,month-1,day));
+    if(month>=1&&month<=12&&check.getUTCMonth()===month-1&&check.getUTCDate()===day)parsed=Date.UTC(year,month-1,day,23,59,59);
+   }else parsed=Date.parse(value);
+   return Number.isFinite(parsed)?{timestamp:parsed,state:'valid'}:{timestamp:null,state:'invalid'};
+  };
   const addCandidate=(record,notice,source,role)=>{
+   const noticeId=notice.id||notice.notice_id||notice.publication_number||notice.url||notice.source_url||notice.title;
+   const matchKey=[source,role,record.id||record.product,noticeId].join('|');
+   if(seenPublicMatches.has(matchKey))return;
+   seenPublicMatches.add(matchKey);
    const wanted=tokens(record.product);
    const available=new Set(tokens(notice.title||''));
    if(!wanted.length||!available.size)return;
@@ -542,15 +565,16 @@ function render(){
    const noticePlace=norm(place);
    const locationFit=!!recordPlace&&!!noticePlace&&(noticePlace.includes(recordPlace)||recordPlace.includes(noticePlace));
    const deadlineRaw=role==='seller'?(notice.deadline||notice.deadline_date):(notice.deadline_date||notice.responseDeadLine);
-   const deadline=deadlineRaw?Date.parse(deadlineRaw):NaN;
-   if(Number.isFinite(deadline)&&deadline<Date.now())return;
-   const deadlineValid=Number.isFinite(deadline);
+   const deadlineInfo=parsePublicDeadline(deadlineRaw);
+   if(deadlineInfo.timestamp!==null&&deadlineInfo.timestamp<Date.now())return;
+   const deadlineValid=deadlineInfo.state==='valid';
    const score=Math.min(100,Math.round(ratio*55)+(sectorFit?20:0)+(locationFit?15:0)+(deadlineValid?10:0));
    const reasons=['produit '+Math.round(ratio*100)+' %'];
    if(sectorFit)reasons.push('secteur cohérent');
    if(locationFit)reasons.push('zone géographique concordante');
    if(deadlineValid)reasons.push('échéance future');
-   candidates.push({record,notice,source,role,common,score,reasons,deadlineRaw});
+   else if(deadlineInfo.state==='invalid')reasons.push('format de date à confirmer');
+   candidates.push({record,notice,source,role,common,score,reasons,deadlineRaw,deadlineState:deadlineInfo.state});
   };
   // TED = avis de marchés : des acheteurs publics recherchent des fournisseurs.
   // SAM.gov ptype=g = vente de biens excédentaires : les acheteurs DealHunter peuvent rechercher ces lots.
@@ -571,8 +595,9 @@ function render(){
    const missing=[];
    if(m.role==='seller'&&!r.verified)missing.push('stock vendeur non vérifié');
    if(m.role==='buyer')missing.push('quantité, état, prix final et conditions du lot SAM.gov à confirmer');
-   if(!m.deadlineRaw)missing.push('échéance non renseignée');
-   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.source)+'</span><h3>'+escapeHtml(r.product)+' — '+(m.role==='seller'?'stock vendeur':'besoin acheteur')+'</h3><div><strong>'+escapeHtml(title)+'</strong></div><div class="muted">Organisme : '+escapeHtml(counterparty)+' · Zone : '+escapeHtml(place)+'</div><div class="muted">Échéance : '+escapeHtml(m.deadlineRaw||'non précisée')+'</div><div class="match-score">Pertinence indicative : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">'+details+'</div><div class="muted">À vérifier manuellement : '+escapeHtml(missing.join(' ; ')||'conditions, disponibilité et conformité de l’avis')+'.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié : aucune commande, disponibilité ni transaction n’est confirmée.</div></article>';
+   if(m.deadlineState==='missing')missing.push('échéance non renseignée');
+   if(m.deadlineState==='invalid')missing.push('échéance au format non reconnu, à confirmer');
+   return '<article class="item"><span class="pill">Piste à vérifier · '+escapeHtml(m.source)+'</span><h3>'+escapeHtml(r.product)+' — '+(m.role==='seller'?'stock vendeur':'besoin acheteur')+'</h3><div><strong>'+escapeHtml(title)+'</strong></div><div class="muted">Organisme : '+escapeHtml(counterparty)+' · Zone : '+escapeHtml(place)+'</div><div class="muted">Échéance : '+escapeHtml(m.deadlineRaw||(m.deadlineState==='invalid'?'format à confirmer':'non précisée'))+'</div><div class="match-score">Pertinence indicative : '+m.score+'/100</div><div class="muted">Facteurs : '+escapeHtml(m.reasons.join(' · '))+' · Termes communs : '+escapeHtml(m.common.join(', '))+'</div><div class="muted">'+details+'</div><div class="muted">À vérifier manuellement : '+escapeHtml(missing.join(' ; ')||'conditions, disponibilité et conformité de l’avis')+'.</div><p class="muted">'+link+'</p><div class="muted">Signal public non vérifié : aucune commande, disponibilité ni transaction n’est confirmée.</div></article>';
   }).join(''):'<div class="empty">Aucune piste publique suffisamment proche pour le moment. Les avis TED sont comparés aux stocks vendeurs ; les ventes de surplus SAM.gov sont comparées aux besoins acheteurs.</div>';
  }
 
