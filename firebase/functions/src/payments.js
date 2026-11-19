@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -541,11 +541,12 @@ async function processStripeEvent(event) {
       const matches = await db.collection("deals").where("stripePaymentIntentId", "==", charge.payment_intent).limit(1).get();
       for (const doc of matches.docs) {
         const deal = doc.data();
-        const refunded = Number(charge.amount_refunded || 0);
-        const charged = Number(charge.amount || 0);
-        if (!charged || refunded < charged) {
+        const refund = resolveRefundState(deal, charge);
+        if (refund.alreadyFinal) continue;
+        if (!refund.fullyRefunded) {
           await doc.ref.update({
-            refundStatus: "partial_refund_manual_review", refundedAmountCents: refunded,
+            refundStatus: refund.status,
+            refundedAmountCents: refund.refundedAmountCents,
             updatedAt: FieldValue.serverTimestamp()
           });
           continue;
@@ -556,6 +557,7 @@ async function processStripeEvent(event) {
           } catch (error) {
             await doc.ref.update({
               refundStatus: "manual_review",
+              refundedAmountCents: refund.refundedAmountCents,
               refundErrorCode: String(error.code || "stripe_error").slice(0, 80),
               updatedAt: FieldValue.serverTimestamp()
             });
@@ -564,6 +566,7 @@ async function processStripeEvent(event) {
         }
         await doc.ref.update({
           refundStatus: "refunded",
+          refundedAmountCents: refund.refundedAmountCents,
           transferStatus: deal.stripeTransferId ? "reversed" : (deal.transferStatus || "none"),
           refundedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
         });
