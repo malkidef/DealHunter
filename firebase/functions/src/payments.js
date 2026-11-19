@@ -146,7 +146,7 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
     cancel_url: `${base}/?deal=${encodeURIComponent(dealId)}&payment=cancelled`,
     client_reference_id: dealId,
     metadata: { dealId },
-    payment_intent_data: { metadata: { dealId } }
+    payment_intent_data: { transfer_group: `dealhunter_${dealId}`, metadata: { dealId } }
   }, { idempotencyKey: `dh-checkout-${dealId}-${amount}` });
   await ref.update({ paymentStatus: "checkout_created", stripeCheckoutSessionId: session.id, updatedAt: FieldValue.serverTimestamp() });
   return { url: session.url };
@@ -276,7 +276,12 @@ exports.stripeWebhook = onRequest({ secrets: [stripeSecret, stripeWebhookSecret]
       if (dealId) {
         const ref = db.collection("deals").doc(dealId);
         const snap = await ref.get();
-        if (snap.exists && snap.data().amountTotalCents === session.amount_total) {
+        if (
+          snap.exists &&
+          snap.data().stripeCheckoutSessionId === session.id &&
+          snap.data().amountTotalCents === session.amount_total &&
+          String(snap.data().currency || "eur").toLowerCase() === String(session.currency || "").toLowerCase()
+        ) {
           await ref.update({
             paymentStatus: "paid",
             stripePaymentIntentId: session.payment_intent || null,
