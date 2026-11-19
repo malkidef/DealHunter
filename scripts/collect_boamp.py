@@ -13,15 +13,15 @@ RULES=[
 ("Informatique et télécommunications","produits",[r"\binformatique",r"\bordinateur",r"\bserveur(s)?",r"\blogiciel",r"\btelephone(s)?",r"\btelecommunication",r"\bphotocopieur",r"\bimprimante(s)?"]),
 ("Mobilier et stockage","produits",[r"\bmobilier",r"\bmeuble(s)?",r"\brayonnage",r"\bstockage",r"\barmoire(s)?",r"\btable(s)?",r"\bchaise(s)?",r"\brangement"]),
 ("Emballage et logistique","produits",[r"\bemballage",r"\bcarton(s)?",r"\bpalette(s)?",r"\bconditionnement",r"\bconteneur(s)?"]),
-("EPI et sécurité","produits",[r"\bepi\b",r"\bequipement(s)? de protection",r"\bvetement(s)? de travail",r"\bsecurite",r"\bprotection individuelle"]),
-("Alimentation","produits",[r"\bdenree(s)? alimentaire(s)?",r"\balimentaire(s)?",r"\bproduit(s)? alimentaires",r"\brestauration collective",r"\bboisson(s)?"]),
+("EPI et sécurité","produits",[r"\bepi\b",r"\bequipement(s)? de protection",r"\bvetement(s)? de travail",r"\bprotection individuelle"]),
+("Alimentation","produits",[r"\bdenree(s)? alimentaire(s)?",r"\balimentaire(s)?",r"\bproduit(s)? alimentaires",r"\brestauration collective",r"\bboisson(s)?",r"\bproduit(s)? appertise(s)?",r"\brepas"]),
 ("Énergie et combustibles","produits",[r"\bpellet(s)?",r"\bgranule(s)?",r"\bcombustible(s)?",r"\bfioul",r"\bbois de chauffage",r"\bcarburant(s)?"]),
 ("Véhicules et transport","produits",[r"\bvehicule(s)?",r"\bautomobile(s)?",r"\bcamion(s)?",r"\butilitaire(s)?",r"\bvelo(s)?"]),
 ("Fournitures et consommables","produits",[r"\bfourniture(s)?",r"\bconsommable(s)?",r"\bpapier",r"\bproduit(s)? d'entretien",r"\bproduit(s)? d'hygiene"]),
 ("Matériaux et composants","produits",[r"\bmateriaux",r"\bmateriel(s)?",r"\bcomposant(s)?",r"\bpieces detachees",r"\bacier",r"\bbois",r"\betancheite"]),
 ]
 WORK=[r"\btravaux\b",r"\bconstruction\b",r"\brehabilitation\b",r"\brenovation\b",r"\bamenagement\b",r"\brefection\b",r"\bpose\b",r"\bchantier\b",r"\bmaitrise d'oeuvre\b"]
-SERVICE=[r"\bprestation(s)?\b",r"\bmaintenance\b",r"\bentretien\b",r"\bnettoyage\b",r"\bconseil\b",r"\bamo\b",r"\betude(s)?\b",r"\bassistance\b",r"\bformation\b",r"\baccueil\b",r"\bgestion\b",r"\bcollecte\b",r"\bconcession\b",r"\bdelegation de service public\b"]
+SERVICE=[r"\blocation de vehicule(s)?\b",r"\blongue duree\b",r"\betude de trafic\b",r"\bservices sylvicoles\b",r"\bfourniture de services\b",r"\bprestations video et son\b",r"\bprestation(s)?\b",r"\bmaintenance\b",r"\bentretien\b",r"\bnettoyage\b",r"\bconseil\b",r"\bamo\b",r"\betude(s)?\b",r"\bassistance\b",r"\bformation\b",r"\baccueil\b",r"\bgestion\b",r"\bcollecte\b",r"\bconcession\b",r"\bdelegation de service public\b"]
 
 def get_json(url):
     req=urllib.request.Request(url,headers=HEADERS)
@@ -60,16 +60,19 @@ def norm(value):
     return re.sub(r"\s+"," ","".join(c for c in s if not unicodedata.combining(c))).strip()
 
 def classify(title):
+    """Classement prudent : services/travaux explicites avant les mots génériques de fourniture."""
     t=norm(title)
     if re.search(r"\battribution\b|\bmarche attribue\b|\bavis d'attribution\b",t):
         return {"category":"Avis d’attribution","kind":"attribution","relevance":"faible","reason":"Avis d’attribution : vérifier si le marché est déjà attribué."}
+    # Les formulations de service priment sur les mots isolés comme « véhicule »,
+    # « sécurité » ou « fourniture ».
+    if any(re.search(p,t) for p in SERVICE):
+        return {"category":"Services et prestations","kind":"services","relevance":"faible","reason":"Marché principalement lié à une prestation de services."}
+    if any(re.search(p,t) for p in WORK):
+        return {"category":"Travaux et construction","kind":"travaux","relevance":"faible","reason":"Marché principalement lié à des travaux."}
     for category,kind,patterns in RULES:
         if any(re.search(p,t) for p in patterns):
             return {"category":category,"kind":kind,"relevance":"à étudier","reason":"Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."}
-    if any(re.search(p,t) for p in WORK):
-        return {"category":"Travaux et construction","kind":"travaux","relevance":"faible","reason":"Marché principalement lié à des travaux."}
-    if any(re.search(p,t) for p in SERVICE):
-        return {"category":"Services et prestations","kind":"services","relevance":"faible","reason":"Marché principalement lié à une prestation de services."}
     return {"category":"À qualifier","kind":"inconnu","relevance":"à vérifier","reason":"Intitulé insuffisant pour déterminer le type de besoin."}
 
 def main():
