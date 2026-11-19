@@ -289,10 +289,11 @@ exports.recordDealPaymentReconciliationReview = onCall({ secrets: [stripeSecret]
       const evidence = {
         identityMatches,
         currentSession: deal.stripeCheckoutSessionId === session.id,
-        checkoutAttemptMatches: session.metadata?.checkoutAttempt === undefined ||
+        checkoutAttemptMatches: session.metadata?.checkoutAttempt !== undefined &&
           Number(session.metadata.checkoutAttempt) === Number(deal.checkoutAttempt || 0),
         paidInStripe: session.payment_status === "paid",
         paidInDealHunter: deal.paymentStatus === "paid",
+        dealStatus: deal.status || "proposed",
         paymentIntentId,
         paymentIntentMatches: Boolean(paymentIntentId && deal.stripePaymentIntentId === paymentIntentId)
       };
