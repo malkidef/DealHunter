@@ -293,7 +293,7 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
       success_url: base + "/?deal=" + encodeURIComponent(dealId) + "&payment=success",
       cancel_url: base + "/?deal=" + encodeURIComponent(dealId) + "&payment=cancelled",
       client_reference_id: dealId,
-      metadata: { dealId, buyerUid: uid },
+      metadata: { dealId, buyerUid: uid, checkoutAttempt: String(attempt) },
       payment_intent_data: { metadata: { dealId, buyerUid: uid }, transfer_group: "dealhunter_" + dealId }
     }, { idempotencyKey: "dh-checkout-" + dealId + "-" + attempt + "-" + amounts.totalCents });
     await db.runTransaction(async (tx) => {
