@@ -28,7 +28,18 @@ Les autres places de marché du répertoire restent des pistes. Aucun scraping n
 - **Utilisation dans l'application :** affichage séparé dans « Annonces GSA », recherche, filtres et classement indicatif. Les annonces ne sont pas ajoutées aux stocks vendeurs et les suggestions acheteurs ne déclenchent aucun contact.
 - **Implémentation :** [guide](connectors/GSA_AUCTIONS.md), [script](../scripts/gsa_auctions.py), [tests](../tests/test_gsa_auctions.py), [workflow](../.github/workflows/gsa-auctions-manual.yml).
 
-### Autres sources — à vérifier avant toute connexion
+#### BODACC — signaux publics de ventes et cessions
+
+- **Accès :** API officielle DILA / BODACC, sans compte, via OpenDataSoft Explore API v2.1 ; jeu de données `annonces-commerciales`.
+- **Preuve :** [fiche API data.gouv.fr](https://www.data.gouv.fr/dataservices/api-bulletin-officiel-des-annonces-civiles-et-commerciales-bodacc), [jeu de données officiel](https://bodacc-datadila.opendatasoft.com/explore/dataset/annonces-commerciales/api/), [page officielle BODACC sur les données ouvertes](https://www.bodacc.fr/pages/donnees-ouvertes-et-api/).
+- **Licence :** Licence Ouverte / Open Licence 2.0 ; attribution DILA / BODACC requise. Respecter l'avertissement relatif aux données personnelles et les demandes de mise à jour/correction.
+- **Périmètre collecté :** uniquement les avis dont `familleavis = 'vente'` ; 100 résultats les plus récents par exécution.
+- **Données conservées :** identifiant d'avis, libellé générique, ville, département, date de parution, URL officielle et date de collecte. Les champs `commercant`, `listepersonnes` et `listeetablissements` sont exclus pour éviter d'importer des données personnelles non nécessaires.
+- **Limite métier essentielle :** une vente ou cession de fonds/entreprise n'est pas une annonce de surplus. Le flux est affiché dans un onglet distinct « Signaux BODACC », avec `is_inventory=false` et revue `pending`. Il n'alimente ni le catalogue de stocks vendeurs, ni le matching produits/quantités/prix.
+- **Statut :** connecteur et tests ajoutés ; première exécution GitHub Actions à vérifier avant de déclarer la collecte opérationnelle.
+- **Implémentation :** [script](../scripts/collect_bodacc.py), [tests](../tests/test_collect_bodacc.py), [workflow quotidien](../.github/workflows/collect-bodacc.yml), flux `data/bodacc-business-sales.json`.
+
+## Autres sources — à vérifier avant toute connexion
 
 | Source candidate | Famille | Première vérification | Statut |
 |---|---|---|---|
