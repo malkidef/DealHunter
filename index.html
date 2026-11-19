@@ -831,6 +831,13 @@ document.addEventListener('submit',e=>{
  setTimeout(()=>{button.disabled=false;button.textContent='Proposer les conditions de vente';},1200);
 });
 document.addEventListener('click',e=>{
+ const pay=e.target.closest('[data-deal-pay]');
+ if(!pay)return;
+ pay.disabled=true;
+ pay.textContent='Ouverture du paiement…';
+ window.dispatchEvent(new CustomEvent('dealhunter-pay-deal',{detail:{dealId:pay.dataset.dealPay}}));
+});
+document.addEventListener('click',e=>{
  const accept=e.target.closest('[data-deal-accept]');
  if(accept){accept.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
  const confirm=e.target.closest('[data-deal-confirm]');
@@ -862,8 +869,12 @@ window.addEventListener('dealhunter-deals',e=>{
  list.innerHTML=deals.length?deals.map(d=>{
   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
-  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'En attente des confirmations':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
-  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div></article>';
+  const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'Accord accepté':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
+  const paymentState=d.paymentStatus==='paid'?'Paiement confirmé':d.paymentStatus==='checkout_created'?'Paiement à finaliser':d.paymentStatus==='checkout_failed'?'Paiement à réessayer':'Paiement en attente';
+  const paymentAction=d.buyerUid===uid&&d.status==='agreed'&&d.paymentStatus!=='paid'
+    ?'<p><button type="button" data-deal-pay="'+escapeHtml(d.id)+'">Payer et sécuriser la transaction</button></p>'
+    :'';
+  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' '+escapeHtml(d.unit||'unit')+' · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div><div class="muted">'+paymentState+'</div>'+paymentAction+'</article>';
  }).join(''):'Aucun accord de vente proposé pour le moment.';
 });
 
