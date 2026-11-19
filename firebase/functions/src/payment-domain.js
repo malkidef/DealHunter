@@ -37,8 +37,9 @@ function assertDealPayable(deal) {
   if (!deal || deal.status !== "agreed") {
     throw new TypeError("Le paiement est possible uniquement après accord des deux entreprises.");
   }
-  if (deal.paymentStatus === "paid" || deal.paymentStatus === "refunded") {
-    throw new TypeError("Cet accord a déjà été payé ou remboursé.");
+  const allowedPaymentStates = [undefined, null, "none", "pending", "checkout_created", "checkout_failed", "checkout_expired"];
+  if (!allowedPaymentStates.includes(deal.paymentStatus)) {
+    throw new TypeError("L'état de paiement de cet accord ne permet pas un nouveau paiement.");
   }
   if (!deal.sellerUid || !deal.buyerUid || deal.sellerUid === deal.buyerUid ||
       !Array.isArray(deal.participantUids) ||
