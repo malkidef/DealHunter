@@ -37,9 +37,12 @@
 
 - Tester les événements webhook et leurs nouvelles tentatives.
 - Vérifier le solde disponible de la plateforme et sa capacité à financer remboursements et contestations.
-- Ajouter une procédure d'administration authentifiée pour arbitrer les litiges et autoriser les remboursements ; le code actuel ne fournit pas encore cette interface.
+- La callable `adminResolveDealDispute` est réservée aux comptes Firebase portant le custom claim `admin: true`. Tester le refus sans ce claim et l'autorisation avec ce claim.
+- Tester les deux décisions d'administration : `release` (après note obligatoire, puis versement si les deux parties ont confirmé) et `refund` (remboursement intégral Stripe idempotent, transfert bloqué).
+- Les remboursements partiels restent en revue manuelle. Si un transfert vendeur est déjà payé, l'arbitrage automatique de remboursement est refusé : une réconciliation opérateur est nécessaire.
+- L'interface d'administration n'est pas encore construite ; la callable backend ne suffit pas à rendre le parcours opérable par une équipe métier.
 - Ajouter une reprise opérateur et une réconciliation périodique des transferts différés.
 - Faire valider le rôle de marchand officiel, les conditions de vente, la TVA, le droit de rétractation éventuel et le cadre réglementaire des flux de fonds.
 - Ne jamais présenter Stripe Connect comme un compte séquestre.
 
-Ce document décrit des vérifications à exécuter ; il ne signifie pas que les tests ont déjà été réalisés.
+Le code backend d'arbitrage est présent, mais les scénarios Stripe de bout en bout décrits ici restent à exécuter en environnement de test. Le document ne signifie pas que les paiements, remboursements ou transferts ont déjà été réalisés.
