@@ -57,6 +57,39 @@ Le pipeline et les règles de validation sont décrits dans [docs/PIPELINE_SOURC
 5. **Commande et paiement** : intégration future d'un prestataire adapté ; commission envisagée de 5 % uniquement après confirmation contractuelle de la vente.
 6. **Confiance et conformité** : vérification des entreprises, sécurité, RGPD, prévention de la fraude et gestion des désinscriptions.
 
+## Paiements Stripe — préparation du mode test
+
+Le code Stripe Connect / Checkout est présent dans `firebase/functions/src/payments.js`, mais les paiements sont **désactivés par défaut**. Ne pas activer ce parcours en production avant les tests de bout en bout et la revue juridique/sécurité.
+
+### Préparer un environnement de test isolé
+
+1. Utiliser un compte Stripe de test et ses clés commençant par `sk_test_` et `whsec_`. Ne jamais copier ces valeurs dans Git, dans le fichier web, dans un ticket ou dans une conversation.
+2. Depuis le terminal du projet Firebase, enregistrer les secrets côté Firebase :
+   ```bash
+   firebase functions:secrets:set STRIPE_SECRET_KEY
+   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+   ```
+   Saisir les valeurs de test uniquement dans l'invite sécurisée de la CLI.
+3. Dans le fichier d'environnement local non versionné correspondant au projet Firebase de test (par exemple `.env.dealhunter-3747b` si cet ID est bien celui du projet sandbox), définir :
+   ```dotenv
+   DEALHUNTER_PAYMENTS_ENABLED=true
+   ```
+   Vérifier le nom exact du fichier d'environnement attendu par Firebase CLI et s'assurer qu'il est ignoré par Git. Ne jamais ajouter cette variable à l'environnement de production à ce stade.
+4. Déployer les fonctions uniquement sur le projet Firebase de test après vérification explicite de l'ID du projet et de la liste des fonctions. Configurer dans Stripe un webhook de test vers l'URL `stripeWebhook` déployée, avec les événements Checkout, Connect, remboursement et litige effectivement traités par le code. Enregistrer le secret de signature du webhook dans `STRIPE_WEBHOOK_SECRET`.
+5. Vérifier le retour d'onboarding Connect, le Checkout en EUR, le traitement du webhook, l'idempotence, les doublons, les échecs, les remboursements et les litiges. Utiliser exclusivement les moyens de paiement de test publiés par Stripe.
+
+### Critères avant toute activation réelle
+
+- Un vendeur de test termine l'onboarding Connect et son compte est correctement associé à son UID.
+- Seul l'acheteur de l'accord accepté peut créer la session Checkout.
+- Le montant, la devise et la commission sont recalculés et validés côté serveur.
+- Un webhook signé et vérifié confirme le paiement ; une rediffusion ne crée ni double paiement ni double transfert.
+- Aucun transfert vendeur n'est possible avant les deux confirmations de réalisation/réception et l'absence de blocage.
+- Les scénarios d'échec, remboursement, litige et reprise après interruption sont documentés et testés.
+- La configuration de production, les obligations réglementaires, les conditions Stripe Connect et les règles de remboursement sont revues avant activation.
+
+**État vérifié dans ce dépôt :** aucun secret Stripe de test n'a été fourni ou validé ; aucun déploiement de fonctions n'a été effectué ; `DEALHUNTER_PAYMENTS_ENABLED` reste désactivé ; aucun paiement ni transfert réel n'est activé. Le présent guide ne constitue pas une validation de conformité ni une autorisation de déploiement.
+
 ## Prochaines étapes
 
 1. Confirmer auprès de GSA la portée de la licence applicable aux données de l'API avant tout usage commercial.
