@@ -346,17 +346,21 @@ exports.getDealPaymentReconciliationAdminDashboard = onCall(async (request) => {
   if (request.auth.token.admin !== true) {
     throw new HttpsError("permission-denied", "Accès réservé aux administrateurs DealHunter.");
   }
-  const reviewStatuses = [
-    "missing_payment_intent",
-    "duplicate_payment",
-    "stale_checkout_paid",
-    "paid_checkout_in_ineligible_deal"
+  const queries = [
+    ["paymentReviewStatus", ["missing_payment_intent", "duplicate_payment", "stale_checkout_paid", "paid_checkout_in_ineligible_deal"]],
+    ["refundStatus", ["partial_refund_manual_review", "manual_review"]],
+    ["disputeStatus", ["open", "under_review", "lost"]],
+    ["transferStatus", ["manual_review_after_transfer", "reversal_pending", "blocked_refund", "blocked_dispute_lost"]]
   ];
-  const snap = await db.collection("deals")
-    .where("paymentReviewStatus", "in", reviewStatuses)
-    .limit(50)
-    .get();
-  const items = await Promise.all(snap.docs.map(async (doc) => {
+  const snapshots = await Promise.all(queries.map(([field, statuses]) =>
+    db.collection("deals").where(field, "in", statuses).limit(50).get()
+  ));
+  const unique = new Map();
+  for (const snapshot of snapshots) {
+    for (const doc of snapshot.docs) unique.set(doc.id, doc);
+  }
+  const docs = [...unique.values()].slice(0, 100);
+  const items = await Promise.all(docs.map(async (doc) => {
     const deal = doc.data();
     const auditSnap = await doc.ref.collection("payment_reconciliation_audit")
       .orderBy("recordedAt", "desc")
@@ -368,6 +372,10 @@ exports.getDealPaymentReconciliationAdminDashboard = onCall(async (request) => {
       status: deal.status || "unknown",
       paymentStatus: deal.paymentStatus || "unknown",
       paymentReviewStatus: deal.paymentReviewStatus || "none",
+      refundStatus: deal.refundStatus || "none",
+      refundedAmountCents: Number.isSafeInteger(deal.refundedAmountCents) ? deal.refundedAmountCents : null,
+      disputeStatus: deal.disputeStatus || "none",
+      transferStatus: deal.transferStatus || "none",
       totalAmount: Number.isFinite(Number(deal.totalAmount)) ? Number(deal.totalAmount) : null,
       currency: String(deal.currency || "EUR").slice(0, 8),
       checkoutSessionId: deal.stripeCheckoutSessionId || null,
@@ -384,7 +392,7 @@ exports.getDealPaymentReconciliationAdminDashboard = onCall(async (request) => {
       })
     };
   }));
-  return { items, limit: 50 };
+  return { items, limit: 100 };
 });
 
 exports.getSellerConnectStatus = onCall(async (request) => {
