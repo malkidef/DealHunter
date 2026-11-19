@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, canReleaseToSeller } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, canReleaseToSeller } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -201,11 +201,13 @@ exports.confirmDealCompletion = onCall(async (request) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new HttpsError("not-found", "Vente introuvable.");
     const deal = snap.data();
-    if (!deal.participantUids?.includes(uid) || !["sellerUid", "buyerUid"].some((field) => deal[field] === uid)) {
-      throw new HttpsError("permission-denied", "Vous ne participez pas à cette vente.");
+    let role;
+    try {
+      role = assertCanConfirmCompletion(deal, uid);
+    } catch (error) {
+      const permission = error.message === "Vous ne participez pas à cette vente.";
+      throw new HttpsError(permission ? "permission-denied" : "failed-precondition", error.message);
     }
-    if (deal.paymentStatus !== "paid") throw new HttpsError("failed-precondition", "Le paiement doit être confirmé avant la validation finale.");
-    const role = deal.sellerUid === uid ? "seller" : "buyer";
     const field = role + "Confirmed";
     if (deal[field] === true) return { accepted: true, alreadyConfirmed: true };
     const other = role === "seller" ? deal.buyerConfirmed : deal.sellerConfirmed;
