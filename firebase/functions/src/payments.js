@@ -922,9 +922,14 @@ async function processStripeEvent(event) {
     for (const doc of pending.docs) await tryReleaseDeal(doc.id);
   } else if (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed") {
     const dispute = event.data.object;
-    if (dispute.payment_intent) {
-      const matches = await db.collection("deals").where("stripePaymentIntentId", "==", dispute.payment_intent).limit(1).get();
-      for (const doc of matches.docs) {
+    if (!dispute.payment_intent) {
+      throw new Error("Litige Stripe sans PaymentIntent : rapprochement manuel requis");
+    }
+    const matches = await db.collection("deals").where("stripePaymentIntentId", "==", dispute.payment_intent).limit(2).get();
+    if (matches.size !== 1) {
+      throw new Error("Litige Stripe associé à " + matches.size + " vente(s) : rapprochement manuel requis");
+    }
+    for (const doc of matches.docs) {
         const applied = await db.runTransaction(async (tx) => {
           const fresh = await tx.get(doc.ref);
           if (!fresh.exists) return false;
@@ -951,9 +956,14 @@ async function processStripeEvent(event) {
     }
   } else if (event.type === "charge.refunded") {
     const charge = event.data.object;
-    if (charge.payment_intent) {
-      const matches = await db.collection("deals").where("stripePaymentIntentId", "==", charge.payment_intent).limit(1).get();
-      for (const doc of matches.docs) {
+    if (!charge.payment_intent) {
+      throw new Error("Remboursement Stripe sans PaymentIntent : rapprochement manuel requis");
+    }
+    const matches = await db.collection("deals").where("stripePaymentIntentId", "==", charge.payment_intent).limit(2).get();
+    if (matches.size !== 1) {
+      throw new Error("Remboursement Stripe associé à " + matches.size + " vente(s) : rapprochement manuel requis");
+    }
+    for (const doc of matches.docs) {
         const refundAction = await db.runTransaction(async (tx) => {
           const fresh = await tx.get(doc.ref);
           if (!fresh.exists) return { action: "none" };
