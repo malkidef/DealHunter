@@ -67,8 +67,10 @@ if (!ready) {
           title.textContent = deal.product || "Vente sans libellé";
           const detail = document.createElement("p");
           detail.className = "muted";
+          const rawCurrency = String(deal.currency || "EUR").toUpperCase();
+          const safeCurrency = ["EUR", "USD", "GBP", "CHF", "CAD", "AUD", "JPY", "CNY", "INR"].includes(rawCurrency) ? rawCurrency : "EUR";
           const amount = deal.totalAmount === null ? "Montant indisponible" :
-            new Intl.NumberFormat("fr-FR", { style: "currency", currency: String(deal.currency || "EUR").toUpperCase() }).format(deal.totalAmount);
+            new Intl.NumberFormat("fr-FR", { style: "currency", currency: safeCurrency }).format(deal.totalAmount);
           detail.textContent = "Vente : " + deal.dealId + " · " + amount + " · " + (deal.paymentReviewStatus || "à examiner");
           const audits = document.createElement("p");
           audits.className = "muted";
