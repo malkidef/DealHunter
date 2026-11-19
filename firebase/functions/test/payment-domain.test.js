@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -117,4 +117,25 @@ test("completion confirmation is blocked during disputes and after any refund", 
   }
   assert.equal(assertCanConfirmCompletion({ ...paid, disputeStatus: "won" }, "buyer-1"), "buyer");
   assert.equal(assertCanConfirmCompletion({ ...paid, disputeStatus: "none", refundStatus: "none" }, "buyer-1"), "buyer");
+});
+
+
+test("opening a dispute requires a paid deal and a participant", () => {
+  const paid = { ...deal, status: "completed", paymentStatus: "paid" };
+  assert.equal(assertCanOpenDispute(paid, "seller-1"), "seller");
+  assert.equal(assertCanOpenDispute(paid, "buyer-1"), "buyer");
+  assert.throws(() => assertCanOpenDispute(paid, "intruder"), /ne participez pas/);
+  assert.throws(() => assertCanOpenDispute({ ...paid, paymentStatus: "pending" }, "buyer-1"), /vente payée/);
+  assert.throws(() => assertCanOpenDispute({ ...paid, status: "cancelled" }, "buyer-1"), /clôturée/);
+});
+
+test("a dispute cannot be reopened or opened during or after a refund", () => {
+  const paid = { ...deal, status: "completed", paymentStatus: "paid" };
+  for (const disputeStatus of ["open", "won", "lost", "under_review"]) {
+    assert.throws(() => assertCanOpenDispute({ ...paid, disputeStatus }, "buyer-1"), /déjà été ouvert/);
+  }
+  for (const refundStatus of ["refunded", "partial_refund_manual_review", "manual_review"]) {
+    assert.throws(() => assertCanOpenDispute({ ...paid, refundStatus }, "buyer-1"), /remboursement/);
+  }
+  assert.equal(assertCanOpenDispute({ ...paid, disputeStatus: "none", refundStatus: "none" }, "buyer-1"), "buyer");
 });
