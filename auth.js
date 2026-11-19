@@ -499,7 +499,47 @@ if (!ready) {
       adminInspectionReady = true;
       adminRecordButton.disabled = false;
       adminResult.textContent = JSON.stringify(result.data, null, 2);
-      adminInspectStatus.textContent = "Inspection terminée. Vérifie les écarts avant de consigner une décision.";
+      const checksBox = document.getElementById("adminReconciliationChecks");
+      checksBox.replaceChildren();
+      const checks = result.data?.checks || {};
+      Object.entries(checks).forEach(([name, value]) => {
+        const item = document.createElement("article");
+        item.className = "item";
+        const label = document.createElement("strong");
+        label.textContent = name;
+        const state = document.createElement("div");
+        state.textContent = value === true ? "Conforme" : value === false ? "Écart détecté" : String(value);
+        state.className = value === true ? "status-success" : value === false ? "status-warning" : "muted";
+        item.append(label, state);
+        checksBox.append(item);
+      });
+      const auditBox = document.getElementById("adminAuditHistory");
+      auditBox.replaceChildren();
+      const history = Array.isArray(result.data?.reconciliationAudit) ? result.data.reconciliationAudit : [];
+      if (!history.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Aucune décision enregistrée pour cette vente.";
+        auditBox.append(empty);
+      } else {
+        history.forEach(entry => {
+          const item = document.createElement("article");
+          item.className = "item";
+          const heading = document.createElement("strong");
+          heading.textContent = entry.decision || "Décision sans libellé";
+          const details = document.createElement("p");
+          details.className = "muted";
+          details.textContent = (entry.recordedAt || "Date inconnue") + " · Administrateur : " + (entry.adminUid || "inconnu") + " · Session : " + (entry.checkoutSessionId || "inconnue");
+          const notes = document.createElement("p");
+          notes.textContent = entry.notes || "Aucune note.";
+          const outcome = document.createElement("p");
+          outcome.className = "muted";
+          outcome.textContent = entry.actionTaken ? "Action enregistrée" : "Aucune action financière exécutée";
+          item.append(heading, details, notes, outcome);
+          auditBox.append(item);
+        });
+      }
+      adminInspectStatus.textContent = "Inspection terminée. Vérifie les écarts et l’historique avant de consigner une décision.";
       adminReviewStatus.textContent = "Inspection disponible. Une décision humaine et une note sont requises.";
     } catch (error) {
       adminResult.textContent = "Inspection impossible : " + (error.message || error.code || "erreur inconnue");
