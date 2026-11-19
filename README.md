@@ -10,7 +10,7 @@ DealHunter vise à rapprocher des entreprises qui disposent de stocks excédenta
 - **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
 - Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
 
-Le dépôt contient aussi du code de lecture des flux TED et SAM.gov, mais au moment de cette vérification le fichier SAM attendu est vide et le fichier TED attendu n'est pas présent sur la branche principale. Ces deux flux ne sont donc **pas comptés comme opérationnels** ici.
+Le connecteur TED (`scripts/collect_ted.py`) et un instantané (`data/ted-buyer-opportunities.json`) sont présents sur cette branche ; l'interface peut afficher cet instantané, mais aucune collecte TED planifiée n'est configurée ici et les avis restent non qualifiés (`verified=false`). Ce flux est donc **disponible en consultation, pas encore automatisé ni validé commercialement**. Le connecteur SAM.gov et son fichier de données ne sont pas présents sur cette branche ; SAM.gov n'est donc **pas compté comme opérationnel**.
 
 ## Backend actuel : Firebase
 
