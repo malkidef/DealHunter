@@ -37,6 +37,7 @@ if (!ready) {
   const createDealCheckoutSessionCall = httpsCallable(functions, "createDealCheckoutSession");
   const createSellerConnectAccountCall = httpsCallable(functions, "createSellerConnectAccount");
   const createSellerOnboardingLinkCall = httpsCallable(functions, "createSellerOnboardingLink");
+  const openDealDisputeCall = httpsCallable(functions, "openDealDispute");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
@@ -170,6 +171,15 @@ if (!ready) {
       if(!url||!/^https:\/\//i.test(url))throw new Error("Lien de paiement sécurisé invalide.");
       window.location.assign(url);
     }catch(err){console.error(err);status.textContent="Paiement indisponible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-open-dispute",async e=>{
+    const user=auth.currentUser,{dealId,reason,description}=e.detail||{};
+    if(!user||!dealId)return;
+    try{
+      await openDealDisputeCall({dealId,reason,description});
+      await loadMatchRequests(user);
+      status.textContent="Litige enregistré. Le versement vendeur est suspendu pendant son examen.";
+    }catch(err){console.error(err);status.textContent="Ouverture du litige impossible : "+(err.message||err.code);}
   });
   window.addEventListener("dealhunter-confirm-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
