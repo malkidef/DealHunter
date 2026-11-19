@@ -98,6 +98,24 @@ function assertCanConfirmCompletion(deal, uid) {
   return role;
 }
 
+function assertCanOpenDispute(deal, uid) {
+  const role = participantRole(deal, uid);
+  if (!role) throw new TypeError("Vous ne participez pas à cette vente.");
+  if (deal.paymentStatus !== "paid") {
+    throw new TypeError("Un litige ne peut être ouvert que sur une vente payée.");
+  }
+  if (["resolved", "cancelled"].includes(deal.status)) {
+    throw new TypeError("Cette vente est déjà clôturée.");
+  }
+  if (deal.disputeStatus && deal.disputeStatus !== "none") {
+    throw new TypeError("Un litige a déjà été ouvert ou clôturé pour cette vente.");
+  }
+  if (deal.refundStatus && deal.refundStatus !== "none") {
+    throw new TypeError("Un remboursement est déjà en cours ou a été effectué.");
+  }
+  return role;
+}
+
 function canReleaseToSeller(deal) {
   const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
@@ -108,5 +126,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, canReleaseToSeller
 };
