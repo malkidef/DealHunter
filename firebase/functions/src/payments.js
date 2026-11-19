@@ -425,9 +425,10 @@ async function tryReleaseDeal(dealId) {
       sellerNetCents: freshAmounts.sellerNetCents,
       updatedAt: FieldValue.serverTimestamp()
     });
-    return true;
+    return { amounts: freshAmounts };
   });
   if (!claimed) return;
+  amounts = claimed.amounts;
 
   try {
     // Last Firestore check before the external Stripe side effect. A race can
@@ -569,7 +570,8 @@ async function processStripeEvent(event) {
             disputeStatus: transition.status,
             stripeDisputeId: transition.disputeId,
             stripeDisputeEventCreated: transition.eventCreated,
-            transferStatus: transition.transferStatus,
+            transferStatus: fresh.data().stripeTransferId
+              ? "manual_review_after_transfer" : transition.transferStatus,
             updatedAt: FieldValue.serverTimestamp()
           };
           if (event.type === "charge.dispute.created") {
@@ -597,6 +599,8 @@ async function processStripeEvent(event) {
             tx.update(doc.ref, {
               refundStatus: refund.status,
               refundedAmountCents: refund.refundedAmountCents,
+              transferStatus: deal.stripeTransferId
+                ? "manual_review_after_transfer" : (deal.transferStatus || "none"),
               updatedAt: FieldValue.serverTimestamp()
             });
             return { action: "partial" };
