@@ -653,6 +653,7 @@ if (!ready) {
         const token = await user.getIdTokenResult(true);
         const isAdmin = token.claims.admin === true;
         if (adminTabButton) adminTabButton.classList.toggle("hidden", !isAdmin);
+        if (isAdmin) await loadAdminReconciliationQueue();
         if (adminAccessStatus) adminAccessStatus.textContent = isAdmin
           ? "Accès administrateur confirmé par le jeton Firebase."
           : "Accès refusé : ce compte ne possède pas le rôle administrateur.";
