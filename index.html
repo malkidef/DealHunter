@@ -258,7 +258,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),serverMatches=[],serverMatchesLoaded=false,pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
@@ -298,7 +298,7 @@ function score(s,b){
  if(!priceFit||!qtyFit||!locationFit||!productFit)return 0;
  return Math.min(100,35+(productExact?30:20)+15+10+10);
 }
-function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
+function matches(){if(serverMatchesLoaded)return serverMatches;const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function classifyGsaSector(x){
@@ -340,8 +340,10 @@ window.addEventListener('dealhunter-cloud-data',event=>{
  const data=event.detail||{};
  sellers=Array.isArray(data.sellers)?data.sellers:[];
  buyers=Array.isArray(data.buyers)?data.buyers:[];
+ serverMatches=Array.isArray(data.serverMatches)?data.serverMatches:[];
+ serverMatchesLoaded=data.serverMatchesLoaded===true;
  const info=$('matchingDataStatus');
- if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.';
+ if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur · '+(serverMatchesLoaded?serverMatches.length+' correspondance(s) calculée(s) par le serveur':'matching local de secours')+'. Les correspondances restent indicatives.';
  const dashboardConnection=$('dashboardConnection');
  if(dashboardConnection)dashboardConnection.textContent='Firebase connecté · données synchronisées depuis ton compte. Les correspondances restent indicatives ; aucun paiement n’est activé.';
  render();
