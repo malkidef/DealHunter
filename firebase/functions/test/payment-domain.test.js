@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -343,4 +343,39 @@ test("checkout callbacks may only update the currently reserved attempt", () => 
   assert.equal(isCurrentCheckoutAttempt(deal, 0), false);
   assert.equal(isCurrentCheckoutAttempt(deal, "invalid"), false);
   assert.equal(isCurrentCheckoutAttempt(null, 4), false);
+});
+
+
+test("reconciliation decisions require fresh Stripe evidence and never imply a financial mutation", () => {
+  const currentPaid = {
+    identityMatches: true, currentSession: true, checkoutAttemptMatches: true,
+    paidInStripe: true, paymentIntentId: "pi_1", paymentIntentMatches: true,
+    paidInDealHunter: false
+  };
+  assert.equal(validateReconciliationDecision("payment_confirmed", currentPaid), true);
+  assert.equal(validateReconciliationDecision("refund_review", currentPaid), true);
+  assert.throws(() => validateReconciliationDecision("payment_confirmed", {
+    ...currentPaid, currentSession: false
+  }));
+  assert.throws(() => validateReconciliationDecision("payment_confirmed", {
+    ...currentPaid, checkoutAttemptMatches: false
+  }));
+  assert.throws(() => validateReconciliationDecision("refund_review", {
+    ...currentPaid, paidInStripe: false
+  }));
+  assert.throws(() => validateReconciliationDecision("duplicate_payment", {
+    ...currentPaid, currentSession: true, paymentIntentMatches: true, paidInDealHunter: false
+  }));
+  assert.equal(validateReconciliationDecision("duplicate_payment", {
+    ...currentPaid, currentSession: false
+  }), true);
+  assert.equal(validateReconciliationDecision("not_paid", {
+    identityMatches: true, paidInStripe: false
+  }), true);
+  assert.equal(validateReconciliationDecision("manual_review", {
+    identityMatches: false
+  }), true);
+  assert.throws(() => validateReconciliationDecision("not_paid", {
+    identityMatches: true, paidInStripe: true
+  }));
 });
