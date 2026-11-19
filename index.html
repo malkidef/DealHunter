@@ -92,6 +92,8 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="companyCountry">Pays</label><select id="companyCountry"><option value="FR">France</option><option value="BE">Belgique</option><option value="LU">Luxembourg</option><option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option><option value="NL">Pays-Bas</option><option value="GB">Royaume-Uni</option><option value="US">États-Unis</option><option value="CA">Canada</option><option value="CH">Suisse</option></select></div>
 <button type="submit" id="createCompany">Créer mon espace entreprise</button>
 </form>
+<div class="auth-actions"><button type="button" id="sellerStripeOnboarding" class="secondary">Configurer les paiements vendeur (Stripe)</button></div>
+<p class="muted" id="sellerStripeStatus" role="status" aria-live="polite">Disponible après configuration du mode test Stripe par l’administrateur.</p>
 <div class="auth-account" id="authAccount"><div class="muted">Aucun utilisateur connecté.</div></div>
 <div class="auth-actions"><button type="button" class="secondary" id="signOut">Se déconnecter</button></div>
 </section>
