@@ -85,15 +85,18 @@ exports.createDealProposal = onCall(async (request) => {
     if (quantity > Number(offer.quantity) || quantity > Number(need.quantity) || unitPrice > Number(need.maxUnitBudget)) {
       throw new HttpsError("failed-precondition", "La quantité ou le prix dépasse les limites publiées.");
     }
-    const totalCents = Math.round(quantity * unitPrice * 100);
-    if (!Number.isSafeInteger(totalCents) || totalCents < 1) throw new HttpsError("invalid-argument", "Montant total invalide.");
+    const unitPriceCents = Math.round((unitPrice + Number.EPSILON) * 100);
+    const totalCents = quantity * unitPriceCents;
+    if (!Number.isSafeInteger(unitPriceCents) || unitPriceCents < 1 || !Number.isSafeInteger(totalCents)) {
+      throw new HttpsError("invalid-argument", "Montant total invalide.");
+    }
     const totalAmount = totalCents / 100;
     const isSeller = uid === match.sellerUid;
     tx.create(dealRef, {
       requestId, sellerUid: match.sellerUid, buyerUid: match.buyerUid,
       participantUids: [match.sellerUid, match.buyerUid], proposerUid: uid,
       accepterUid: isSeller ? match.buyerUid : match.sellerUid,
-      product: product.slice(0, 160), unit, quantity, unitPrice: totalCents / 100 / quantity,
+      product: product.slice(0, 160), unit, quantity, unitPrice: unitPriceCents / 100,
       totalAmount, commissionRate: 5,
       commissionAmount: Math.round(totalCents * 500 / 10000) / 100,
       currency: "eur", status: "proposed", paymentStatus: "pending",
