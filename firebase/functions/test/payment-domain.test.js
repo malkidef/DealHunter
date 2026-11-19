@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -244,4 +244,30 @@ test("unknown dispute close statuses remain blocked for manual review", () => {
   assert.equal(result.status, "under_review");
   assert.equal(result.transferStatus, "blocked_dispute");
   assert.equal(result.shouldRetryPayout, undefined);
+});
+
+
+test("transfer completion rechecks refunds and disputes after Stripe creates the transfer", () => {
+  const eligible = {
+    status: "completed", sellerConfirmed: true, buyerConfirmed: true,
+    paymentStatus: "paid", disputeStatus: "none", refundStatus: "none"
+  };
+  assert.deepEqual(resolveTransferCompletion(eligible, "tr_1"), {
+    status: "paid", shouldReverse: false
+  });
+  assert.deepEqual(resolveTransferCompletion({ ...eligible, refundStatus: "refunded" }, "tr_1"), {
+    status: "reversal_pending", shouldReverse: true
+  });
+  for (const patch of [
+    { refundStatus: "partial_refund_manual_review" },
+    { disputeStatus: "open" },
+    { disputeStatus: "under_review" },
+    { disputeStatus: "lost" },
+    { status: "agreed" }
+  ]) {
+    assert.deepEqual(resolveTransferCompletion({ ...eligible, ...patch }, "tr_1"), {
+      status: "manual_review_after_transfer", shouldReverse: false
+    });
+  }
+  assert.throws(() => resolveTransferCompletion(eligible, ""));
 });
