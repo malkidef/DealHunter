@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, addDoc, collection, getDoc, getDocs, query, where, Timestamp } = require("firebase/firestore");
+const { doc, setDoc, addDoc, updateDoc, deleteDoc, collection, getDoc, getDocs, query, where, Timestamp } = require("firebase/firestore");
 
 const projectId = "demo-dealhunter-test";
 let env;
