@@ -18,6 +18,14 @@ service cloud.firestore {
       }
     }
 
+    // Suggestions calculées exclusivement par Cloud Functions (Admin SDK).
+    // Les participants peuvent les lire ; aucun client ne peut les créer ou les modifier.
+    match /matches/{matchId} {
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.participantUids;
+      allow create, update, delete: if false;
+    }
+
     // Catalogues partagés : visibles uniquement après connexion.
     // Seul le propriétaire d'une annonce peut la créer, modifier ou supprimer.
     match /publicOffers/{offerId} {
