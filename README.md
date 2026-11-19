@@ -163,3 +163,6 @@ L'onglet **Administration** de `index.html` est masqué par défaut et n'est aff
 - L'interface ne propose aucune action de remboursement, de transfert ou de modification directe du statut de paiement. L'enregistrement d'une revue reste une trace d'audit avec `actionTaken=false`.
 
 La présence de l'interface dans la branche de travail ne signifie pas qu'un compte administrateur est déjà provisionné, que les callables ont été déployées ou que Stripe est configuré. Les vérifications CI de cette version doivent être terminées avant de considérer ce jalon validé.
+
+
+La file d'administration utilise la callable `getDealPaymentReconciliationAdminDashboard`, qui exige le custom claim `admin: true`. Elle liste jusqu'à 50 ventes portant un statut de revue, affiche les dernières décisions d'audit et permet de préremplir l'inspection Stripe. Le chargement est disponible à la connexion d'un administrateur et via le bouton d'actualisation. Les actions restent limitées à la consultation et à l'audit ; aucune régularisation financière n'est déclenchée.
