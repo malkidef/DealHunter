@@ -67,7 +67,8 @@ test("only match participants can read server-generated suggestions", async () =
   await assertFails(getDoc(doc(outsiderDb, "matches/match-1")));
   await assertSucceeds(getDocs(query(collection(sellerDb, "matches"), where("participantUids", "array-contains", "seller-1"))));
   await assertSucceeds(getDocs(query(collection(buyerDb, "matches"), where("participantUids", "array-contains", "buyer-1"))));
-  await assertFails(getDocs(query(collection(outsiderDb, "matches"), where("participantUids", "array-contains", "outsider"))));
+  const outsiderMatches = await assertSucceeds(getDocs(query(collection(outsiderDb, "matches"), where("participantUids", "array-contains", "outsider"))));
+  assert.equal(outsiderMatches.size, 0);
   await assertFails(setDoc(doc(sellerDb, "matches/forged"), {
     participantUids: ["seller-1"], status: "suggested"
   }));
