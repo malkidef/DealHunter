@@ -40,7 +40,8 @@ jobs:
       - name: Vérifier la présence de la clé API
         id: api-key
         env:
-          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+          # Accepte aussi l'ancien nom SAM_API_KEY pour ne pas bloquer une configuration déjà existante.
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY || secrets.SAM_API_KEY }}
         run: |
           if [ -n "$SAM_GOV_API_KEY" ]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
