@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, onSnapshot, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -29,6 +29,9 @@ if (!ready) {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  let unsubscribeMatches = null;
+  let cloudSellers = [];
+  let cloudBuyers = [];
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const signInWithProvider = async provider => {
     if (isMobileBrowser) return signInWithRedirect(auth, provider);
@@ -293,23 +296,33 @@ if (!ready) {
     });
 
     // Les suggestions calculées par Cloud Functions deviennent la source du matching affiché.
-    const matchSnapshot = await getDocs(query(
+    cloudSellers = sellers;
+    cloudBuyers = buyers;
+    if (unsubscribeMatches) unsubscribeMatches();
+    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+      detail: { sellers, buyers, serverMatches: [], serverMatchesLoaded: true }
+    }));
+    const matchesQuery = query(
       collection(db, "matches"),
       where("participantUids", "array-contains", user.uid)
-    ));
-    const sellerById = new Map(sellers.map(item => [item.id, item]));
-    const buyerById = new Map(buyers.map(item => [item.id, item]));
-    const serverMatches = matchSnapshot.docs.map(item => {
-      const data = item.data();
-      const seller = sellerById.get(data.listingId);
-      const buyer = buyerById.get(data.requestId);
-      if (!seller || !buyer || data.status !== "suggested") return null;
-      return { id: item.id, s: seller, b: buyer, score: Number(data.compatibilityScore) || 0 };
-    }).filter(Boolean).sort((left, right) => right.score - left.score);
-
-    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers, serverMatches, serverMatchesLoaded: true }
-    }));
+    );
+    unsubscribeMatches = onSnapshot(matchesQuery, matchSnapshot => {
+      const sellerById = new Map(cloudSellers.map(item => [item.id, item]));
+      const buyerById = new Map(cloudBuyers.map(item => [item.id, item]));
+      const serverMatches = matchSnapshot.docs.map(item => {
+        const data = item.data();
+        const seller = sellerById.get(data.listingId);
+        const buyer = buyerById.get(data.requestId);
+        if (!seller || !buyer || data.status !== "suggested") return null;
+        return { id: item.id, s: seller, b: buyer, score: Number(data.compatibilityScore) || 0 };
+      }).filter(Boolean).sort((left, right) => right.score - left.score);
+      window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+        detail: { sellers: cloudSellers, buyers: cloudBuyers, serverMatches, serverMatchesLoaded: true }
+      }));
+    }, error => {
+      console.error("Impossible de suivre les correspondances Firebase :", error);
+      status.textContent = "Annonces synchronisées, mais suivi des correspondances indisponible : " + (error.code || error.message);
+    });
   };
 
   window.addEventListener("dealhunter-update-business-record", async event => {
@@ -427,6 +440,8 @@ if (!ready) {
         status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
       }
     } else {
+      if (unsubscribeMatches) { unsubscribeMatches(); unsubscribeMatches = null; }
+      cloudSellers = []; cloudBuyers = [];
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
       window.dispatchEvent(new CustomEvent('dealhunter-cloud-data', { detail: { sellers: [], buyers: [], serverMatches: [], serverMatchesLoaded: false } }));
