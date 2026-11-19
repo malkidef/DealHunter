@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, addDoc, collection, Timestamp } = require("firebase/firestore");
+const { doc, setDoc, addDoc, collection, getDoc, Timestamp } = require("firebase/firestore");
 
 const projectId = "demo-dealhunter-test";
 let env;
@@ -49,6 +49,26 @@ function requestData(overrides = {}) {
     ...overrides
   };
 }
+
+test("only match participants can read server-generated suggestions", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "matches/match-1"), {
+      listingId: "offer-1", requestId: "need-1",
+      sellerUid: "seller-1", buyerUid: "buyer-1",
+      participantUids: ["seller-1", "buyer-1"],
+      compatibilityScore: 95, status: "suggested", createdAt: Timestamp.now()
+    });
+  });
+  const sellerDb = env.authenticatedContext("seller-1").firestore();
+  const buyerDb = env.authenticatedContext("buyer-1").firestore();
+  const outsiderDb = env.authenticatedContext("outsider").firestore();
+  await assertSucceeds(getDoc(doc(sellerDb, "matches/match-1")));
+  await assertSucceeds(getDoc(doc(buyerDb, "matches/match-1")));
+  await assertFails(getDoc(doc(outsiderDb, "matches/match-1")));
+  await assertFails(setDoc(doc(sellerDb, "matches/forged"), {
+    participantUids: ["seller-1"], status: "suggested"
+  }));
+});
 
 test("allows a request tied to real active listings owned by both parties", async () => {
   const db = env.authenticatedContext("seller-1").firestore();
