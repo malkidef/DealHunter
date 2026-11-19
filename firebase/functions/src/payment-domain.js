@@ -67,11 +67,11 @@ function participantRole(deal, uid) {
 }
 
 function canReleaseToSeller(deal) {
+  const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
+  const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
   return Boolean(deal && deal.status === "completed" &&
     deal.sellerConfirmed === true && deal.buyerConfirmed === true &&
-    deal.paymentStatus === "paid" &&
-    deal.disputeStatus !== "open" && deal.disputeStatus !== "lost" &&
-    deal.refundStatus !== "refunded");
+    deal.paymentStatus === "paid" && disputeClear && refundClear);
 }
 
 module.exports = {
