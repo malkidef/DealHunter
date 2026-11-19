@@ -84,7 +84,6 @@ exports.getCompanyDashboard = onCall(async (request) => {
 
 exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (request) => {
   requirePaymentsEnabled();
-  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const companyId = String(request.data?.companyId || "");
   const companySnap = await ownedCompany(uid, companyId);
@@ -105,6 +104,7 @@ exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (
 });
 
 exports.createSellerOnboardingLink = onCall({ secrets: [stripeSecret] }, async (request) => {
+  requirePaymentsEnabled();
   const uid = requireAuth(request);
   const companyId = String(request.data?.companyId || "");
   const companySnap = await ownedCompany(uid, companyId);
