@@ -99,6 +99,9 @@ test("paid stale Checkout attempts are held for review, and duplicate paid sessi
   assert.throws(() => resolveCheckoutPaymentEvent(
     current, { ...staleSession, amount_total: 19999 }, "deal-1"
   ), /montants ou participants/);
+  assert.deepEqual(resolveCheckoutPaymentEvent(
+    current, { ...staleSession, payment_intent: null }, "deal-1"
+  ), { action: "missing_payment_intent", paymentIntentId: null });
 });
 
 test("participant role is derived only from participant UID fields", () => {
