@@ -235,6 +235,19 @@ function resolveDisputeEvent(deal, eventType, dispute, eventCreated) {
     disputeId: dispute.id, eventCreated: incomingAt };
 }
 
+function assertRefundChargeMatchesDeal(deal, charge) {
+  const amounts = getDealAmounts(deal);
+  const charged = Number(charge?.amount);
+  const refunded = Number(charge?.amount_refunded || 0);
+  const currency = String(charge?.currency || "").toLowerCase();
+  if (!Number.isSafeInteger(charged) || charged !== amounts.totalCents ||
+      !Number.isSafeInteger(refunded) || refunded < 0 || refunded > charged ||
+      currency !== amounts.currency) {
+    throw new TypeError("Le remboursement Stripe ne correspond pas au montant et à la devise de la vente.");
+  }
+  return amounts;
+}
+
 function resolveRefundState(deal, charge) {
   if (!deal || !charge) throw new TypeError("Données de remboursement invalides.");
   const charged = Number(charge.amount || 0);
@@ -299,5 +312,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanCancelDeal, assertCanOpenDispute, resolveDisputeEvent, assertRefundChargeMatchesDeal, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 };
