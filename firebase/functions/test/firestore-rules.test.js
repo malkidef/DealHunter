@@ -76,3 +76,71 @@ test("rejects requests using an inactive listing", async () => {
   const db = env.authenticatedContext("seller-1").firestore();
   await assertFails(addDoc(collection(db, "matchRequests"), requestData()));
 });
+
+test("allows a deal proposal only from a participant of an accepted match", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "matchRequests/request-1"), {
+      sellerId: "offer-1", buyerId: "need-1",
+      sellerUid: "seller-1", buyerUid: "buyer-1",
+      participantUids: ["seller-1", "buyer-1"],
+      requesterUid: "seller-1", recipientUid: "buyer-1",
+      requesterCompany: "Vendeur SA", recipientCompany: "Acheteur SA",
+      product: "Cartons", status: "accepted", createdAt: Timestamp.now()
+    });
+  });
+  const db = env.authenticatedContext("seller-1").firestore();
+  await assertSucceeds(setDoc(doc(db, "deals/deal-1"), {
+    requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
+    participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
+    accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+    unitPrice: 4, totalAmount: 200, commissionRate: 5,
+    commissionAmount: 10, status: "proposed", sellerConfirmed: false,
+    buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
+  }));
+});
+
+test("rejects a deal proposal with a forged seller or altered commission", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "matchRequests/request-1"), {
+      sellerId: "offer-1", buyerId: "need-1",
+      sellerUid: "seller-1", buyerUid: "buyer-1",
+      participantUids: ["seller-1", "buyer-1"],
+      requesterUid: "seller-1", recipientUid: "buyer-1",
+      requesterCompany: "Vendeur SA", recipientCompany: "Acheteur SA",
+      product: "Cartons", status: "accepted", createdAt: Timestamp.now()
+    });
+  });
+  const db = env.authenticatedContext("seller-1").firestore();
+  const base = {
+    requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
+    participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
+    accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+    unitPrice: 4, totalAmount: 200, commissionRate: 5,
+    commissionAmount: 10, status: "proposed", sellerConfirmed: false,
+    buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
+  };
+  await assertFails(setDoc(doc(db, "deals/forged"), { ...base, sellerUid: "attacker" }));
+  await assertFails(setDoc(doc(db, "deals/wrong-commission"), { ...base, commissionRate: 1 }));
+});
+
+test("only the other participant can accept a proposed deal", async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "deals/deal-accept"), {
+      requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
+      participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
+      accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+      unitPrice: 4, totalAmount: 200, commissionRate: 5,
+      commissionAmount: 10, status: "proposed", sellerConfirmed: false,
+      buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
+    });
+  });
+  const sellerDb = env.authenticatedContext("seller-1").firestore();
+  const buyerDb = env.authenticatedContext("buyer-1").firestore();
+  const { updateDoc } = require("firebase/firestore");
+  await assertFails(updateDoc(doc(sellerDb, "deals/deal-accept"), {
+    status: "agreed", agreedAt: Timestamp.now(), updatedAt: Timestamp.now()
+  }));
+  await assertSucceeds(updateDoc(doc(buyerDb, "deals/deal-accept"), {
+    status: "agreed", agreedAt: Timestamp.now(), updatedAt: Timestamp.now()
+  }));
+});
