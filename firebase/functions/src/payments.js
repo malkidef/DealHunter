@@ -47,6 +47,79 @@ function paymentError(message, error) {
   throw new HttpsError("internal", message);
 }
 
+
+exports.createDealProposal = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const requestId = validId(request.data?.requestId, "Mise en relation");
+  const quantity = Number(request.data?.quantity);
+  const unitPrice = Number(request.data?.unitPrice);
+  if (!Number.isSafeInteger(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    throw new HttpsError("invalid-argument", "Quantité entière et prix unitaire positif requis.");
+  }
+  const matchRef = db.collection("matchRequests").doc(requestId);
+  const dealRef = db.collection("deals").doc(requestId);
+  await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) throw new HttpsError("not-found", "Mise en relation introuvable.");
+    const match = matchSnap.data();
+    if (match.status !== "accepted" || !match.participantUids?.includes(uid)) {
+      throw new HttpsError("permission-denied", "Une mise en relation acceptée est nécessaire.");
+    }
+    const [offerSnap, needSnap, existingDeal] = await Promise.all([
+      tx.get(db.collection("publicOffers").doc(validId(match.sellerId, "Offre"))),
+      tx.get(db.collection("publicNeeds").doc(validId(match.buyerId, "Besoin"))),
+      tx.get(dealRef)
+    ]);
+    if (!offerSnap.exists || !needSnap.exists) throw new HttpsError("failed-precondition", "L'offre ou le besoin n'existe plus.");
+    if (existingDeal.exists) throw new HttpsError("already-exists", "Une proposition existe déjà pour cette mise en relation.");
+    const offer = offerSnap.data(), need = needSnap.data();
+    if (offer.status !== "active" || need.status !== "active" ||
+        offer.ownerUid !== match.sellerUid || need.ownerUid !== match.buyerUid) {
+      throw new HttpsError("failed-precondition", "L'offre ou le besoin n'est plus disponible.");
+    }
+    const product = String(match.product || offer.product || "").trim();
+    const unit = String(match.unit || offer.unit || "unit");
+    if (!product || product !== offer.product || unit !== (offer.unit || "unit") || unit !== (need.unit || "unit")) {
+      throw new HttpsError("failed-precondition", "Le produit ou l'unité ne correspond plus aux annonces.");
+    }
+    if (quantity > Number(offer.quantity) || quantity > Number(need.quantity) || unitPrice > Number(need.maxUnitBudget)) {
+      throw new HttpsError("failed-precondition", "La quantité ou le prix dépasse les limites publiées.");
+    }
+    const totalCents = Math.round(quantity * unitPrice * 100);
+    if (!Number.isSafeInteger(totalCents) || totalCents < 1) throw new HttpsError("invalid-argument", "Montant total invalide.");
+    const totalAmount = totalCents / 100;
+    const isSeller = uid === match.sellerUid;
+    tx.create(dealRef, {
+      requestId, sellerUid: match.sellerUid, buyerUid: match.buyerUid,
+      participantUids: [match.sellerUid, match.buyerUid], proposerUid: uid,
+      accepterUid: isSeller ? match.buyerUid : match.sellerUid,
+      product: product.slice(0, 160), unit, quantity, unitPrice: totalCents / 100 / quantity,
+      totalAmount, commissionRate: 5,
+      commissionAmount: Math.round(totalCents * 500 / 10000) / 100,
+      currency: "eur", status: "proposed", paymentStatus: "pending",
+      sellerConfirmed: false, buyerConfirmed: false,
+      createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
+    });
+  });
+  return { accepted: true, dealId: requestId };
+});
+
+exports.acceptDealProposal = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const dealId = validId(request.data?.dealId, "Vente");
+  const ref = db.collection("deals").doc(dealId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError("not-found", "Proposition introuvable.");
+    const deal = snap.data();
+    if (deal.status !== "proposed" || deal.accepterUid !== uid) {
+      throw new HttpsError("permission-denied", "Seul le destinataire peut accepter cette proposition en attente.");
+    }
+    tx.update(ref, { status: "agreed", agreedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+  });
+  return { accepted: true, dealId };
+});
+
 exports.getCompanyDashboard = onCall(async (request) => {
   requirePaymentsEnabled();
   const uid = requireAuth(request);
