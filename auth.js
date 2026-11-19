@@ -292,6 +292,49 @@ if (!ready) {
     }));
   };
 
+  window.addEventListener("dealhunter-update-business-record", async event => {
+    const user = auth.currentUser;
+    const { collectionName, recordId, record } = event.detail || {};
+    if (!user || collectionName !== "sellerOffers" || typeof recordId !== "string" || !recordId || !record) {
+      status.textContent = "Modification impossible : compte ou stock non valide.";
+      return;
+    }
+    const company = String(record.company || "").trim();
+    const product = String(record.product || "").trim();
+    const category = String(record.category || "").trim();
+    const location = String(record.location || "").trim();
+    const quantity = Number(record.quantity);
+    const unitPrice = Number(record.unitPrice);
+    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+      status.textContent = "Vérifie les champs : quantité entière positive et prix unitaire supérieur à zéro.";
+      return;
+    }
+    try {
+      const privateRef = doc(db, "users", user.uid, "sellerOffers", recordId);
+      const publicRef = doc(db, "publicOffers", recordId);
+      const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
+      if (!privateSnap.exists()) throw new Error("Ce stock n’existe plus dans ton compte.");
+      if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
+        throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
+      }
+      const original = privateSnap.data();
+      const updated = { company, product, category, quantity, unitPrice, location };
+      const batch = writeBatch(db);
+      batch.update(privateRef, updated);
+      batch.set(publicRef, {
+        ownerUid: user.uid, ...updated, status: "active",
+        createdAt: original.createdAt || serverTimestamp()
+      });
+      await batch.commit();
+      await loadCloudRecords(user);
+      status.textContent = "Stock modifié et catalogue partagé synchronisé.";
+      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated"));
+    } catch (error) {
+      console.error("Modification du stock impossible :", error);
+      status.textContent = "Modification impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
   window.addEventListener("dealhunter-remove-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId } = event.detail || {};
@@ -454,6 +497,11 @@ if (!ready) {
     }
   };
   document.addEventListener("submit", event => {
+    if (event.target === sellerForm && sellerForm.dataset.editingId) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (event.target === sellerForm) {
       saveBusinessRecord(event, sellerForm, "sellerOffers", [
         ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
