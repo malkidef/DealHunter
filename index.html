@@ -58,6 +58,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="tabs" id="mainTabs">
 <button type="button" class="active" data-tab="matches">Correspondances</button>
 <button type="button" class="secondary" data-tab="matchRequests">Demandes</button>
+<button type="button" class="secondary hidden" id="adminTabButton" data-tab="admin">Administration</button>
 <button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
 <button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
 <button type="button" class="secondary" data-tab="sellers">Déposer un surplus</button>
@@ -125,6 +126,34 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <p class="muted">Suivi des accords et confirmations des deux entreprises. La commission de 5 % est calculée à titre indicatif uniquement : aucun paiement ni prélèvement n’est activé.</p>
 <div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div>
 </section>
+</section>
+
+<section id="admin" class="panel hidden">
+<h2>Administration · Réconciliation des paiements</h2>
+<p class="muted">Espace réservé aux comptes disposant du rôle Firebase admin. Consultation Stripe en lecture seule et journalisation des décisions. Aucun remboursement, transfert ou changement de paiement n'est déclenché ici.</p>
+<div class="status-note" id="adminAccessStatus" role="status">Vérification des droits administrateur…</div>
+<form id="adminReconciliationInspectForm" class="item">
+<h3>Inspecter une vente</h3>
+<div class="field"><label for="adminDealId">Identifiant de vente (dealId)</label><input id="adminDealId" required maxlength="160" autocomplete="off"></div>
+<div class="field"><label for="adminCheckoutSessionId">Session Stripe Checkout</label><input id="adminCheckoutSessionId" required maxlength="160" autocomplete="off" placeholder="cs_…"></div>
+<button type="submit" id="adminInspectButton">Inspecter la session Stripe</button>
+<p class="muted" id="adminInspectStatus" role="status" aria-live="polite">Aucune inspection effectuée.</p>
+<pre id="adminReconciliationResult" class="code-output" aria-live="polite">Les résultats apparaîtront ici après inspection.</pre>
+</form>
+<form id="adminReconciliationReviewForm" class="item">
+<h3>Consigner une décision humaine</h3>
+<p class="muted">Une inspection préalable et une note de 10 à 1 000 caractères sont obligatoires. L'enregistrement n'exécute aucune action financière.</p>
+<div class="field"><label for="adminReviewDecision">Décision</label><select id="adminReviewDecision" required>
+<option value="manual_review">Revue manuelle requise</option>
+<option value="payment_confirmed">Paiement confirmé (preuves obligatoires)</option>
+<option value="refund_review">Remboursement à examiner (aucun remboursement lancé)</option>
+<option value="duplicate_payment">Paiement potentiellement dupliqué</option>
+<option value="not_paid">Paiement non effectué</option>
+</select></div>
+<div class="field"><label for="adminReviewNotes">Notes et justification</label><textarea id="adminReviewNotes" required minlength="10" maxlength="1000" rows="4" placeholder="Décrire les éléments examinés et la décision…"></textarea></div>
+<button type="submit" id="adminRecordReviewButton" disabled>Enregistrer dans le journal d'audit</button>
+<p class="muted" id="adminReviewStatus" role="status" aria-live="polite">Effectue une inspection avant d'enregistrer une décision.</p>
+</form>
 </section>
 <section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div></section>
 <section id="matches" class="panel">
@@ -937,7 +966,7 @@ window.addEventListener('dealhunter-deals',e=>{
     }
   }}));
  });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','admin','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','admin','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
