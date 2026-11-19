@@ -8,7 +8,7 @@ const Stripe = require("stripe");
 const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
-const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
+const { assertDealPayable, getDealAmounts, assertCheckoutSessionMatchesDeal, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller, participantRole } = require("./payment-domain.js");
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -296,23 +296,32 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
       metadata: { dealId, buyerUid: uid, checkoutAttempt: String(attempt) },
       payment_intent_data: { metadata: { dealId, buyerUid: uid }, transfer_group: "dealhunter_" + dealId }
     }, { idempotencyKey: "dh-checkout-" + dealId + "-" + attempt + "-" + amounts.totalCents });
-    await db.runTransaction(async (tx) => {
+    const saved = await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
       if (!fresh.exists) throw new Error("Vente supprimée pendant la création du paiement");
       const current = fresh.data();
-      if (Number(current.checkoutAttempt || 0) !== attempt || current.paymentStatus === "paid") return;
+      if (!isCurrentCheckoutAttempt(current, attempt) || current.paymentStatus === "paid") return false;
       tx.update(ref, {
         paymentStatus: "checkout_created",
         stripeCheckoutSessionId: session.id,
         updatedAt: FieldValue.serverTimestamp()
       });
+      return true;
     });
+    if (!saved) {
+      if (session.status === "open" && session.payment_status !== "paid") {
+        await stripeClient().checkout.sessions.expire(session.id).catch((error) => {
+          console.error("Unable to expire stale DealHunter Checkout Session", session.id, error.message);
+        });
+      }
+      throw new HttpsError("aborted", "Cette tentative de paiement a été remplacée. Relancez le paiement depuis la vente.");
+    }
     return { url: session.url };
   } catch (error) {
     await db.runTransaction(async (tx) => {
       const fresh = await tx.get(ref);
       if (fresh.exists && fresh.data().paymentStatus !== "paid" &&
-          Number(fresh.data().checkoutAttempt || 0) === attempt) {
+          isCurrentCheckoutAttempt(fresh.data(), attempt)) {
         tx.update(ref, { paymentStatus: "checkout_failed", updatedAt: FieldValue.serverTimestamp() });
       }
     }).catch(() => {});
