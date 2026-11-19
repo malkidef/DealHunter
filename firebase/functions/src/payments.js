@@ -250,7 +250,11 @@ async function tryReleaseDeal(dealId) {
   const snap = await ref.get();
   if (!snap.exists || !isDealReleaseEligible(snap.data())) return;
   const deal = snap.data();
-  if (["paid", "processing"].includes(deal.transferStatus)) return;
+  if (deal.transferStatus === "paid") return;
+  if (deal.transferStatus === "processing") {
+    const started = deal.transferProcessingAt?.toMillis?.() || 0;
+    if (Date.now() - started < 10 * 60 * 1000) return;
+  }
   let amounts;
   try { amounts = getDealAmounts(deal); } catch (error) {
     await ref.update({ transferStatus: "blocked_invalid_amounts", updatedAt: FieldValue.serverTimestamp() });
@@ -266,10 +270,14 @@ async function tryReleaseDeal(dealId) {
   }
   const claimed = await db.runTransaction(async (tx) => {
     const fresh = await tx.get(ref);
-    if (!fresh.exists || !isDealReleaseEligible(fresh.data()) ||
-        ["paid", "processing"].includes(fresh.data().transferStatus)) return false;
+    if (!fresh.exists || !isDealReleaseEligible(fresh.data()) || fresh.data().transferStatus === "paid") return false;
+    if (fresh.data().transferStatus === "processing") {
+      const started = fresh.data().transferProcessingAt?.toMillis?.() || 0;
+      if (Date.now() - started < 10 * 60 * 1000) return false;
+    }
     tx.update(ref, {
       transferStatus: "processing",
+      transferProcessingAt: FieldValue.serverTimestamp(),
       commissionCents: amounts.commissionCents,
       sellerNetCents: amounts.sellerNetCents,
       updatedAt: FieldValue.serverTimestamp()
@@ -350,6 +358,13 @@ async function processStripeEvent(event) {
         stripeChargesEnabled: Boolean(account.charges_enabled),
         updatedAt: FieldValue.serverTimestamp()
       });
+      if (account.details_submitted && account.payouts_enabled) {
+        const blocked = await db.collection("deals")
+          .where("sellerUid", "==", uid)
+          .where("transferStatus", "==", "blocked_seller_onboarding")
+          .limit(100).get();
+        for (const doc of blocked.docs) await tryReleaseDeal(doc.id);
+      }
     }
   } else if (event.type === "balance.available") {
     const pending = await db.collection("deals").where("transferStatus", "==", "pending_funds_or_review").limit(200).get();
