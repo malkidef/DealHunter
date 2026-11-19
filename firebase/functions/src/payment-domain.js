@@ -197,6 +197,13 @@ function resolveTransferCompletion(deal, transferId) {
   return { status: "paid", shouldReverse: false };
 }
 
+
+function canCreateSellerTransfer(deal) {
+  return Boolean(deal && !deal.stripeTransferId &&
+    !["paid", "reversed", "reversal_pending"].includes(deal.transferStatus) &&
+    canReleaseToSeller(deal));
+}
+
 function canReleaseToSeller(deal) {
   const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
@@ -207,5 +214,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canCreateSellerTransfer, canReleaseToSeller
 };
