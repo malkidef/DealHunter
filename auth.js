@@ -454,7 +454,10 @@ if (!ready) {
   getRedirectResult(auth).catch(showError);
 
   onAuthStateChanged(auth, async user => {
-    window.dealhunterUserUid = user?.uid || ''; 
+    [unsubscribeOffers, unsubscribeNeeds, unsubscribeMatches].forEach(stop => { if (stop) stop(); });
+    unsubscribeOffers = null; unsubscribeNeeds = null; unsubscribeMatches = null;
+    cloudSellers = []; cloudBuyers = []; cloudMatchDocs = [];
+    window.dealhunterUserUid = user?.uid || '';
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
