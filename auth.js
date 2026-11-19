@@ -42,6 +42,60 @@ if (!ready) {
   const openDealDisputeCall = httpsCallable(functions, "openDealDispute");
   const inspectDealPaymentReconciliationCall = httpsCallable(functions, "inspectDealPaymentReconciliation");
   const recordDealPaymentReconciliationReviewCall = httpsCallable(functions, "recordDealPaymentReconciliationReview");
+  const getDealPaymentReconciliationAdminDashboardCall = httpsCallable(functions, "getDealPaymentReconciliationAdminDashboard");
+  const adminQueueButton = document.getElementById("adminRefreshQueueButton");
+  const adminQueueStatus = document.getElementById("adminQueueStatus");
+  const adminQueue = document.getElementById("adminReconciliationQueue");
+  const loadAdminReconciliationQueue = async () => {
+    if (!auth.currentUser || !adminQueue) return;
+    if (adminQueueButton) adminQueueButton.disabled = true;
+    if (adminQueueStatus) adminQueueStatus.textContent = "Chargement des ventes signalées…";
+    try {
+      const response = await getDealPaymentReconciliationAdminDashboardCall({});
+      const items = Array.isArray(response.data?.items) ? response.data.items : [];
+      adminQueue.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Aucune vente en attente de réconciliation.";
+        adminQueue.append(empty);
+      } else {
+        items.forEach(deal => {
+          const card = document.createElement("article");
+          card.className = "item";
+          const title = document.createElement("strong");
+          title.textContent = deal.product || "Vente sans libellé";
+          const detail = document.createElement("p");
+          detail.className = "muted";
+          const amount = deal.totalAmount === null ? "Montant indisponible" :
+            new Intl.NumberFormat("fr-FR", { style: "currency", currency: String(deal.currency || "EUR").toUpperCase() }).format(deal.totalAmount);
+          detail.textContent = "Vente : " + deal.dealId + " · " + amount + " · " + (deal.paymentReviewStatus || "à examiner");
+          const audits = document.createElement("p");
+          audits.className = "muted";
+          audits.textContent = "Dernières décisions : " + (deal.audit?.length ? deal.audit.map(entry => entry.decision).join(", ") : "aucune");
+          const inspect = document.createElement("button");
+          inspect.type = "button";
+          inspect.className = "secondary";
+          inspect.textContent = "Inspecter cette vente";
+          inspect.disabled = !deal.checkoutSessionId;
+          inspect.addEventListener("click", () => {
+            document.getElementById("adminDealId").value = deal.dealId || "";
+            document.getElementById("adminCheckoutSessionId").value = deal.checkoutSessionId || "";
+            document.getElementById("adminDealId").scrollIntoView({ behavior: "smooth", block: "center" });
+            document.getElementById("adminDealId").focus();
+          });
+          card.append(title, detail, audits, inspect);
+          adminQueue.append(card);
+        });
+      }
+      if (adminQueueStatus) adminQueueStatus.textContent = items.length + " vente(s) signalée(s) · maximum serveur : " + (response.data?.limit || 50) + ".";
+    } catch (error) {
+      if (adminQueueStatus) adminQueueStatus.textContent = "File indisponible : " + (error.message || error.code || "erreur inconnue");
+    } finally {
+      if (adminQueueButton) adminQueueButton.disabled = false;
+    }
+  };
+  adminQueueButton?.addEventListener("click", loadAdminReconciliationQueue");
   let unsubscribeMatches = null;
   let unsubscribeOffers = null;
   let unsubscribeNeeds = null;
