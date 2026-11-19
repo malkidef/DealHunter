@@ -81,7 +81,8 @@ function validateReconciliationDecision(decision, evidence) {
   }
   if (decision === "payment_confirmed" &&
       !(evidence.currentSession === true && evidence.checkoutAttemptMatches === true &&
-        evidence.paidInStripe === true && Boolean(evidence.paymentIntentId))) {
+        evidence.paidInStripe === true && Boolean(evidence.paymentIntentId) &&
+        evidence.paymentIntentMatches === true && ["agreed", "completed"].includes(evidence.dealStatus))) {
     throw new TypeError("Le paiement ne peut être confirmé que pour la session courante payée avec un PaymentIntent.");
   }
   if (decision === "refund_review" || decision === "duplicate_payment") {
