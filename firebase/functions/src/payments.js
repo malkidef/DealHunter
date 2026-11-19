@@ -176,6 +176,23 @@ exports.getCompanyDashboard = onCall(async (request) => {
   };
 });
 
+
+exports.getSellerConnectStatus = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists) throw new HttpsError("not-found", "Profil utilisateur introuvable.");
+  const user = snap.data();
+  if (!user.company || typeof user.company.name !== "string" || !user.company.name.trim()) {
+    return { configured: false, onboardingStatus: "not_started", payoutsEnabled: false, chargesEnabled: false };
+  }
+  return {
+    configured: Boolean(user.stripeAccountId),
+    onboardingStatus: user.stripeOnboardingStatus || "not_started",
+    payoutsEnabled: user.stripePayoutsEnabled === true,
+    chargesEnabled: user.stripeChargesEnabled === true
+  };
+});
+
 exports.createSellerConnectAccount = onCall({ secrets: [stripeSecret] }, async (request) => {
   requirePaymentsEnabled();
   const uid = requireAuth(request);
