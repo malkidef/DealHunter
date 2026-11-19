@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveRefundState, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -180,4 +180,68 @@ test("refund state rejects invalid Stripe monetary values", () => {
   assert.throws(() => resolveRefundState({}, { amount: 0, amount_refunded: 0 }));
   assert.throws(() => resolveRefundState({}, { amount: 20000, amount_refunded: -1 }));
   assert.throws(() => resolveRefundState({}, { amount: 20000, amount_refunded: 1.5 }));
+});
+
+
+test("a late dispute-created event cannot reopen an already closed dispute", () => {
+  const result = resolveDisputeEvent(
+    { stripeDisputeId: "dp_1", disputeStatus: "won", stripeDisputeEventCreated: 200 },
+    "charge.dispute.created",
+    { id: "dp_1", status: "needs_response" },
+    150
+  );
+  assert.deepEqual(result, { apply: false, reason: "stale_event" });
+});
+
+test("a dispute-created event cannot overwrite a terminal result for the same dispute", () => {
+  const result = resolveDisputeEvent(
+    { stripeDisputeId: "dp_1", disputeStatus: "lost", stripeDisputeEventCreated: 100 },
+    "charge.dispute.created",
+    { id: "dp_1", status: "needs_response" },
+    110
+  );
+  assert.deepEqual(result, { apply: false, reason: "already_closed" });
+});
+
+test("a closed dispute event only releases payout when Stripe confirms the dispute was won", () => {
+  const won = resolveDisputeEvent(
+    { stripeDisputeId: "dp_1", disputeStatus: "open", stripeDisputeEventCreated: 100 },
+    "charge.dispute.closed",
+    { id: "dp_1", status: "won" },
+    120
+  );
+  assert.equal(won.apply, true);
+  assert.equal(won.status, "won");
+  assert.equal(won.shouldRetryPayout, true);
+  const lost = resolveDisputeEvent(
+    { stripeDisputeId: "dp_2", disputeStatus: "open", stripeDisputeEventCreated: 100 },
+    "charge.dispute.closed",
+    { id: "dp_2", status: "lost" },
+    120
+  );
+  assert.equal(lost.status, "lost");
+  assert.equal(lost.transferStatus, "blocked_dispute_lost");
+  assert.equal(lost.shouldRetryPayout, undefined);
+});
+
+test("a dispute event for another dispute cannot replace an active dispute", () => {
+  const result = resolveDisputeEvent(
+    { stripeDisputeId: "dp_current", disputeStatus: "open", stripeDisputeEventCreated: 100 },
+    "charge.dispute.closed",
+    { id: "dp_other", status: "won" },
+    120
+  );
+  assert.deepEqual(result, { apply: false, reason: "different_dispute" });
+});
+
+test("unknown dispute close statuses remain blocked for manual review", () => {
+  const result = resolveDisputeEvent(
+    { stripeDisputeId: "dp_1", disputeStatus: "open", stripeDisputeEventCreated: 100 },
+    "charge.dispute.closed",
+    { id: "dp_1", status: "warning_closed" },
+    120
+  );
+  assert.equal(result.status, "under_review");
+  assert.equal(result.transferStatus, "blocked_dispute");
+  assert.equal(result.shouldRetryPayout, undefined);
 });
