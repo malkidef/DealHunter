@@ -1,0 +1,83 @@
+name: Collecte SAM.gov (ventes de surplus)
+
+on:
+  schedule:
+    - cron: "41 7 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Fenêtre de publication en jours (maximum 365)"
+        required: false
+        default: "45"
+        type: string
+      limit:
+        description: "Avis par page (maximum 1000)"
+        required: false
+        default: "1000"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sam-gov-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester les collecteurs
+        run: python -m unittest discover -s tests -v
+      - name: Vérifier la présence de la clé API
+        id: api-key
+        env:
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+        run: |
+          if [ -n "$SAM_GOV_API_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secret SAM_GOV_API_KEY absent : collecte ignorée, aucun fichier existant ne sera écrasé."
+          fi
+      - name: Collecter les ventes de surplus
+        if: steps.api-key.outputs.available == 'true'
+        env:
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+          SAM_DAYS: ${{ inputs.days || '45' }}
+          SAM_LIMIT: ${{ inputs.limit || '1000' }}
+        run: |
+          python scripts/collect_sam.py --days "$SAM_DAYS" --limit "$SAM_LIMIT" --output data/sam-buyer-opportunities.json
+      - name: Vérifier le flux généré
+        if: steps.api-key.outputs.available == 'true'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          feed = json.loads(Path("data/sam-buyer-opportunities.json").read_text(encoding="utf-8"))
+          assert feed.get("source") == "SAM.gov — Get Opportunities API"
+          assert isinstance(feed.get("notices"), list)
+          assert feed.get("count") == len(feed["notices"])
+          assert all(n.get("verified") is False for n in feed["notices"])
+          print(f"Flux SAM.gov valide : {feed['count']} avis non qualifiés")
+          PY
+      - name: Publier le flux SAM.gov
+        if: steps.api-key.outputs.available == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/sam-buyer-opportunities.json
+          if git diff --cached --quiet; then
+            echo "Aucune modification du flux SAM.gov."
+          else
+            git commit -m "Mise à jour des ventes de surplus SAM.gov"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
