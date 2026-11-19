@@ -33,6 +33,7 @@ const requestData = (requesterUid, recipientUid, status = "pending") => ({
   requesterCompany: "Entreprise A",
   recipientCompany: "Entreprise B",
   product: "Cartons",
+  unit: "unit",
   createdAt: new Date()
 });
 
