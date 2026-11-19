@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  participantRole, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, canReleaseToSeller
 } = require("../src/payment-domain.js");
 
 const deal = {
@@ -56,6 +56,20 @@ test("payment rejects invalid participants, currency and commission", () => {
   assert.throws(() => assertDealPayable({ ...deal, participantUids: ["seller-1"] }));
   assert.throws(() => assertDealPayable({ ...deal, commissionRate: 7 }));
   assert.throws(() => assertDealPayable({ ...deal, commissionAmount: 12 }));
+});
+
+test("Checkout webhook must match the exact deal, buyer, amount and currency", () => {
+  const session = {
+    metadata: { dealId: "deal-1", buyerUid: "buyer-1" },
+    client_reference_id: "deal-1",
+    amount_total: 20000,
+    currency: "eur"
+  };
+  assert.equal(assertCheckoutSessionMatchesDeal(deal, session, "deal-1").totalCents, 20000);
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, amount_total: 19999 }, "deal-1"));
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, currency: "usd" }, "deal-1"));
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, metadata: { ...session.metadata, buyerUid: "attacker" } }, "deal-1"));
+  assert.throws(() => assertCheckoutSessionMatchesDeal(deal, { ...session, client_reference_id: "other-deal" }, "deal-1"));
 });
 
 test("participant role is derived only from participant UID fields", () => {
