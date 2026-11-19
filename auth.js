@@ -98,7 +98,7 @@ if (!ready) {
     if(![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){status.textContent="Cette demande n’est pas autorisée pour ce compte.";return;}
     try{
       const isSeller=user.uid===d.sellerUid;
-      await addDoc(collection(db,"matchRequests"),{sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,recipientUid:isSeller?d.buyerUid:d.sellerUid,requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,product:d.product||"",status:"pending",createdAt:serverTimestamp()});
+      await addDoc(collection(db,"matchRequests"),{sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,recipientUid:isSeller?d.buyerUid:d.sellerUid,requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,product:d.product||"",unit:d.unit||"unit",status:"pending",createdAt:serverTimestamp()});
       await loadMatchRequests(user);status.textContent="Demande de mise en relation envoyée.";
     }catch(err){console.error(err);status.textContent="Envoi impossible : "+(err.message||err.code);}
   });
@@ -126,7 +126,7 @@ if (!ready) {
         requestId:d.requestId,sellerUid:match.sellerUid,buyerUid:match.buyerUid,
         participantUids:[match.sellerUid,match.buyerUid],proposerUid:user.uid,
         accepterUid:isSeller?match.buyerUid:match.sellerUid,
-        product:String(match.product||"Produit").slice(0,160),quantity,unitPrice,
+        product:String(match.product||"Produit").slice(0,160),unit:match.unit||"unit",quantity,unitPrice,
         totalAmount,commissionRate:5,commissionAmount:Math.round(totalAmount*0.05*100)/100,
         status:"proposed",sellerConfirmed:false,buyerConfirmed:false,
         createdAt:serverTimestamp(),updatedAt:serverTimestamp()
