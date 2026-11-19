@@ -325,6 +325,52 @@ exports.recordDealPaymentReconciliationReview = onCall({ secrets: [stripeSecret]
   return { recorded: true, dealId, auditId: auditRef.id, actionTaken: false };
 });
 
+exports.getDealPaymentReconciliationAdminDashboard = onCall(async (request) => {
+  requireAuth(request);
+  if (request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Accès réservé aux administrateurs DealHunter.");
+  }
+  const reviewStatuses = [
+    "missing_payment_intent",
+    "duplicate_payment",
+    "stale_checkout_paid",
+    "paid_checkout_in_ineligible_deal"
+  ];
+  const snap = await db.collection("deals")
+    .where("paymentReviewStatus", "in", reviewStatuses)
+    .limit(50)
+    .get();
+  const items = await Promise.all(snap.docs.map(async (doc) => {
+    const deal = doc.data();
+    const auditSnap = await doc.ref.collection("payment_reconciliation_audit")
+      .orderBy("recordedAt", "desc")
+      .limit(5)
+      .get();
+    return {
+      dealId: doc.id,
+      product: String(deal.product || "Vente sans libellé").slice(0, 160),
+      status: deal.status || "unknown",
+      paymentStatus: deal.paymentStatus || "unknown",
+      paymentReviewStatus: deal.paymentReviewStatus || "none",
+      totalAmount: Number.isFinite(Number(deal.totalAmount)) ? Number(deal.totalAmount) : null,
+      currency: String(deal.currency || "EUR").slice(0, 8),
+      checkoutSessionId: deal.stripeCheckoutSessionId || null,
+      audit: auditSnap.docs.map(entry => {
+        const item = entry.data();
+        return {
+          id: entry.id,
+          decision: item.decision || "unknown",
+          notes: String(item.notes || "").slice(0, 1000),
+          adminUid: item.adminUid || null,
+          recordedAt: item.recordedAt?.toDate?.()?.toISOString?.() || null,
+          actionTaken: item.actionTaken === true
+        };
+      })
+    };
+  }));
+  return { items, limit: 50 };
+});
+
 exports.getSellerConnectStatus = onCall(async (request) => {
   const uid = requireAuth(request);
   const snap = await db.collection("users").doc(uid).get();
