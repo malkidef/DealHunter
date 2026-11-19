@@ -27,6 +27,26 @@ test("rounds commission to nearest cent", () => {
   assert.equal(getDealAmounts({ ...deal, quantity: 1, unitPrice: 10.01, totalAmount: 10.01 }).commissionCents, 50);
 });
 
+test("all amount calculations reject persisted commission metadata that differs from 5%", () => {
+  assert.throws(
+    () => getDealAmounts({ ...deal, commissionRate: 7 }),
+    /commission.*5 %/i
+  );
+  assert.throws(
+    () => getDealAmounts({ ...deal, commissionAmount: 9.99 }),
+    /montant de commission/
+  );
+  assert.throws(
+    () => getDealAmounts({ ...deal, commissionAmount: 0 }),
+    /Commission invalide/
+  );
+  // Legacy records without explicit commission fields still use the fixed 5% calculation.
+  const legacy = { ...deal };
+  delete legacy.commissionRate;
+  delete legacy.commissionAmount;
+  assert.equal(getDealAmounts(legacy).commissionCents, 1000);
+});
+
 test("rejects invalid monetary amounts", () => {
   for (const value of [0, -1, NaN, Infinity, "not-money"]) assert.throws(() => toCents(value));
 });
