@@ -609,7 +609,8 @@ async function processStripeEvent(event) {
           tx.update(doc.ref, {
             refundStatus: "refunded",
             refundedAmountCents: refund.refundedAmountCents,
-            transferStatus: transferId ? "reversal_pending" : (deal.transferStatus || "none"),
+            transferStatus: transferId ? "reversal_pending" :
+              (deal.transferStatus === "processing" ? "blocked_refund" : (deal.transferStatus || "none")),
             refundedAt: deal.refundedAt || FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
           });
