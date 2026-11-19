@@ -156,9 +156,13 @@ function assertCanCancelDeal(deal, uid) {
   if (!["agreed", "cancellation_pending"].includes(deal.status)) {
     throw new TypeError("Seule une vente acceptée et non terminée peut être annulée.");
   }
-  if (deal.paymentStatus === "paid" || deal.paymentStatus === "manual_review" ||
-      deal.paymentReviewStatus && deal.paymentReviewStatus !== "none") {
+  const cancellablePaymentStates = [undefined, null, "none", "pending", "checkout_created", "checkout_failed", "checkout_expired"];
+  if (!cancellablePaymentStates.includes(deal.paymentStatus) ||
+      (deal.paymentReviewStatus && deal.paymentReviewStatus !== "none")) {
     throw new TypeError("Cette vente a un paiement confirmé ou à vérifier : une annulation simple est impossible.");
+  }
+  if (deal.stripeTransferId || ["processing", "paid", "reversal_pending", "reversed"].includes(deal.transferStatus)) {
+    throw new TypeError("Un transfert vendeur existe ou est en cours : une annulation simple est impossible.");
   }
   if (deal.paymentStatus === "checkout_creating") {
     throw new TypeError("Une session de paiement est en cours de création. Réessayez dans deux minutes.");
