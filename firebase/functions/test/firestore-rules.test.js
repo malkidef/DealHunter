@@ -45,7 +45,7 @@ function requestData(overrides = {}) {
     participantUids: ["seller-1", "buyer-1"],
     requesterUid: "seller-1", recipientUid: "buyer-1",
     requesterCompany: "Vendeur SA", recipientCompany: "Acheteur SA",
-    product: "Cartons", status: "pending", createdAt: Timestamp.now(),
+    product: "Cartons", unit: "unit", status: "pending", createdAt: Timestamp.now(),
     ...overrides
   };
 }
@@ -92,7 +92,7 @@ test("allows a deal proposal only from a participant of an accepted match", asyn
   await assertSucceeds(setDoc(doc(db, "deals/deal-1"), {
     requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
     participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
-    accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+    accepterUid: "buyer-1", product: "Cartons", unit: "unit", quantity: 50,
     unitPrice: 4, totalAmount: 200, commissionRate: 5,
     commissionAmount: 10, status: "proposed", sellerConfirmed: false,
     buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
@@ -114,7 +114,7 @@ test("rejects a deal proposal with a forged seller or altered commission", async
   const base = {
     requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
     participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
-    accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+    accepterUid: "buyer-1", product: "Cartons", unit: "unit", quantity: 50,
     unitPrice: 4, totalAmount: 200, commissionRate: 5,
     commissionAmount: 10, status: "proposed", sellerConfirmed: false,
     buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
@@ -133,7 +133,7 @@ test("only the other participant can accept a proposed deal", async () => {
     await setDoc(doc(context.firestore(), "deals/deal-accept"), {
       requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
       participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
-      accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+      accepterUid: "buyer-1", product: "Cartons", unit: "unit", quantity: 50,
       unitPrice: 4, totalAmount: 200, commissionRate: 5,
       commissionAmount: 10, status: "proposed", sellerConfirmed: false,
       buyerConfirmed: false, createdAt: Timestamp.now(), updatedAt: Timestamp.now()
@@ -155,7 +155,7 @@ test("requires each participant to confirm their own side before completion", as
     await setDoc(doc(context.firestore(), "deals/deal-confirm"), {
       requestId: "request-1", sellerUid: "seller-1", buyerUid: "buyer-1",
       participantUids: ["seller-1", "buyer-1"], proposerUid: "seller-1",
-      accepterUid: "buyer-1", product: "Cartons", quantity: 50,
+      accepterUid: "buyer-1", product: "Cartons", unit: "unit", quantity: 50,
       unitPrice: 4, totalAmount: 200, commissionRate: 5,
       commissionAmount: 10, status: "agreed", sellerConfirmed: false,
       buyerConfirmed: false, createdAt: Timestamp.now(),
