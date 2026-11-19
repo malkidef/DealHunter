@@ -585,7 +585,14 @@ function render(){
   publicMatchList.innerHTML=candidates.length?candidates.slice(0,40).map(m=>{
    const n=m.notice, r=m.record;
    const url=m.source==='TED'?(n.url||n.source_url):(n.source_url||n.uiLink);
-   const link=typeof url==='string'&&/^https:\/\//i.test(url)?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Consulter la source officielle</a>':'Source officielle indisponible';
+   let trustedSourceUrl='';
+   try{
+    const parsedSourceUrl=new URL(String(url||''));
+    const host=parsedSourceUrl.hostname.toLowerCase();
+    const officialHost=m.source==='TED'?(host==='ted.europa.eu'||host.endsWith('.ted.europa.eu')):(host==='sam.gov'||host.endsWith('.sam.gov'));
+    if(parsedSourceUrl.protocol==='https:'&&officialHost)trustedSourceUrl=parsedSourceUrl.href;
+   }catch(_){}
+   const link=trustedSourceUrl?'<a href="'+escapeHtml(trustedSourceUrl)+'" target="_blank" rel="noopener noreferrer">Consulter la source officielle</a>':'Lien officiel indisponible : vérifier la fiche sur le site de la source';
    const title=n.title||'Avis public sans titre';
    const counterparty=m.source==='TED'?(n.buyer||n.buyer_name||'Acheteur public non précisé'):(n.buyer_organization||'Organisme public non précisé');
    const place=m.source==='TED'?(n.country||n.buyer_country||'non précisée'):[n.place_of_performance?.city,n.place_of_performance?.state,n.place_of_performance?.country].filter(Boolean).join(', ')||'non précisée';
