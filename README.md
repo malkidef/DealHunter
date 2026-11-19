@@ -150,3 +150,16 @@ La callable `inspectDealPaymentReconciliation` compare une vente Firestore à un
 5. Étudier les autres places de marché uniquement via des accès officiellement autorisés.
 
 Aucun scraping non autorisé, message automatique, enchère, commande ou paiement ne doit être déclenché par les connecteurs.
+
+
+### Interface web d'administration — réconciliation
+
+L'onglet **Administration** de `index.html` est masqué par défaut et n'est affiché qu'après vérification du custom claim Firebase `admin: true` sur le jeton de l'utilisateur connecté. Cette visibilité côté navigateur est uniquement ergonomique : les deux callables backend répètent le contrôle du claim et restent l'autorité d'accès.
+
+- L'administrateur saisit l'identifiant de vente et l'identifiant de session Checkout, puis lance une inspection.
+- L'écran présente chaque contrôle d'identité, de montant, de devise, de tentative Checkout et de PaymentIntent ; il affiche également les 20 dernières entrées du journal de cette vente.
+- Une décision ne peut être enregistrée qu'après une inspection réussie et avec une justification de 10 à 1 000 caractères. Le serveur relit les éléments Stripe et Firestore avant d'accepter les décisions qui nécessitent des preuves positives.
+- Le journal n'est pas lisible directement depuis le client Firestore : il est renvoyé par la callable d'inspection réservée aux administrateurs.
+- L'interface ne propose aucune action de remboursement, de transfert ou de modification directe du statut de paiement. L'enregistrement d'une revue reste une trace d'audit avec `actionTaken=false`.
+
+La présence de l'interface dans la branche de travail ne signifie pas qu'un compte administrateur est déjà provisionné, que les callables ont été déployées ou que Stripe est configuré. Les vérifications CI de cette version doivent être terminées avant de considérer ce jalon validé.
