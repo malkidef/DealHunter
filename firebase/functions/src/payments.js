@@ -8,6 +8,15 @@ const stripeSecret = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const db = getFirestore();
 const COMMISSION_BPS = 500;
+const { canReleaseToSeller } = require("./payment-domain.js");
+
+function isDealReleaseEligible(deal) {
+  return canReleaseToSeller({
+    ...deal,
+    sellerConfirmed: Boolean(deal.sellerConfirmedAt),
+    buyerConfirmed: Boolean(deal.buyerConfirmedAt)
+  });
+}
 
 function stripeClient() {
   const key = stripeSecret.value();
@@ -229,7 +238,7 @@ async function tryReleaseDeal(dealId) {
   const snap = await ref.get();
   if (!snap.exists) return;
   const deal = snap.data();
-  if (deal.paymentStatus !== "paid" || !deal.sellerConfirmedAt || !deal.buyerConfirmedAt || deal.disputeStatus === "open" || deal.disputeStatus === "lost" || deal.transferStatus === "paid" || deal.transferStatus === "processing" || deal.refundStatus === "refunded") return;
+  if (!isDealReleaseEligible(deal) || deal.transferStatus === "paid" || deal.transferStatus === "processing") return;
   const seller = await db.collection("companies").doc(deal.sellerCompanyId).get();
   const accountId = seller.data()?.stripeAccountId;
   if (!accountId || seller.data()?.stripeOnboardingStatus !== "complete") {
@@ -243,7 +252,7 @@ async function tryReleaseDeal(dealId) {
     const fresh = await tx.get(ref);
     const d = fresh.data();
     if (d.transferStatus === "paid" || d.transferStatus === "processing") return;
-    if (d.paymentStatus !== "paid" || !d.sellerConfirmedAt || !d.buyerConfirmedAt || d.disputeStatus === "open" || d.disputeStatus === "lost") return;
+    if (!isDealReleaseEligible(d)) return;
     tx.update(ref, { transferStatus: "processing", commissionCents: commission, sellerNetCents: sellerNet, updatedAt: FieldValue.serverTimestamp() });
   });
   const locked = (await ref.get()).data();
