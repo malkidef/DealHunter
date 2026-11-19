@@ -244,9 +244,6 @@ exports.inspectDealPaymentReconciliation = onCall({ secrets: [stripeSecret] }, a
   };
 });
 
-
-});
-
 // Records an administrator's reconciliation decision. This is an append-only audit entry;
 // it deliberately does not change payment state or initiate refunds/transfers.
 exports.recordDealPaymentReconciliationReview = onCall({ secrets: [stripeSecret] }, async (request) => {
