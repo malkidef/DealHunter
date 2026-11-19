@@ -90,6 +90,7 @@ exports.createDealProposal = onCall(async (request) => {
     if (!Number.isSafeInteger(unitPriceCents) || unitPriceCents < 1 || !Number.isSafeInteger(totalCents)) {
       throw new HttpsError("invalid-argument", "Montant total invalide.");
     }
+    if (totalCents < 50) throw new HttpsError("failed-precondition", "Le montant total minimum est de 0,50 €.");
     const totalAmount = totalCents / 100;
     const isSeller = uid === match.sellerUid;
     tx.create(dealRef, {
