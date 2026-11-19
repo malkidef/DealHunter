@@ -73,6 +73,30 @@ function assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId) {
   return amounts;
 }
 
+function validateReconciliationDecision(decision, evidence) {
+  const allowed = ["payment_confirmed", "refund_review", "duplicate_payment", "not_paid", "manual_review"];
+  if (!allowed.includes(decision)) throw new TypeError("Décision de réconciliation invalide.");
+  if (!evidence || evidence.identityMatches !== true) {
+    if (decision !== "manual_review") throw new TypeError("Une identité Stripe/vente vérifiée est requise pour cette décision.");
+  }
+  if (decision === "payment_confirmed" &&
+      !(evidence.currentSession === true && evidence.checkoutAttemptMatches === true &&
+        evidence.paidInStripe === true && Boolean(evidence.paymentIntentId))) {
+    throw new TypeError("Le paiement ne peut être confirmé que pour la session courante payée avec un PaymentIntent.");
+  }
+  if (decision === "refund_review" || decision === "duplicate_payment") {
+    if (evidence.paidInStripe !== true) throw new TypeError("Une session effectivement payée est requise pour cette décision.");
+  }
+  if (decision === "duplicate_payment" &&
+      !(evidence.currentSession === false || evidence.paymentIntentMatches === false || evidence.paidInDealHunter === true)) {
+    throw new TypeError("Aucun indice de paiement dupliqué n'a été détecté.");
+  }
+  if (decision === "not_paid" && evidence.paidInStripe === true) {
+    throw new TypeError("Stripe indique que cette session est payée.");
+  }
+  return true;
+}
+
 function assertCheckoutSessionMatchesDeal(deal, session, dealId) {
   const amounts = assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId);
   if (session.metadata?.checkoutAttempt !== undefined &&
@@ -245,5 +269,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, assertCheckoutSessionIdentityMatchesDeal, validateReconciliationDecision, resolveCheckoutPaymentEvent, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, isCurrentCheckoutAttempt, canCreateSellerTransfer, canReleaseToSeller
 };
