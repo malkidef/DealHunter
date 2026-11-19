@@ -137,16 +137,18 @@ if (!ready) {
   });
   window.addEventListener("dealhunter-propose-deal",async e=>{
     const user=auth.currentUser,d=e.detail||{};
-    if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
+    const finish=message=>{if(typeof d.onResult==="function")d.onResult(message);};
+    if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";finish(status.textContent);return;}
     const quantity=Number(d.quantity),unitPrice=Number(d.unitPrice);
     if(!Number.isSafeInteger(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<=0){
-      status.textContent="Saisis une quantité entière et un prix unitaire positif.";return;
+      status.textContent="Saisis une quantité entière et un prix unitaire positif.";finish(status.textContent);return;
     }
     try{
-      const result=await createDealProposalCall({requestId:d.requestId,quantity,unitPrice});
+      await createDealProposalCall({requestId:d.requestId,quantity,unitPrice});
       await loadMatchRequests(user);
       status.textContent="Proposition envoyée. Elle devra être acceptée par l’autre entreprise.";
-    }catch(err){console.error(err);status.textContent="Proposition impossible : "+(err.message||err.code);}
+      finish(status.textContent);
+    }catch(err){console.error(err);status.textContent="Proposition impossible : "+(err.message||err.code);finish(status.textContent);}
   });
   window.addEventListener("dealhunter-accept-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
