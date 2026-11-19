@@ -10,6 +10,9 @@ class BodaccCollectorTests(unittest.TestCase):
         self.assertIn("familleavis", url)
         self.assertIn("vente", url)
         self.assertIn("dateparution", url)
+        self.assertIn("select", url)
+        self.assertNotIn("listepersonnes", url)
+        self.assertNotIn("commercant", url)
 
     def test_normalizes_sale_notice_without_personal_or_stock_data(self):
         row = {
