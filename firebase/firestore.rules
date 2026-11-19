@@ -207,5 +207,94 @@ service cloud.firestore {
         && contactId == resource.data.requestId + "_" + request.auth.uid;
       allow delete: if false;
     }
+
+    // Accords commerciaux : documents privés aux deux participants.
+    // Modèle du parcours actuel : sellerUid/buyerUid, proposed/agreed/completed.
+    match /deals/{dealId} {
+      function isParticipant() {
+        return request.auth != null && request.auth.uid in resource.data.participantUids;
+      }
+      function acceptedMatch() {
+        return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid;
+      }
+      allow read: if isParticipant();
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "requestId", "sellerUid", "buyerUid", "participantUids", "proposerUid",
+          "accepterUid", "product", "quantity", "unitPrice", "totalAmount",
+          "commissionRate", "commissionAmount", "status", "sellerConfirmed",
+          "buyerConfirmed", "createdAt", "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "requestId", "sellerUid", "buyerUid", "participantUids", "proposerUid",
+          "accepterUid", "product", "quantity", "unitPrice", "totalAmount",
+          "commissionRate", "commissionAmount", "status", "sellerConfirmed",
+          "buyerConfirmed", "createdAt", "updatedAt"
+        ])
+        && acceptedMatch()
+        && request.resource.data.sellerUid is string
+        && request.resource.data.buyerUid is string
+        && request.resource.data.sellerUid != request.resource.data.buyerUid
+        && request.resource.data.participantUids is list
+        && request.resource.data.participantUids.size() == 2
+        && request.resource.data.participantUids.hasAll([request.resource.data.sellerUid, request.resource.data.buyerUid])
+        && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.proposerUid == request.auth.uid
+        && request.resource.data.accepterUid in request.resource.data.participantUids
+        && request.resource.data.accepterUid != request.auth.uid
+        && request.resource.data.product is string
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice > 0
+        && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount > 0
+        && request.resource.data.commissionRate == 5
+        && request.resource.data.commissionAmount is number
+        && request.resource.data.status == "proposed"
+        && request.resource.data.sellerConfirmed == false
+        && request.resource.data.buyerConfirmed == false
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow update: if isParticipant() && (
+        (
+          resource.data.status == "proposed"
+          && request.auth.uid == resource.data.accepterUid
+          && request.resource.data.status == "agreed"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "agreedAt", "updatedAt"])
+          && request.resource.data.agreedAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+        )
+        ||
+        (
+          resource.data.status == "agreed"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "sellerConfirmed", "buyerConfirmed", "sellerConfirmedAt", "buyerConfirmedAt", "status", "updatedAt"
+          ])
+          && request.resource.data.updatedAt is timestamp
+          && (
+            (request.auth.uid == resource.data.sellerUid
+              && resource.data.sellerConfirmed == false
+              && request.resource.data.sellerConfirmed == true
+              && request.resource.data.sellerConfirmedAt is timestamp
+              && request.resource.data.buyerConfirmed == resource.data.buyerConfirmed)
+            ||
+            (request.auth.uid == resource.data.buyerUid
+              && resource.data.buyerConfirmed == false
+              && request.resource.data.buyerConfirmed == true
+              && request.resource.data.buyerConfirmedAt is timestamp
+              && request.resource.data.sellerConfirmed == resource.data.sellerConfirmed)
+          )
+          && request.resource.data.status in ["agreed", "completed"]
+          && (request.resource.data.status == "agreed"
+            || (request.resource.data.sellerConfirmed == true && request.resource.data.buyerConfirmed == true))
+        )
+      );
+      allow delete: if false;
+    }
+
   }
 }
