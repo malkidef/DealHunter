@@ -183,6 +183,20 @@ function resolveRefundState(deal, charge) {
   };
 }
 
+
+function resolveTransferCompletion(deal, transferId) {
+  if (!deal || !transferId) throw new TypeError("Données de transfert invalides.");
+  if (deal.refundStatus === "refunded") {
+    return { status: "reversal_pending", shouldReverse: true };
+  }
+  const refundBlocked = Boolean(deal.refundStatus && deal.refundStatus !== "none");
+  const disputeBlocked = Boolean(deal.disputeStatus && !["none", "won"].includes(deal.disputeStatus));
+  if (refundBlocked || disputeBlocked || !canReleaseToSeller(deal)) {
+    return { status: "manual_review_after_transfer", shouldReverse: false };
+  }
+  return { status: "paid", shouldReverse: false };
+}
+
 function canReleaseToSeller(deal) {
   const disputeClear = !deal?.disputeStatus || ["none", "won"].includes(deal.disputeStatus);
   const refundClear = !deal?.refundStatus || deal.refundStatus === "none";
@@ -193,5 +207,5 @@ function canReleaseToSeller(deal) {
 
 module.exports = {
   COMMISSION_BPS, toCents, getDealAmounts, assertDealPayable,
-  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, canReleaseToSeller
+  assertCheckoutSessionMatchesDeal, participantRole, assertCanConfirmCompletion, assertCanOpenDispute, resolveDisputeEvent, resolveRefundState, resolveTransferCompletion, canReleaseToSeller
 };
