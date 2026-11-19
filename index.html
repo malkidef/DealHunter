@@ -138,7 +138,9 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="field"><label for="adminCheckoutSessionId">Session Stripe Checkout</label><input id="adminCheckoutSessionId" required maxlength="160" autocomplete="off" placeholder="cs_…"></div>
 <button type="submit" id="adminInspectButton">Inspecter la session Stripe</button>
 <p class="muted" id="adminInspectStatus" role="status" aria-live="polite">Aucune inspection effectuée.</p>
-<pre id="adminReconciliationResult" class="code-output" aria-live="polite">Les résultats apparaîtront ici après inspection.</pre>
+<h4>Contrôles détectés</h4><div id="adminReconciliationChecks" class="cards"><div class="empty">Aucune inspection effectuée.</div></div>
+<h4>Journal des 20 dernières décisions</h4><div id="adminAuditHistory" class="cards"><div class="empty">Aucun journal chargé.</div></div>
+<details><summary>Données techniques complètes</summary><pre id="adminReconciliationResult" class="code-output" aria-live="polite">Les résultats apparaîtront ici après inspection.</pre></details>
 </form>
 <form id="adminReconciliationReviewForm" class="item">
 <h3>Consigner une décision humaine</h3>
