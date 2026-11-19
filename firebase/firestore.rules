@@ -97,6 +97,8 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
           && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
           && request.resource.data.product == get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.product
+          && request.resource.data.unit == get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.get("unit", "unit")
+          && request.resource.data.unit == get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.get("unit", "unit")
           && request.resource.data.requesterCompany == (
             request.auth.uid == request.resource.data.sellerUid
               ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
@@ -112,7 +114,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly([
           "sellerId", "buyerId", "sellerUid", "buyerUid", "participantUids",
           "requesterUid", "recipientUid", "requesterCompany", "recipientCompany",
-          "product", "status", "createdAt"
+          "product", "unit", "status", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
           "sellerId", "buyerId", "sellerUid", "buyerUid", "participantUids",
@@ -144,6 +146,7 @@ service cloud.firestore {
         && request.resource.data.requesterCompany is string
         && request.resource.data.recipientCompany is string
         && request.resource.data.product is string
+        && request.resource.data.unit is string
         && request.resource.data.createdAt is timestamp;
       // Seuls les deux participants peuvent lire une demande.
       allow read: if request.auth != null
@@ -244,6 +247,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.product == request.resource.data.product
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.unit == request.resource.data.unit
           && exists(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId))
           && exists(/databases/$(database)/documents/publicNeeds/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerId))
           && get(/databases/$(database)/documents/publicOffers/$(get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerId)).data.product == request.resource.data.product
@@ -255,7 +259,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
           "requestId", "sellerUid", "buyerUid", "participantUids", "proposerUid",
-          "accepterUid", "product", "quantity", "unitPrice", "totalAmount",
+          "accepterUid", "product", "unit", "quantity", "unitPrice", "totalAmount",
           "commissionRate", "commissionAmount", "status", "sellerConfirmed",
           "buyerConfirmed", "createdAt", "updatedAt"
         ])
@@ -277,6 +281,7 @@ service cloud.firestore {
         && request.resource.data.accepterUid in request.resource.data.participantUids
         && request.resource.data.accepterUid != request.auth.uid
         && request.resource.data.product is string
+        && request.resource.data.unit is string
         && request.resource.data.quantity is int
         && request.resource.data.quantity > 0
         && request.resource.data.unitPrice is number
