@@ -10,7 +10,13 @@ DealHunter vise à rapprocher des entreprises qui disposent de stocks excédenta
 - **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
 - Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
 
-Le connecteur TED (`scripts/collect_ted.py`) et son workflow (`.github/workflows/collect-ted.yml`) assurent une collecte quotidienne des avis publics. Le flux (`data/ted-buyer-opportunities.json`) reste non qualifié (`verified=false`) : il signale des besoins potentiels, pas des stocks ni des commandes confirmées. Le workflow TED ne s'exécutera selon son calendrier qu'après intégration dans la branche par défaut ; un lancement manuel est disponible sur la branche de travail.
+Le connecteur TED (`scripts/collect_ted.py`) et son workflow (`.github/workflows/collect-ted.yml`) assurent une collecte quotidienne des avis publics. Le flux (`data/ted-buyer-opportunities.json`) reste non qualifié (`verified=false`) : il signale des besoins potentiels d'acheteurs publics, pas des stocks ni des commandes confirmées. Le workflow TED ne s'exécutera selon son calendrier qu'après intégration dans la branche par défaut ; un lancement manuel est disponible sur la branche de travail.
+
+Le matching des sources publiques respecte désormais leur sens commercial :
+- **TED → stocks vendeurs** : les avis de marchés publics expriment des besoins d'acheteurs publics et peuvent signaler une demande potentielle à laquelle un vendeur pourrait répondre.
+- **SAM.gov → besoins acheteurs** : les annonces `ptype=g` concernent des ventes de biens excédentaires ; elles peuvent signaler des lots qu'un acheteur DealHunter pourrait rechercher.
+- Les rapprochements utilisent les termes du produit, la catégorie, la zone et l'échéance lorsqu'elle est disponible. Le score est indicatif ; il ne confirme ni disponibilité, ni quantité, ni prix, ni éligibilité à un marché.
+- Les pistes publiques restent distinctes des offres et besoins privés validés. Une vérification humaine de la source originale et des conditions est indispensable avant toute mise en relation.
 
 ## Backend actuel : Firebase
 
