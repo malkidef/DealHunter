@@ -63,11 +63,20 @@ function assertDealPayable(deal) {
 function assertCheckoutSessionIdentityMatchesDeal(deal, session, dealId) {
   if (!deal || !session || !dealId) throw new TypeError("Session de paiement invalide.");
   const amounts = getDealAmounts(deal);
+  const expectedMetadata = {
+    grossCents: amounts.totalCents,
+    commissionCents: amounts.commissionCents,
+    sellerNetCents: amounts.sellerNetCents
+  };
+  const metadataMismatch = Object.entries(expectedMetadata).some(([key, value]) =>
+    session.metadata?.[key] !== undefined && Number(session.metadata[key]) !== value
+  );
   if (session.metadata?.dealId !== dealId ||
       session.metadata?.buyerUid !== deal.buyerUid ||
       session.client_reference_id !== dealId ||
       session.amount_total !== amounts.totalCents ||
-      String(session.currency || "").toLowerCase() !== amounts.currency) {
+      String(session.currency || "").toLowerCase() !== amounts.currency ||
+      metadataMismatch) {
     throw new TypeError("Les montants ou participants du paiement ne correspondent pas à la vente.");
   }
   return amounts;
