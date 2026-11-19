@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, addDoc, collection, getDoc, Timestamp } = require("firebase/firestore");
+const { doc, setDoc, addDoc, collection, getDoc, getDocs, query, where, Timestamp } = require("firebase/firestore");
 
 const projectId = "demo-dealhunter-test";
 let env;
@@ -65,6 +65,9 @@ test("only match participants can read server-generated suggestions", async () =
   await assertSucceeds(getDoc(doc(sellerDb, "matches/match-1")));
   await assertSucceeds(getDoc(doc(buyerDb, "matches/match-1")));
   await assertFails(getDoc(doc(outsiderDb, "matches/match-1")));
+  await assertSucceeds(getDocs(query(collection(sellerDb, "matches"), where("participantUids", "array-contains", "seller-1"))));
+  await assertSucceeds(getDocs(query(collection(buyerDb, "matches"), where("participantUids", "array-contains", "buyer-1"))));
+  await assertFails(getDocs(query(collection(outsiderDb, "matches"), where("participantUids", "array-contains", "outsider"))));
   await assertFails(setDoc(doc(sellerDb, "matches/forged"), {
     participantUids: ["seller-1"], status: "suggested"
   }));
