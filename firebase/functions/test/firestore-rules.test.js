@@ -38,6 +38,24 @@ test.after(async () => {
   await env?.cleanup();
 });
 
+test("Stripe account identifiers and onboarding flags are server-managed", async () => {
+  const userDb = env.authenticatedContext("seller-1").firestore();
+  await assertSucceeds(setDoc(doc(userDb, "users/seller-1"), {
+    company: { name: "Vendeur SA", country: "FR" }
+  }));
+  await assertFails(setDoc(doc(userDb, "users/seller-1"), {
+    stripeAccountId: "acct_forged"
+  }, { merge: true }));
+  await assertFails(setDoc(doc(userDb, "users/seller-1"), {
+    stripeOnboardingStatus: "complete",
+    stripePayoutsEnabled: true,
+    stripeChargesEnabled: true
+  }, { merge: true }));
+  await assertSucceeds(setDoc(doc(userDb, "users/seller-1"), {
+    company: { name: "Vendeur SA", country: "BE" }
+  }, { merge: true }));
+});
+
 function requestData(overrides = {}) {
   return {
     sellerId: "offer-1", buyerId: "need-1",
