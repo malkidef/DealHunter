@@ -170,14 +170,23 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
       metadata: { dealId, buyerUid: uid },
       payment_intent_data: { metadata: { dealId, buyerUid: uid }, transfer_group: "dealhunter_" + dealId }
     }, { idempotencyKey: "dh-checkout-" + dealId + "-" + attempt + "-" + amounts.totalCents });
-    await ref.update({
-      paymentStatus: "checkout_created",
-      stripeCheckoutSessionId: session.id,
-      updatedAt: FieldValue.serverTimestamp()
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (!fresh.exists) throw new Error("Vente supprimée pendant la création du paiement");
+      tx.update(ref, {
+        paymentStatus: fresh.data().paymentStatus === "paid" ? "paid" : "checkout_created",
+        stripeCheckoutSessionId: session.id,
+        updatedAt: FieldValue.serverTimestamp()
+      });
     });
     return { url: session.url };
   } catch (error) {
-    await ref.update({ paymentStatus: "checkout_failed", updatedAt: FieldValue.serverTimestamp() }).catch(() => {});
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(ref);
+      if (fresh.exists && fresh.data().paymentStatus !== "paid") {
+        tx.update(ref, { paymentStatus: "checkout_failed", updatedAt: FieldValue.serverTimestamp() });
+      }
+    }).catch(() => {});
     if (error instanceof HttpsError) throw error;
     paymentError("Création de la session de paiement impossible", error);
   }
