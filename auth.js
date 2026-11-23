@@ -458,6 +458,13 @@ if (!ready) {
       ? collection(db, "verificationRequests")
       : query(collection(db, "verificationRequests"), where("ownerUid", "==", user.uid));
     const verificationSnapshot = await getDocs(verificationQuery);
+    const reportsQuery = isVerificationAdmin
+      ? collection(db, "trustReports")
+      : query(collection(db, "trustReports"), where("reporterUid", "==", user.uid));
+    const reportsSnapshot = await getDocs(reportsQuery);
+    window.dispatchEvent(new CustomEvent("dealhunter-trust-reports", {
+      detail: { reports: reportsSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), isAdmin: isVerificationAdmin }
+    }));
     window.dispatchEvent(new CustomEvent("dealhunter-verification-data", {
       detail: {
         requests: verificationSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
@@ -579,6 +586,33 @@ if (!ready) {
     }
   });
 
+
+  window.addEventListener("dealhunter-create-trust-report", async event => {
+    const user=auth.currentUser,data=event.detail||{};
+    if(!user){status.textContent="Connecte-toi pour signaler une annonce.";return;}
+    const targetType=String(data.targetType||""),targetId=String(data.targetId||"").trim();
+    const reason=String(data.reason||""),description=String(data.description||"").trim();
+    if(!["company","product_listing","service_listing","work_profile","work_opening","deal"].includes(targetType)||
+      !targetId||targetId.length>160||!["fraud","counterfeit","misleading","duplicate","unsafe","spam","other"].includes(reason)||description.length>1000){
+      status.textContent="Vérifie le type, la référence, le motif et le commentaire.";return;
+    }
+    try{
+      await addDoc(collection(db,"trustReports"),{reporterUid:user.uid,targetType,targetId,reason,description,status:"pending",createdAt:serverTimestamp()});
+      await loadCloudRecords(user);
+      status.textContent="Signalement transmis. Il sera examiné par l'équipe de modération.";
+    }catch(err){console.error("Signalement impossible :",err);status.textContent="Signalement impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-review-trust-report",async event=>{
+    const user=auth.currentUser,{reportId,decision,note}=event.detail||{};
+    if(!user||!reportId||!["reviewed","actioned","false_positive"].includes(decision))return;
+    try{
+      const token=await user.getIdTokenResult();
+      if(token.claims.dealhunterAdmin!==true)throw new Error("Action réservée à un modérateur autorisé.");
+      await updateDoc(doc(db,"trustReports",reportId),{status:decision,reviewerNote:String(note||"").slice(0,500),reviewedAt:serverTimestamp()});
+      await loadCloudRecords(user);
+      status.textContent="Traitement du signalement enregistré.";
+    }catch(err){console.error("Traitement du signalement impossible :",err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
 
   window.addEventListener("dealhunter-create-verification-request", async event => {
     const user = auth.currentUser, data = event.detail || {};
