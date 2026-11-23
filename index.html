@@ -1150,9 +1150,13 @@ $('buyerList').addEventListener('click',e=>{
  form.scrollIntoView({behavior:'smooth',block:'start'});
 });
 $('cancelSellerEdit').addEventListener('click',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
-window.addEventListener('dealhunter-business-record-updated',()=>{
- const sellerForm=$('sellerForm');delete sellerForm.dataset.editingId;sellerForm.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');
- const buyerForm=$('buyerForm');delete buyerForm.dataset.editingId;buyerForm.reset();buyerForm.querySelector('button[type="submit"]').disabled=false;buyerForm.querySelector('button[type="submit"]').textContent='Enregistrer le besoin';
+window.addEventListener('dealhunter-business-record-updated',e=>{
+ if(e.detail?.collectionName==='sellerOffers'){
+  const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');
+ }
+ if(e.detail?.collectionName==='buyerNeeds'){
+  const form=$('buyerForm');delete form.dataset.editingId;form.reset();const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent='Enregistrer le besoin';
+ }
 });
 $('buyerForm').addEventListener('submit',e=>{
  e.preventDefault();
