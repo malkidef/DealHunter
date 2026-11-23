@@ -711,7 +711,7 @@ function render(){
  $('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  const uid=window.dealhunterUserUid||'';
  $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category,s.ownerUid===uid&&uid?'<p><button type="button" data-edit-business-record data-record-id="'+escapeHtml(s.id)+'">Modifier mon stock</button> <button type="button" class="secondary" data-remove-business-record data-collection="sellerOffers" data-record-id="'+escapeHtml(s.id)+'">Retirer mon stock</button></p>':'')).join(''):'<div class="empty">Aucun stock enregistré.</div>';
- $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category,b.ownerUid===uid&&uid?'<p><button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
+ $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category,b.ownerUid===uid&&uid?'<p><button type="button" data-edit-buyer-record data-record-id="'+escapeHtml(b.id)+'">Modifier mon besoin</button> <button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
  $('matchList').innerHTML=ms.length?ms.map(m=>{const uid=window.dealhunterUserUid||'';const hasOwners=!!m.s.ownerUid&&!!m.b.ownerUid&&m.s.ownerUid!==m.b.ownerUid;const can=!!uid&&hasOwners&&(m.s.ownerUid===uid||m.b.ownerUid===uid);const unavailable=!hasOwners?'Cette annonce de test n’est pas encore rattachée à deux comptes Firebase distincts. Republie l’offre et le besoin depuis leurs comptes respectifs.':'Connecte-toi avec le compte vendeur ou acheteur concerné pour demander la mise en relation.';return '<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' disponibles / '+m.b.qty+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.s.id)+'" data-buyer="'+escapeHtml(m.b.id)+'" data-seller-uid="'+escapeHtml(m.s.ownerUid)+'" data-buyer-uid="'+escapeHtml(m.b.ownerUid)+'" data-seller-company="'+escapeHtml(m.s.company)+'" data-buyer-company="'+escapeHtml(m.b.company)+'" data-product="'+escapeHtml(m.s.product)+'">Demander la mise en relation</button>':'<div class="muted">'+unavailable+'</div>')+'</article>'}).join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
 }
 
@@ -1103,7 +1103,8 @@ window.addEventListener('dealhunter-business-record-result',e=>{
  button.disabled=false;
  if(d.collectionName==='sellerOffers')button.textContent=form.dataset.editingId?'Enregistrer les modifications':'Enregistrer le stock';
  else button.textContent='Enregistrer le besoin';
- if(d.success){form.reset();if(d.collectionName==='sellerOffers'){delete form.dataset.editingId;$('cancelSellerEdit').classList.add('hidden');}}
+ if(d.success){form.reset();delete form.dataset.editingId;if(d.collectionName==='sellerOffers')$('cancelSellerEdit').classList.add('hidden');}
+ else if(form.dataset.editingId)form.querySelector('button[type="submit"]').textContent='Enregistrer les modifications';
 });
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
 $('sellerForm').addEventListener('submit',e=>{
@@ -1121,11 +1122,32 @@ $('sellerForm').addEventListener('submit',e=>{
  }}}));
 });
 $('sellerList').addEventListener('click',e=>{const b=e.target.closest('[data-edit-business-record]');if(!b)return;const item=sellers.find(x=>x.id===b.dataset.recordId&&x.ownerUid===(window.dealhunterUserUid||''));if(!item)return;const form=$('sellerForm');form.dataset.editingId=item.id;$('sCompany').value=item.company||'';$('sProduct').value=item.product||'';$('sCategory').value=item.category||'Autre / à classer';$('sQty').value=item.qty??'';$('sPrice').value=item.price??'';$('sLocation').value=item.location||'';$('sellerSubmitButton').textContent='Enregistrer les modifications';$('cancelSellerEdit').classList.remove('hidden');form.scrollIntoView({behavior:'smooth',block:'start'});});
+$('buyerList').addEventListener('click',e=>{
+ const b=e.target.closest('[data-edit-buyer-record]');if(!b)return;
+ const item=buyers.find(x=>x.id===b.dataset.recordId&&x.ownerUid===(window.dealhunterUserUid||''));if(!item)return;
+ const form=$('buyerForm');form.dataset.editingId=item.id;
+ $('bCompany').value=item.company||'';$('bProduct').value=item.product||'';
+ $('bCategory').value=item.category||'Autre / à classer';$('bQty').value=item.qty??'';
+ $('bBudget').value=item.budget??'';$('bUnit').value=item.unit||'unit';
+ $('bCurrency').value=item.currency||'EUR';$('bCountry').value=item.countryCode||'FR';
+ $('bLocation').value=item.location||'';
+ form.querySelector('button[type="submit"]').textContent='Enregistrer les modifications';
+ form.scrollIntoView({behavior:'smooth',block:'start'});
+});
 $('cancelSellerEdit').addEventListener('click',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 window.addEventListener('dealhunter-business-record-updated',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 $('buyerForm').addEventListener('submit',e=>{
  e.preventDefault();
- const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
+ const form=e.currentTarget,button=form.querySelector('button[type="submit"]'),editingId=form.dataset.editingId;
+ if(editingId){
+  button.disabled=true;button.textContent='Modification…';
+  window.dispatchEvent(new CustomEvent('dealhunter-update-business-record',{detail:{collectionName:'buyerNeeds',recordId:editingId,record:{
+   company:$('bCompany').value,product:$('bProduct').value,category:$('bCategory').value,
+   quantity:$('bQty').value,maxUnitBudget:$('bBudget').value,location:$('bLocation').value
+  }}}));
+  return;
+ }
+ button.disabled=true;button.textContent='Publication…';
  window.dispatchEvent(new CustomEvent('dealhunter-save-business-record',{detail:{collectionName:'buyerNeeds',record:{
   company:$('bCompany').value,product:$('bProduct').value,category:$('bCategory').value,
   quantity:$('bQty').value,maxUnitBudget:$('bBudget').value,unit:$('bUnit').value,
