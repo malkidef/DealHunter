@@ -24,6 +24,8 @@ const ready = Object.values(firebaseConfig).every(value =>
 
 if (!ready) {
   status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js.";
+  const matchingStatus = document.getElementById("matchingDataStatus");
+  if (matchingStatus) matchingStatus.textContent = "Firebase n’est pas configuré : renseigne firebase-web-config.js pour charger les annonces partagées.";
   [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
 } else {
   const app = initializeApp(firebaseConfig);
@@ -67,6 +69,9 @@ if (!ready) {
     const emptySnapshot = { docs: [] };
     const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] =
       reads.map(result => result.status === "fulfilled" ? result.value : emptySnapshot);
+    // Les suggestions automatiques sont indépendantes des messages et services.
+    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const failedReads = reads
       .map((result,index) => result.status === "rejected"
         ? ["matchRequests","deals","matches","serviceMatchRequests","workMatchRequests"][index] + ": " +
@@ -80,19 +85,29 @@ if (!ready) {
     const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
     for(const request of serviceRequests){
       if(request.status!=="accepted")continue;
-      const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
-      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      try {
+        const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
+        request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      } catch (messageError) {
+        request.messages=[];
+        request.messageLoadError=messageError.code||messageError.message||"erreur inconnue";
+        console.warn("Messages de service indisponibles :", messageError);
+      }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
     const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
     for(const request of workRequests){
       if(request.status!=="accepted")continue;
-      const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
-      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      try {
+        const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
+        request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      } catch (messageError) {
+        request.messages=[];
+        request.messageLoadError=messageError.code||messageError.message||"erreur inconnue";
+        console.warn("Messages de travail indisponibles :", messageError);
+      }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests}}));
-    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
-    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
     // Publier d'abord les demandes : les avis sont secondaires et ne doivent
     // jamais empêcher l'affichage de la boîte de réception.
@@ -243,13 +258,48 @@ if (!ready) {
 
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
-    if(!user){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
-    if(![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){status.textContent="Cette demande n’est pas autorisée pour ce compte.";return;}
+    const result=(success,message)=>window.dispatchEvent(new CustomEvent("dealhunter-match-request-result",{
+      detail:{success,message,sellerId:d.sellerId||"",buyerId:d.buyerId||""}
+    }));
+    if(!user){const message="Connecte-toi pour demander une mise en relation.";status.textContent=message;result(false,message);return;}
+    if(!d.sellerUid||!d.buyerUid||![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){
+      const message="Cette correspondance n’est pas rattachée à deux comptes participants valides.";
+      status.textContent=message;result(false,message);return;
+    }
     try{
-      const isSeller=user.uid===d.sellerUid;
-      await addDoc(collection(db,"matchRequests"),{sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,recipientUid:isSeller?d.buyerUid:d.sellerUid,requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,product:d.product||"",status:"pending",createdAt:serverTimestamp()});
-      await loadMatchRequests(user);status.textContent="Demande de mise en relation envoyée.";
-    }catch(err){console.error(err);status.textContent="Envoi impossible : "+(err.message||err.code);}
+      if(!d.sellerId||!d.buyerId)throw new Error("Identifiants de l’offre et du besoin manquants.");
+      const [sellerSnap,buyerSnap]=await Promise.all([
+        getDoc(doc(db,"publicOffers",d.sellerId)),
+        getDoc(doc(db,"publicNeeds",d.buyerId))
+      ]);
+      if(!sellerSnap.exists()||!buyerSnap.exists())throw new Error("L’offre ou le besoin n’existe plus dans le catalogue partagé.");
+      const sellerRecord=sellerSnap.data(),buyerRecord=buyerSnap.data();
+      if(sellerRecord.status!=="active"||buyerRecord.status!=="active"
+        ||sellerRecord.ownerUid!==d.sellerUid||buyerRecord.ownerUid!==d.buyerUid
+        ||sellerRecord.ownerUid===buyerRecord.ownerUid) {
+        throw new Error("Les annonces ne correspondent pas aux deux comptes participants ou ne sont plus actives.");
+      }
+      const isSeller=user.uid===sellerRecord.ownerUid;
+      await addDoc(collection(db,"matchRequests"),{
+        sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:sellerRecord.ownerUid,buyerUid:buyerRecord.ownerUid,
+        participantUids:[sellerRecord.ownerUid,buyerRecord.ownerUid],requesterUid:user.uid,
+        recipientUid:isSeller?buyerRecord.ownerUid:sellerRecord.ownerUid,
+        requesterCompany:isSeller?(sellerRecord.company||d.sellerCompany):(buyerRecord.company||d.buyerCompany),
+        recipientCompany:isSeller?(buyerRecord.company||d.buyerCompany):(sellerRecord.company||d.sellerCompany),
+        product:sellerRecord.product||d.product||"",status:"pending",createdAt:serverTimestamp()
+      });
+      const message="Demande de mise en relation envoyée. Elle apparaît dans « Demandes ».";
+      status.textContent=message;result(true,message);
+      try { await loadMatchRequests(user); }
+      catch(refreshError) {
+        console.error("Demande créée, mais actualisation de la boîte de réception impossible :",refreshError);
+        status.textContent=message+" Actualise la page pour recharger la boîte de réception.";
+      }
+    }catch(err){
+      console.error("Envoi de la demande impossible :",err);
+      const message="Envoi impossible : "+(err.message||err.code||"erreur inconnue");
+      status.textContent=message;result(false,message);
+    }
   });
   window.addEventListener("dealhunter-update-match-request",async e=>{
     const user=auth.currentUser,{requestId,status:decision}=e.detail||{};
@@ -434,12 +484,6 @@ if (!ready) {
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
     ];
-    for (let i = 0; i < stalePublicDocs.length; i += 400) {
-      const batch = writeBatch(db);
-      stalePublicDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
-      await batch.commit();
-    }
-
     const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -464,46 +508,80 @@ if (!ready) {
         location: data.location || ""
       };
     });
-    const [serviceOfferSnapshot, serviceRequestSnapshot] = await Promise.all([
+    // Publie immédiatement le catalogue produits : les modules optionnels (services,
+    // emploi, vérification) ne doivent jamais laisser l'écran produit sur « Chargement… ».
+    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+      detail: { sellers, buyers }
+    }));
+
+    // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
+    try {
+      for (let i = 0; i < stalePublicDocs.length; i += 400) {
+        const batch = writeBatch(db);
+        stalePublicDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+    } catch (cleanupError) {
+      console.warn("Nettoyage des anciennes annonces publiques reporté :", cleanupError);
+    }
+
+    // Chaque domaine optionnel est isolé. Une collection non configurée ou une règle
+    // Firestore manquante ne doit pas bloquer les autres fonctions de DealHunter.
+    const serviceReads = await Promise.allSettled([
       getDocs(query(collection(db, "publicServiceOffers"), limit(500))),
       getDocs(query(collection(db, "publicServiceRequests"), limit(500)))
     ]);
-    const serviceOffers = serviceOfferSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
-    const serviceRequests = serviceRequestSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    const serviceOffers = serviceReads[0].status === "fulfilled"
+      ? serviceReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const serviceRequests = serviceReads[1].status === "fulfilled"
+      ? serviceReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (serviceReads.some(result => result.status === "rejected"))
+      console.warn("Catalogue de services partiellement indisponible :", serviceReads);
     window.dispatchEvent(new CustomEvent("dealhunter-service-data", {
       detail: { offers: serviceOffers, requests: serviceRequests }
     }));
-    const [workerProfileSnapshot, workOpeningSnapshot] = await Promise.all([
+
+    const workReads = await Promise.allSettled([
       getDocs(query(collection(db, "publicWorkerProfiles"), limit(500))),
       getDocs(query(collection(db, "publicWorkOpenings"), limit(500)))
     ]);
+    const profiles = workReads[0].status === "fulfilled"
+      ? workReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const openings = workReads[1].status === "fulfilled"
+      ? workReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (workReads.some(result => result.status === "rejected"))
+      console.warn("Catalogue emploi partiellement indisponible :", workReads);
     window.dispatchEvent(new CustomEvent("dealhunter-work-data", {
-      detail: {
-        profiles: workerProfileSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
-        openings: workOpeningSnapshot.docs.map(item => ({ id: item.id, ...item.data() }))
-      }
+      detail: { profiles, openings }
     }));
-    const tokenResult = await user.getIdTokenResult();
-    const isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+
+    let isVerificationAdmin = false;
+    try {
+      const tokenResult = await user.getIdTokenResult();
+      isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+    } catch (tokenError) {
+      console.warn("Statut de vérification administrateur indisponible :", tokenError);
+    }
     const verificationQuery = isVerificationAdmin
       ? collection(db, "verificationRequests")
       : query(collection(db, "verificationRequests"), where("ownerUid", "==", user.uid));
-    const verificationSnapshot = await getDocs(verificationQuery);
     const reportsQuery = isVerificationAdmin
       ? collection(db, "trustReports")
       : query(collection(db, "trustReports"), where("reporterUid", "==", user.uid));
-    const reportsSnapshot = await getDocs(reportsQuery);
+    const trustReads = await Promise.allSettled([
+      getDocs(verificationQuery), getDocs(reportsQuery)
+    ]);
+    const verificationRequests = trustReads[0].status === "fulfilled"
+      ? trustReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const trustReports = trustReads[1].status === "fulfilled"
+      ? trustReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (trustReads.some(result => result.status === "rejected"))
+      console.warn("Données de confiance/vérification partiellement indisponibles :", trustReads);
     window.dispatchEvent(new CustomEvent("dealhunter-trust-reports", {
-      detail: { reports: reportsSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), isAdmin: isVerificationAdmin }
+      detail: { reports: trustReports, isAdmin: isVerificationAdmin }
     }));
     window.dispatchEvent(new CustomEvent("dealhunter-verification-data", {
-      detail: {
-        requests: verificationSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
-        isAdmin: isVerificationAdmin
-      }
-    }));
-    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { requests: verificationRequests, isAdmin: isVerificationAdmin }
     }));
   };
 
@@ -826,22 +904,36 @@ if (!ready) {
       status.append(label);
       signOutButton.classList.remove("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
-      let firestoreStep = "profil";
-      try {
-        await saveUserProfile(user);
-        firestoreStep = "annonces privées et catalogues partagés";
-        await loadCloudRecords(user);
-        firestoreStep = "demandes de mise en relation";
-        await loadMatchRequests(user);
-        status.dataset.firestore = "saved";
-      } catch (error) {
-        console.error("Erreur Firestore (" + firestoreStep + ") :", error);
-        status.dataset.firestore = "error";
-        status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
+      const startupTasks = await Promise.allSettled([
+        saveUserProfile(user),
+        loadCloudRecords(user),
+        loadMatchRequests(user)
+      ]);
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions"];
+      const startupErrors = startupTasks.flatMap((result, index) => {
+        if (result.status === "fulfilled") return [];
+        console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
+        return [startupLabels[index] + " : " + (result.reason?.code || result.reason?.message || "erreur inconnue")];
+      });
+      status.dataset.firestore = startupErrors.length ? "partial" : "saved";
+      if (startupTasks[1].status === "rejected") {
+        const matchingStatus = document.getElementById("matchingDataStatus");
+        if (matchingStatus) matchingStatus.textContent = "Synchronisation du catalogue impossible : " +
+          (startupTasks[1].reason?.code || startupTasks[1].reason?.message || "erreur inconnue");
+      }
+      if (startupTasks[2].status === "rejected") {
+        const requestList = document.getElementById("matchRequestList");
+        if (requestList) requestList.textContent = "Impossible de charger les demandes : " +
+          (startupTasks[2].reason?.code || startupTasks[2].reason?.message || "erreur inconnue");
+      }
+      if (startupErrors.length) {
+        status.append(document.createTextNode(" · Chargement partiel — " + startupErrors.join(" · ")));
       }
     } else {
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
+      window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", { detail: { sellers: [], buyers: [] } }));
+      window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail: { matches: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
       signOutButton.classList.add("hidden");
