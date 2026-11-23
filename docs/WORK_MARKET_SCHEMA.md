@@ -39,8 +39,10 @@ Parcours individuel distinct des prestations B2B (publicServiceOffers / publicSe
 ## À faire avant ouverture publique
 - Vérifier manuellement l'identité des entreprises et les qualifications annoncées.
 - Consentement bilatéral et messagerie dédiés : implémentés dans `workMatchRequests` et `workMatchMessages`.
-- Définir durée de conservation, retrait et suppression des données liées.
+- Attribution du claim réviseur et procédure opérationnelle de vérification à finaliser.
+- Définir durée de conservation, retrait et suppression complète des données liées.
 - Vérifier les obligations de droit du travail, non-discrimination, RGPD et recrutement dans chaque pays.
+- Effectuer un audit de sécurité indépendant et des tests de bout en bout en préproduction avant ouverture publique.
 
 ## Consentement et conversation des correspondances professionnelles
 
