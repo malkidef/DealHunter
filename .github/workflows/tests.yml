@@ -43,10 +43,13 @@ jobs:
           import re
           html = Path("index.html").read_text(encoding="utf-8")
           scripts = re.findall(r"<script>(.*?)</script>", html, re.DOTALL)
-          if len(scripts) != 1:
-              raise SystemExit(f"Un seul script intégré attendu, trouvé : {len(scripts)}")
-          Path("/tmp/dealhunter.js").write_text(scripts[0], encoding="utf-8")
+          if not scripts:
+              raise SystemExit("Aucun script intégré trouvé")
+          for index, script in enumerate(scripts):
+              Path(f"/tmp/dealhunter-inline-{index}.js").write_text(script, encoding="utf-8")
           PY
-          node --check /tmp/dealhunter.js
+          for script_file in /tmp/dealhunter-inline-*.js; do
+            node --check "$script_file"
+          done
           cp auth.js /tmp/auth.mjs
           node --check /tmp/auth.mjs
