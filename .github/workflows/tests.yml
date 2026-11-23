@@ -48,3 +48,5 @@ jobs:
           Path("/tmp/dealhunter.js").write_text(scripts[0], encoding="utf-8")
           PY
           node --check /tmp/dealhunter.js
+          cp auth.js /tmp/auth.mjs
+          node --check /tmp/auth.mjs
