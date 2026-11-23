@@ -491,6 +491,57 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Vérification manuelle des entreprises et qualifications, sans dépôt de pièces privées.
+    match /verificationRequests/{verificationId} {
+      function isDealHunterAdmin() {
+        return request.auth != null && request.auth.token.dealhunterAdmin == true;
+      }
+      function validVerificationRequest() {
+        return request.resource.data.keys().hasOnly([
+          "ownerUid","subjectType","subjectName","countryCode",
+          "evidenceLabel","publicEvidenceUrl","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid","subjectType","subjectName","countryCode",
+          "evidenceLabel","publicEvidenceUrl","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.subjectType in ["company","qualification"]
+        && request.resource.data.subjectName is string
+        && request.resource.data.subjectName.size() >= 2
+        && request.resource.data.subjectName.size() <= 120
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.evidenceLabel is string
+        && request.resource.data.evidenceLabel.size() >= 2
+        && request.resource.data.evidenceLabel.size() <= 160
+        && request.resource.data.publicEvidenceUrl is string
+        && request.resource.data.publicEvidenceUrl.matches("^https://.*")
+        && request.resource.data.publicEvidenceUrl.size() <= 500
+        && request.resource.data.status == "pending"
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      }
+      allow create: if request.auth != null && validVerificationRequest();
+      allow read: if request.auth != null
+        && (resource.data.ownerUid == request.auth.uid || isDealHunterAdmin());
+      allow update: if request.auth != null && (
+        (isDealHunterAdmin()
+          && resource.data.status == "pending"
+          && request.resource.data.status in ["verified","rejected"]
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","reviewedAt"])
+          && request.resource.data.reviewedAt is timestamp
+          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500)))
+        ||
+        (resource.data.ownerUid == request.auth.uid
+          && resource.data.status == "pending"
+          && request.resource.data.status == "withdrawn"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","updatedAt"])
+          && request.resource.data.updatedAt is timestamp)
+      );
+      allow delete: if false;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
