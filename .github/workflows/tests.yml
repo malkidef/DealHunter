@@ -31,7 +31,7 @@ jobs:
         run: |
           node --check functions/matching/src/firestore-adapter.js
           node --check functions/matching/src/service-matching.js
-  node --check functions/matching/src/work-matching.js
+          node --check functions/matching/src/work-matching.js
           node --check firebase/functions/src/matching-batch.js
           node --check firebase/functions/src/index.js
           node --check firebase/functions/src/payments.js
