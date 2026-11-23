@@ -55,8 +55,13 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
-    const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
-    const dealSnap = await getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid)));
+    const [snap, dealSnap, generatedSnap] = await Promise.all([
+      getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid)))
+    ]);
+    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
     window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
     const dealsByRequest = new Map();
