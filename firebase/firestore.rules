@@ -337,6 +337,27 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Messagerie de prestations : uniquement après acceptation par les deux entreprises.
+    match /serviceMatchMessages/{messageId} {
+      function acceptedServiceParticipant(requestId) {
+        return exists(/databases/$(database)/documents/serviceMatchRequests/$(requestId))
+          && get(/databases/$(database)/documents/serviceMatchRequests/$(requestId)).data.status == "accepted"
+          && request.auth.uid in get(/databases/$(database)/documents/serviceMatchRequests/$(requestId)).data.participantUids;
+      }
+      allow read: if request.auth != null && acceptedServiceParticipant(resource.data.requestId);
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(["requestId","senderUid","text","createdAt"])
+        && request.resource.data.keys().hasAll(["requestId","senderUid","text","createdAt"])
+        && request.resource.data.requestId is string
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.createdAt is timestamp
+        && acceptedServiceParticipant(request.resource.data.requestId);
+      allow update, delete: if false;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
