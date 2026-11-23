@@ -200,6 +200,42 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     }));
   });
 
+  it("sécurise les catalogues de prestations et de demandes de service", async () => {
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    const bob = testEnv.authenticatedContext("bob").firestore();
+    const offer = {
+      ownerUid: "alice", company: "Entreprise A", title: "Maintenance électrique",
+      description: "Maintenance industrielle", category: "maintenance électrique",
+      location: "Lille", countryCode: "FR", qualifications: ["habilitation électrique"],
+      remote: false, coverageRadiusKm: 50, requiredQualifications: [],
+      remoteAccepted: false, status: "active", createdAt: new Date(), updatedAt: new Date()
+    };
+    const request = {
+      ...offer, title: "Recherche maintenance électrique",
+      requiredQualifications: ["habilitation électrique"], remoteAccepted: true
+    };
+    await assertSucceeds(setDoc(doc(alice, "publicServiceOffers", "service-1"), offer));
+    await assertSucceeds(setDoc(doc(alice, "publicServiceRequests", "service-request-1"), request));
+    await assertSucceeds(getDoc(doc(bob, "publicServiceOffers", "service-1")));
+    await assertSucceeds(getDoc(doc(bob, "publicServiceRequests", "service-request-1")));
+    await assertFails(setDoc(doc(bob, "publicServiceOffers", "service-1"), { ...offer, ownerUid: "bob" }));
+    await assertFails(setDoc(doc(bob, "publicServiceRequests", "service-request-1"), { ...request, ownerUid: "bob" }));
+    await assertFails(setDoc(doc(alice, "publicServiceOffers", "service-private"), {
+      ...offer, privateEmail: "alice@example.test"
+    }));
+    await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-invalid-country"), {
+      ...request, countryCode: "FRANCE"
+    }));
+    await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-invalid-status"), {
+      ...request, status: "draft"
+    }));
+    await assertSucceeds(updateDoc(doc(alice, "publicServiceOffers", "service-1"), {
+      description: "Maintenance et dépannage", updatedAt: new Date()
+    }));
+    await assertFails(deleteDoc(doc(bob, "publicServiceOffers", "service-1")));
+    await assertSucceeds(deleteDoc(doc(alice, "publicServiceOffers", "service-1")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
