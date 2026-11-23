@@ -18,8 +18,8 @@ Dernière revue : 23 novembre 2026. Branche : `fix/firestore-matching-bridge`.
 
 ## Vérifications CI
 
-- Les tests Python, les tests Node.js du moteur et les vérifications syntaxiques ont réussi sur les derniers commits testés avant la mise à jour finale des métadonnées internationales.
-- Les tests des règles Firestore incluant les nouveaux champs internationaux sont en cours sur la branche ; ne pas déclarer leur succès avant la fin du workflow GitHub Actions.
+- Tests Python, moteurs Node.js, syntaxe des fonctions Firebase et JavaScript : réussis sur le commit `41ea4057021352d511b54f64aaa755cdf0db3d56`.
+- Tests Firestore, y compris les règles des métadonnées internationales : réussis sur le même commit. Les changements postérieurs sont un garde-fou de volume dans le batch et des mises à jour documentaires ; un nouveau cycle CI est à vérifier sur le HEAD courant.
 - Les tests CI ne remplacent pas les tests de bout en bout sur un vrai projet Firebase de préproduction.
 - Les tests CI ne remplacent pas les tests de bout en bout sur un vrai projet Firebase de préproduction.
 
