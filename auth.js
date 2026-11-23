@@ -163,7 +163,7 @@ if (!ready) {
         throw new Error("Cette demande ne peut plus être modifiée.");
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});
       await loadMatchRequests(user);
-      status.textContent=decision==="accepted"?"Mise en relation de services acceptée. La messagerie dédiée sera ajoutée dans une étape suivante.":"Demande de service refusée.";
+      status.textContent=decision==="accepted"?"Mise en relation de services acceptée. Vous pouvez désormais échanger dans la conversation privée.":"Demande de service refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
 
