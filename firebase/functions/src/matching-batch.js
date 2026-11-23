@@ -53,60 +53,39 @@ async function run() {
 
   for (let offset = 0; offset < candidates.length; offset += BATCH_SIZE) {
     const chunk = candidates.slice(offset, offset + BATCH_SIZE);
+    const writes = chunk.map((candidate) => ({
+      candidate, offer: offersById.get(candidate.listingId), need: needsById.get(candidate.requestId)
+    })).filter((item) => item.offer && item.need);
+    if (!writes.length) continue;
     const batch = db.batch();
-    for (const candidate of chunk) {
-      const offer = offersById.get(candidate.listingId);
-      const need = needsById.get(candidate.requestId);
-      if (!offer || !need) continue;
-      const id = crypto.createHash("sha256")
-        .update(`${candidate.listingId}:${candidate.requestId}`)
-        .digest("hex");
-      const ref = db.collection("matches").doc(id);
-      batch.create(ref, {
-        listingId: candidate.listingId,
-        requestId: candidate.requestId,
-        sellerUid: offer.companyId,
-        buyerUid: need.companyId,
+    for (const { candidate, offer, need } of writes) {
+      const id = crypto.createHash("sha256").update(`${candidate.listingId}:${candidate.requestId}`).digest("hex");
+      batch.create(db.collection("matches").doc(id), {
+        listingId: candidate.listingId, requestId: candidate.requestId,
+        sellerUid: offer.companyId, buyerUid: need.companyId,
         participantUids: [offer.companyId, need.companyId],
-        sellerCompany: offer.company,
-        buyerCompany: need.company,
-        product: offer.productName,
-        compatibilityScore: candidate.compatibilityScore,
-        status: "suggested",
-        source: "scheduled_matching_v1",
-        createdAt: FieldValue.serverTimestamp()
+        sellerCompany: offer.company, buyerCompany: need.company,
+        product: offer.productName, compatibilityScore: candidate.compatibilityScore,
+        status: "suggested", source: "scheduled_matching_v1", createdAt: FieldValue.serverTimestamp()
       });
     }
     try {
       await batch.commit();
-      created += chunk.length;
+      created += writes.length;
     } catch (error) {
-      // A batch may fail because some deterministic match IDs already exist.
-      // Fall back to idempotent per-document transactions.
-      for (const candidate of chunk) {
-        const offer = offersById.get(candidate.listingId);
-        const need = needsById.get(candidate.requestId);
-        if (!offer || !need) continue;
-        const id = crypto.createHash("sha256")
-          .update(`${candidate.listingId}:${candidate.requestId}`)
-          .digest("hex");
+      for (const { candidate, offer, need } of writes) {
+        const id = crypto.createHash("sha256").update(`${candidate.listingId}:${candidate.requestId}`).digest("hex");
         const ref = db.collection("matches").doc(id);
         const result = await db.runTransaction(async (tx) => {
           const snap = await tx.get(ref);
           if (snap.exists) return "existing";
           tx.create(ref, {
-            listingId: candidate.listingId,
-            requestId: candidate.requestId,
-            sellerUid: offer.companyId,
-            buyerUid: need.companyId,
+            listingId: candidate.listingId, requestId: candidate.requestId,
+            sellerUid: offer.companyId, buyerUid: need.companyId,
             participantUids: [offer.companyId, need.companyId],
-            sellerCompany: offer.company,
-            buyerCompany: need.company,
-            product: offer.productName,
-            compatibilityScore: candidate.compatibilityScore,
-            status: "suggested",
-            source: "scheduled_matching_v1",
-            createdAt: FieldValue.serverTimestamp()
+            sellerCompany: offer.company, buyerCompany: need.company,
+            product: offer.productName, compatibilityScore: candidate.compatibilityScore,
+            status: "suggested", source: "scheduled_matching_v1", createdAt: FieldValue.serverTimestamp()
           });
           return "created";
         });
