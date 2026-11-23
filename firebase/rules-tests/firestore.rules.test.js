@@ -385,6 +385,34 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(getDoc(doc(outsider,"verificationRequests","verify-2")));
   });
 
+  it("sécurise les propositions commerciales et la confirmation bilatérale", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(),"matchRequests","deal-match"),requestData("alice","bob","accepted"));
+    });
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const bob=testEnv.authenticatedContext("bob").firestore();
+    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const proposal={
+      requestId:"deal-match",sellerUid:"alice",buyerUid:"bob",participantUids:["alice","bob"],
+      proposerUid:"alice",accepterUid:"bob",product:"Lot de câbles",quantity:10,unitPrice:2.5,
+      totalAmount:25,commissionRate:5,commissionAmount:1.25,status:"proposed",
+      sellerConfirmed:false,buyerConfirmed:false,createdAt:new Date(),updatedAt:new Date()
+    };
+    await assertSucceeds(setDoc(doc(alice,"deals","deal-1"),proposal));
+    await assertSucceeds(getDoc(doc(bob,"deals","deal-1")));
+    await assertFails(getDoc(doc(outsider,"deals","deal-1")));
+    await assertFails(setDoc(doc(alice,"deals","fake"),{...proposal,commissionRate:99}));
+    await assertFails(setDoc(doc(alice,"deals","extra"),{...proposal,privateEmail:"a@example.test"}));
+    await assertFails(updateDoc(doc(alice,"deals","deal-1"),{status:"agreed",agreedAt:new Date(),updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(bob,"deals","deal-1"),{status:"agreed",agreedAt:new Date(),updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(alice,"deals","deal-1"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"agreed",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(alice,"deals","deal-1"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(bob,"deals","deal-1"),{buyerConfirmed:true,buyerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"deals","deal-1"),{totalAmount:1}));
+    await assertFails(updateDoc(doc(outsider,"deals","deal-1"),{status:"completed",updatedAt:new Date()}));
+    await assertFails(deleteDoc(doc(alice,"deals","deal-1")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
