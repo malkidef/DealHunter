@@ -125,7 +125,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div>
 </section>
 </section>
-<section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div></section>
+<section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div><h3 style="margin-top:24px">Mises en relation — services B2B</h3><p class="muted">La conversation ne sera disponible qu'après acceptation de la proposition par l'autre entreprise.</p><div id="serviceMatchRequestList" class="cards"><div class="empty">Aucune demande de service pour le moment.</div></div></section>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
 <div id="matchingDataStatus" class="muted" role="status">Chargement des données Firebase…</div>
@@ -783,6 +783,30 @@ window.addEventListener('dealhunter-generated-matches',e=>{
   return '<article class="item match"><span class="pill">Suggestion automatique</span><h3>'+escapeHtml(m.sellerCompany||'Vendeur')+' → '+escapeHtml(m.buyerCompany||'Acheteur')+'</h3><div>'+escapeHtml(m.product||'Produit')+'</div><p class="match-score">Compatibilité indicative : '+score+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.listingId||'')+'" data-buyer="'+escapeHtml(m.requestId||'')+'" data-seller-uid="'+escapeHtml(m.sellerUid||'')+'" data-buyer-uid="'+escapeHtml(m.buyerUid||'')+'" data-seller-company="'+escapeHtml(m.sellerCompany||'')+'" data-buyer-company="'+escapeHtml(m.buyerCompany||'')+'" data-product="'+escapeHtml(m.product||'')+'">Demander la mise en relation</button>':'<div class="muted">Compte participant requis pour demander la mise en relation.</div>')+'</article>';
  }).join(''):'<div class="empty">Aucune suggestion calculée pour ce compte pour le moment.</div>';
 });
+$('serviceMatches').addEventListener('click',e=>{
+ const button=e.target.closest('[data-service-match-request]');
+ if(!button)return;
+ window.dispatchEvent(new CustomEvent('dealhunter-create-service-match-request',{detail:{
+  offerId:button.dataset.offerId,serviceRequestId:button.dataset.serviceRequestId
+ }}));
+});
+window.addEventListener('dealhunter-service-match-requests',e=>{
+ const el=$('serviceMatchRequestList');if(!el)return;
+ const requests=Array.isArray(e.detail?.requests)?e.detail.requests:[];
+ el.innerHTML=requests.length?requests.map(r=>{
+  const state=r.status==='pending'?'En attente':r.status==='accepted'?'Acceptée':'Refusée';
+  const action=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
+   ?'<button type="button" data-service-decision="'+escapeHtml(r.id)+'" data-decision="accepted">Accepter</button> <button type="button" class="secondary" data-service-decision="'+escapeHtml(r.id)+'" data-decision="rejected">Refuser</button>':'';
+  const accepted=r.status==='accepted'?'<div class="status-note">Accord bilatéral obtenu. La prochaine étape est l'ouverture de la messagerie dédiée aux prestations.</div>':'';
+  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(r.serviceTitle||'Service')+'</h3><div>'+escapeHtml(r.requesterCompany||'')+' → '+escapeHtml(r.recipientCompany||'')+'</div><p>Besoin : '+escapeHtml(r.needTitle||'')+'</p>'+action+accepted+'</article>';
+ }).join(''):'<div class="empty">Aucune demande de service pour le moment.</div>';
+});
+$('serviceMatchRequestList').addEventListener('click',e=>{
+ const button=e.target.closest('[data-service-decision]');if(!button)return;
+ window.dispatchEvent(new CustomEvent('dealhunter-update-service-match-request',{detail:{
+  requestId:button.dataset.serviceDecision,decision:button.dataset.decision
+ }}));
+});
 window.addEventListener('dealhunter-match-requests',e=>{
   const el=$('matchRequestList');
   if(!el)return;
@@ -933,7 +957,7 @@ window.addEventListener('dealhunter-service-data',e=>{
  }));
  pairs.sort((a,b)=>b.score-a.score);
  const matchEl=$('serviceMatches');
- if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><div class="muted">Aucune demande ni coordonnées envoyées automatiquement.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
+ if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><button type="button" data-service-match-request data-offer-id="'+escapeHtml(p.o.id)+'" data-service-request-id="'+escapeHtml(p.r.id)+'">Demander la mise en relation</button><div class="muted">Aucune coordonnée n'est partagée avant acceptation.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
 });
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
