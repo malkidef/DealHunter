@@ -260,6 +260,8 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <h3>Correspondances professionnelles</h3>
 <p class="muted">Les scores sont indicatifs. Les diplômes, habilitations et autorisations doivent être vérifiés par l'entreprise.</p>
 <div id="workMatches" class="cards"><div class="empty">Les correspondances apparaîtront après publication.</div></div>
+<h3>Demandes de mise en relation et conversations</h3>
+<div id="workMatchRequests" class="cards"><div class="empty">Aucune demande professionnelle pour le moment.</div></div>
 </section>
 </div>
 <section id="imports" class="panel hidden">
@@ -783,7 +785,32 @@ async function syncBodaccFeed(){
   status.textContent=bodaccNotices.length+' avis de ventes/cessions chargés · collecte du '+(data.collected_at||'date inconnue')+'. Aucun avis n’est présenté comme un stock.';
  }catch(err){
   status.textContent='Flux BODACC pas encore disponible : '+err.message+' Il apparaîtra après la première collecte réussie.';
-  render();
+ 
+const workRequestList=$('workMatchRequests');
+if(workRequestList)workRequestList.addEventListener('click',e=>{
+ const b=e.target.closest('[data-work-decision]');
+ if(b)window.dispatchEvent(new CustomEvent('dealhunter-update-work-match-request',{detail:{requestId:b.dataset.requestId,decision:b.dataset.workDecision}}));
+});
+document.addEventListener('submit',e=>{
+ const form=e.target.closest('[data-work-message-form]');if(!form)return;
+ e.preventDefault();const input=form.querySelector('textarea');
+ window.dispatchEvent(new CustomEvent('dealhunter-send-work-match-message',{detail:{requestId:form.dataset.requestId,text:input.value}}));input.value='';
+});
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-work-match-request]');if(!b)return;b.disabled=true;
+ window.dispatchEvent(new CustomEvent('dealhunter-create-work-match-request',{detail:{candidateProfileId:b.dataset.profileId,openingId:b.dataset.openingId,engagementType:b.dataset.engagement}}));
+});
+window.addEventListener('dealhunter-work-match-requests',e=>{
+ const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],uid=window.dealhunterUserUid||'',el=$('workMatchRequests');if(!el)return;
+ el.innerHTML=list.length?list.map(r=>{
+  const recipient=r.recipientUid===uid,mine=r.requesterUid===uid,state=r.status==='accepted'?'Acceptée':r.status==='rejected'?'Refusée':'En attente';
+  const actions=r.status==='pending'&&recipient?'<button data-work-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button><button class="secondary" data-work-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button>':'';
+  const thread=r.status==='accepted'?((r.messages||[]).map(m=>'<p><strong>'+(m.senderUid===uid?'Moi':'Autre participant')+'</strong> : '+escapeHtml(m.text)+'</p>').join('')||'<p>Aucun message.</p>')+'<form data-work-message-form data-request-id="'+escapeHtml(r.id)+'"><textarea maxlength="2000" required placeholder="Écrire un message professionnel"></textarea><button type="submit">Envoyer</button></form>':'';
+  return '<article class="item"><strong>'+escapeHtml(r.candidateTitle)+' ↔ '+escapeHtml(r.openingTitle)+'</strong><div class="muted">'+(r.engagementType==='employment'?'Emploi salarié':'Mission indépendante')+' · '+state+(mine?' · Demande envoyée':'')+'</div>'+actions+thread+'</article>';
+ }).join(''):'<div class="empty">Aucune demande professionnelle pour le moment.</div>';
+});
+
+ render();
  }
 }
 $('bodaccSearch').addEventListener('input',render);
@@ -1066,7 +1093,7 @@ window.addEventListener('dealhunter-work-data',e=>{
  const engine=window.DealHunterWorkMatching;
  if(matches&&engine){
   const pairs=engine.makeWorkCandidates(profiles,openings).filter(x=>x.candidateUid===(window.dealhunterUserUid||'')||x.employerUid===(window.dealhunterUserUid||''));
-  matches.innerHTML=pairs.length?pairs.map(x=>'<article class="item"><span class="pill">Compatibilité indicative : '+x.compatibilityScore+'/100</span><h4>'+escapeHtml(x.category)+' · '+(x.engagementType==='employment'?'Salariat':'Mission indépendante')+'</h4><div>'+escapeHtml(x.locationMode==='remote'?'Distanciel accepté':'Même zone géographique')+'</div><p class="muted">Correspondance professionnelle à examiner. Aucune coordonnée n’est partagée automatiquement.</p></article>').join(''):'<div class="empty">Aucune correspondance compatible pour le moment.</div>';
+  matches.innerHTML=pairs.length?pairs.map(x=>'<article class="item"><span class="pill">Compatibilité indicative : '+x.compatibilityScore+'/100</span><h4>'+escapeHtml(x.category)+' · '+(x.engagementType==='employment'?'Salariat':'Mission indépendante')+'</h4><div>'+escapeHtml(x.locationMode==='remote'?'Distanciel accepté':'Même zone géographique')+'</div><p class="muted">Correspondance professionnelle à examiner. Aucune coordonnée n’est partagée automatiquement.</p><button type="button" data-work-match-request data-profile-id="'+escapeHtml(x.candidateId)+'" data-opening-id="'+escapeHtml(x.openingId)+'" data-engagement="'+escapeHtml(x.engagementType)+'">Demander la mise en relation</button></article>').join(''):'<div class="empty">Aucune correspondance compatible pour le moment.</div>';
  }
 });
 
