@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -55,9 +55,38 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
-    const snap = await getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid)));
-    const dealSnap = await getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid)));
+    const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] = await Promise.all([
+      getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)))
+    ]);
+    const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
+    for(const request of serviceRequests){
+      if(request.status!=="accepted")continue;
+      const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
+      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+    }
+    window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
+    const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
+    for(const request of workRequests){
+      if(request.status!=="accepted")continue;
+      const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
+      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+    }
+    window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests}}));
+    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
+    const [givenReviews, receivedReviews] = await Promise.all([
+      getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
+      getDocs(query(collection(db,"dealReviews"),where("subjectUid","==",user.uid)))
+    ]);
+    window.dispatchEvent(new CustomEvent("dealhunter-deal-reviews",{detail:{
+      given:givenReviews.docs.map(item=>({id:item.id,...item.data()})),
+      received:receivedReviews.docs.map(item=>({id:item.id,...item.data()}))
+    }}));
     window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
     const dealsByRequest = new Map();
     deals.forEach(deal => {
@@ -92,6 +121,104 @@ if (!ready) {
     }
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
   };
+  window.addEventListener("dealhunter-create-service-match-request",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.offerId||!d.serviceRequestId){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
+    try{
+      const [offerSnap,needSnap]=await Promise.all([
+        getDoc(doc(db,"publicServiceOffers",d.offerId)),
+        getDoc(doc(db,"publicServiceRequests",d.serviceRequestId))
+      ]);
+      if(!offerSnap.exists()||!needSnap.exists())throw new Error("Une des fiches de service n'existe plus.");
+      const offer=offerSnap.data(),need=needSnap.data();
+      if(offer.status!=="active"||need.status!=="active"||!offer.ownerUid||!need.ownerUid||offer.ownerUid===need.ownerUid)
+        throw new Error("Ces entreprises ne peuvent pas être mises en relation.");
+      if(![offer.ownerUid,need.ownerUid].includes(user.uid))throw new Error("Seule une des deux entreprises concernées peut lancer la demande.");
+      const existing=await getDocs(query(collection(db,"serviceMatchRequests"),where("offerId","==",d.offerId)));
+      if(existing.docs.some(item=>item.data().serviceRequestId===d.serviceRequestId&&item.data().status!=="rejected"))
+        throw new Error("Une demande existe déjà pour cette correspondance.");
+      const isProvider=user.uid===offer.ownerUid;
+      await addDoc(collection(db,"serviceMatchRequests"),{
+        offerId:d.offerId,serviceRequestId:d.serviceRequestId,
+        providerUid:offer.ownerUid,clientUid:need.ownerUid,
+        participantUids:[offer.ownerUid,need.ownerUid],
+        requesterUid:user.uid,recipientUid:isProvider?need.ownerUid:offer.ownerUid,
+        requesterCompany:isProvider?offer.company:need.company,
+        recipientCompany:isProvider?need.company:offer.company,
+        serviceTitle:offer.title,needTitle:need.title,
+        status:"pending",createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Proposition envoyée. L'autre entreprise doit accepter avant l'ouverture de la conversation.";
+    }catch(err){console.error(err);status.textContent="Demande impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-send-service-match-message",async e=>{
+    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
+    const message=String(messageText||"").trim();
+    if(!user||!requestId||!message||message.length>2000)return;
+    try{
+      const requestSnap=await getDoc(doc(db,"serviceMatchRequests",requestId));
+      if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
+      const request=requestSnap.data();
+      if(request.status!=="accepted"||!request.participantUids?.includes(user.uid))
+        throw new Error("La messagerie est réservée aux deux entreprises après acceptation.");
+      await addDoc(collection(db,"serviceMatchMessages"),{
+        requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Message envoyé aux participants de la mise en relation.";
+    }catch(err){console.error(err);status.textContent="Envoi du message impossible : "+(err.message||err.code);}
+  });
+
+  window.addEventListener("dealhunter-update-service-match-request",async e=>{
+    const user=auth.currentUser,{requestId,decision}=e.detail||{};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    try{
+      const ref=doc(db,"serviceMatchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")
+        throw new Error("Cette demande ne peut plus être modifiée.");
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});
+      await loadMatchRequests(user);
+      status.textContent=decision==="accepted"?"Mise en relation de services acceptée. Vous pouvez désormais échanger dans la conversation privée.":"Demande de service refusée.";
+    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+
+
+  window.addEventListener("dealhunter-create-work-match-request",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.candidateProfileId||!d.openingId){status.textContent="Connecte-toi pour demander cette mise en relation.";return;}
+    try{
+      const [ps,os]=await Promise.all([getDoc(doc(db,"publicWorkerProfiles",d.candidateProfileId)),getDoc(doc(db,"publicWorkOpenings",d.openingId))]);
+      if(!ps.exists()||!os.exists())throw new Error("Le profil ou l'offre n'existe plus.");
+      const p=ps.data(),o=os.data();
+      if(p.status!=="active"||o.status!=="active"||p.publicProfileConsent!==true)throw new Error("Le profil ou l'offre n'est plus actif.");
+      if(p.ownerUid===o.ownerUid||![p.ownerUid,o.ownerUid].includes(user.uid))throw new Error("Seul le candidat ou l'employeur concerné peut lancer cette demande.");
+      if(!Array.isArray(p.engagementTypes)||!p.engagementTypes.includes(o.engagementType)||d.engagementType!==o.engagementType)throw new Error("Le type d'engagement ne correspond pas.");
+      const existing=await getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)));
+      if(existing.docs.some(x=>x.data().openingId===d.openingId&&x.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
+      const candidate=user.uid===p.ownerUid;
+      await addDoc(collection(db,"workMatchRequests"),{candidateProfileId:d.candidateProfileId,openingId:d.openingId,candidateUid:p.ownerUid,employerUid:o.ownerUid,participantUids:[p.ownerUid,o.ownerUid],requesterUid:user.uid,recipientUid:candidate?o.ownerUid:p.ownerUid,engagementType:o.engagementType,candidateTitle:p.title,openingTitle:o.title,status:"pending",createdAt:serverTimestamp()});
+      await loadMatchRequests(user);status.textContent="Demande envoyée. L'autre partie doit accepter avant l'ouverture de la conversation.";
+    }catch(err){console.error(err);status.textContent="Mise en relation impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-update-work-match-request",async e=>{
+    const user=auth.currentUser,{requestId,decision}=e.detail||{};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    try{const ref=doc(db,"workMatchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")throw new Error("Seul le destinataire peut répondre à cette demande.");
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);
+      status.textContent=decision==="accepted"?"Mise en relation professionnelle acceptée. Conversation privée ouverte.":"Demande professionnelle refusée.";
+    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-send-work-match-message",async e=>{
+    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{},message=String(messageText||"").trim();
+    if(!user||!requestId||!message||message.length>2000)return;
+    try{const snap=await getDoc(doc(db,"workMatchRequests",requestId));
+      if(!snap.exists()||snap.data().status!=="accepted"||!snap.data().participantUids?.includes(user.uid))throw new Error("Conversation accessible uniquement aux participants après acceptation.");
+      await addDoc(collection(db,"workMatchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});await loadMatchRequests(user);status.textContent="Message professionnel envoyé.";
+    }catch(err){console.error(err);status.textContent="Message non envoyé : "+(err.message||err.code);}
+  });
+
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
@@ -110,6 +237,25 @@ if (!ready) {
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
+  window.addEventListener("dealhunter-create-deal-review",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.dealId){status.textContent="Connecte-toi pour déposer un avis.";return;}
+    const rating=Number(d.rating),comment=String(d.comment||"").trim();
+    if(!Number.isInteger(rating)||rating<1||rating>5||comment.length>800){status.textContent="Note de 1 à 5 et commentaire de 800 caractères maximum.";return;}
+    try{
+      const dealSnap=await getDoc(doc(db,"deals",d.dealId));
+      if(!dealSnap.exists())throw new Error("Transaction introuvable.");
+      const deal=dealSnap.data();
+      if(deal.status!=="completed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("Un avis est possible uniquement après confirmation de la transaction par les deux parties.");
+      const subjectUid=deal.sellerUid===user.uid?deal.buyerUid:deal.sellerUid;
+      await setDoc(doc(db,"dealReviews",d.dealId+"_"+user.uid),{
+        dealId:d.dealId,reviewerUid:user.uid,subjectUid,rating,comment,createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Avis publié. Merci pour ton retour.";
+    }catch(err){console.error("Publication avis impossible :",err);status.textContent="Avis non publié : "+(err.message||err.code);}
+  });
+
   window.addEventListener("dealhunter-propose-deal",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
@@ -150,19 +296,22 @@ if (!ready) {
     const user=auth.currentUser,{dealId}=e.detail||{};
     if(!user||!dealId)return;
     try{
-      const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
-      if(!snap.exists())throw new Error("Vente introuvable.");
-      const deal=snap.data();
-      if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
-      const isSeller=user.uid===deal.sellerUid;
-      const field=isSeller?"sellerConfirmed":"buyerConfirmed";
-      if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
-      const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
-      await updateDoc(ref,{
-        [field]:true,
-        [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
-        status:otherConfirmed?"completed":"agreed",
-        updatedAt:serverTimestamp()
+      const ref=doc(db,"deals",dealId);
+      await runTransaction(db,async transaction=>{
+        const snap=await transaction.get(ref);
+        if(!snap.exists())throw new Error("Vente introuvable.");
+        const deal=snap.data();
+        if(deal.status!=="agreed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("La vente doit d’abord être acceptée par les deux entreprises.");
+        const isSeller=user.uid===deal.sellerUid;
+        const field=isSeller?"sellerConfirmed":"buyerConfirmed";
+        if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
+        const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
+        transaction.update(ref,{
+          [field]:true,
+          [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
+          status:otherConfirmed?"completed":"agreed",
+          updatedAt:serverTimestamp()
+        });
       });
       await loadMatchRequests(user);
       status.textContent=otherConfirmed?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
@@ -227,6 +376,7 @@ if (!ready) {
           category: data.category || "Autre / à classer",
           quantity: Number(data.quantity ?? data.qty ?? 0),
           unitPrice: Number(data.unitPrice ?? data.price ?? 0),
+          unit: data.unit || "unit", currency: data.currency || "EUR", countryCode: data.countryCode || "FR",
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
         }, { merge: true });
@@ -238,6 +388,7 @@ if (!ready) {
           category: data.category || "Autre / à classer",
           quantity: Number(data.quantity ?? data.qty ?? 0),
           maxUnitBudget: Number(data.maxUnitBudget ?? data.budget ?? 0),
+          unit: data.unit || "unit", currency: data.currency || "EUR", countryCode: data.countryCode || "FR",
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
         }, { merge: true });
@@ -246,8 +397,8 @@ if (!ready) {
 
     // Charge les annonces de tous les comptes connectés.
     const [publicSellerSnapshot, publicBuyerSnapshot] = await Promise.all([
-      getDocs(collection(db, "publicOffers")),
-      getDocs(collection(db, "publicNeeds"))
+      getDocs(query(collection(db, "publicOffers"), limit(500))),
+      getDocs(query(collection(db, "publicNeeds"), limit(500)))
     ]);
 
     // Nettoie uniquement les copies publiques orphelines appartenant à ce compte.
@@ -277,6 +428,10 @@ if (!ready) {
         location: data.location || ""
       };
     });
+    const duplicatePairs = window.DealHunterListingDedupe
+      ? window.DealHunterListingDedupe.findPotentialDuplicates(sellers)
+      : [];
+    window.dispatchEvent(new CustomEvent("dealhunter-duplicate-signals", { detail: { pairs: duplicatePairs, truncated: sellers.length >= 500 } }));
     const buyers = publicBuyerSnapshot.docs.filter(item => !staleNeedIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -287,10 +442,266 @@ if (!ready) {
         location: data.location || ""
       };
     });
+    const [serviceOfferSnapshot, serviceRequestSnapshot] = await Promise.all([
+      getDocs(query(collection(db, "publicServiceOffers"), limit(500))),
+      getDocs(query(collection(db, "publicServiceRequests"), limit(500)))
+    ]);
+    const serviceOffers = serviceOfferSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    const serviceRequests = serviceRequestSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-service-data", {
+      detail: { offers: serviceOffers, requests: serviceRequests }
+    }));
+    const [workerProfileSnapshot, workOpeningSnapshot] = await Promise.all([
+      getDocs(query(collection(db, "publicWorkerProfiles"), limit(500))),
+      getDocs(query(collection(db, "publicWorkOpenings"), limit(500)))
+    ]);
+    window.dispatchEvent(new CustomEvent("dealhunter-work-data", {
+      detail: {
+        profiles: workerProfileSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
+        openings: workOpeningSnapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+      }
+    }));
+    const tokenResult = await user.getIdTokenResult();
+    const isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+    const verificationQuery = isVerificationAdmin
+      ? collection(db, "verificationRequests")
+      : query(collection(db, "verificationRequests"), where("ownerUid", "==", user.uid));
+    const verificationSnapshot = await getDocs(verificationQuery);
+    const reportsQuery = isVerificationAdmin
+      ? collection(db, "trustReports")
+      : query(collection(db, "trustReports"), where("reporterUid", "==", user.uid));
+    const reportsSnapshot = await getDocs(reportsQuery);
+    window.dispatchEvent(new CustomEvent("dealhunter-trust-reports", {
+      detail: { reports: reportsSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), isAdmin: isVerificationAdmin }
+    }));
+    window.dispatchEvent(new CustomEvent("dealhunter-verification-data", {
+      detail: {
+        requests: verificationSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
+        isAdmin: isVerificationAdmin
+      }
+    }));
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
       detail: { sellers, buyers }
     }));
   };
+
+  window.addEventListener("dealhunter-save-service-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    if (!user || !["publicServiceOffers", "publicServiceRequests"].includes(data.collectionName)) {
+      status.textContent = "Connecte-toi pour publier une offre ou une demande de service.";
+      return;
+    }
+    const collectionName = data.collectionName;
+    const record = data.record || {};
+    const company = String(record.company || "").trim();
+    const title = String(record.title || "").trim();
+    const description = String(record.description || "").trim();
+    const category = String(record.category || "").trim();
+    const location = String(record.location || "").trim();
+    const countryCode = String(record.countryCode || "").trim().toUpperCase();
+    const qualifications = Array.isArray(record.qualifications)
+      ? record.qualifications.map(value => String(value).trim()).filter(Boolean).slice(0, 30) : [];
+    const remote = record.remote === true;
+    const coverageRadiusKm = Number(record.coverageRadiusKm || 0);
+    if (!company || !title || !description || !category || !location || !/^[A-Z]{2}$/.test(countryCode)
+      || !Number.isFinite(coverageRadiusKm) || coverageRadiusKm < 0 || coverageRadiusKm > 5000) {
+      status.textContent = "Vérifie les champs obligatoires, le code pays ISO à 2 lettres et le rayon (0 à 5 000 km).";
+      return;
+    }
+    try {
+      const recordId = String(data.recordId || "").trim();
+      const target = recordId ? doc(db, collectionName, recordId) : doc(collection(db, collectionName));
+      const payload = {
+        ownerUid: user.uid, company, title, description, category, location, countryCode,
+        qualifications, remote, coverageRadiusKm,
+        requiredQualifications: collectionName === "publicServiceRequests" ? qualifications : [],
+        remoteAccepted: collectionName === "publicServiceRequests" && remote,
+        status: "active", updatedAt: serverTimestamp()
+      };
+      if (!recordId) payload.createdAt = serverTimestamp();
+      await setDoc(target, payload, { merge: true });
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicServiceOffers"
+        ? "Offre de service publiée dans le catalogue professionnel."
+        : "Demande de service publiée dans le catalogue professionnel.";
+    } catch (error) {
+      console.error("Publication du service impossible :", error);
+      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+
+  window.addEventListener("dealhunter-save-work-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    const record = data.record || {};
+    const collectionName = data.collectionName;
+    if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName)) {
+      status.textContent = "Connecte-toi pour publier un profil ou une offre professionnelle.";
+      return;
+    }
+    const textValue = key => String(record[key] || "").trim();
+    const listValue = key => Array.isArray(record[key]) ? record[key].map(x => String(x).trim()).filter(Boolean).slice(0, 40) : [];
+    const countryCode = textValue("countryCode").toUpperCase();
+    if (!textValue("title") || !textValue("category") || !textValue("description") ||
+        !textValue("location") || !/^[A-Z]{2}$/.test(countryCode)) {
+      status.textContent = "Complète le titre, métier, description, ville et code pays ISO à deux lettres.";
+      return;
+    }
+    let payload;
+    if (collectionName === "publicWorkerProfiles") {
+      const engagementTypes = listValue("engagementTypes");
+      if (!record.publicProfileConsent || !engagementTypes.length ||
+          engagementTypes.some(x => !["employment", "independent"].includes(x))) {
+        status.textContent = "Confirme la publication publique et sélectionne au moins un type d'engagement.";
+        return;
+      }
+      payload = {
+        ownerUid: user.uid, title: textValue("title"), category: textValue("category"),
+        description: textValue("description"), location: textValue("location"), countryCode,
+        skills: listValue("skills"), qualifications: listValue("qualifications"),
+        engagementTypes, availableFrom: textValue("availableFrom"),
+        remote: record.remote === true, publicProfileConsent: true, status: "active",
+        updatedAt: serverTimestamp()
+      };
+    } else {
+      const engagementType = textValue("engagementType");
+      if (!textValue("company") || !["employment", "independent"].includes(engagementType)) {
+        status.textContent = "Indique l'entreprise et choisis salarié ou mission indépendante.";
+        return;
+      }
+      payload = {
+        ownerUid: user.uid, company: textValue("company"), title: textValue("title"),
+        category: textValue("category"), description: textValue("description"),
+        location: textValue("location"), countryCode,
+        requiredSkills: listValue("requiredSkills"), requiredQualifications: listValue("requiredQualifications"),
+        engagementType, startDate: textValue("startDate"),
+        remoteAccepted: record.remoteAccepted === true, status: "active", updatedAt: serverTimestamp()
+      };
+    }
+    try {
+      const recordId = String(data.recordId || "").trim();
+      const target = recordId ? doc(db, collectionName, recordId) : doc(collection(db, collectionName));
+      if (!recordId) payload.createdAt = serverTimestamp();
+      await setDoc(target, payload, { merge: true });
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicWorkerProfiles"
+        ? "Profil professionnel publié. Tu peux le retirer en le fermant ou en le supprimant."
+        : "Offre professionnelle publiée dans le catalogue DealHunter.";
+    } catch (error) {
+      console.error("Publication professionnelle impossible :", error);
+      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+
+  window.addEventListener("dealhunter-create-trust-report", async event => {
+    const user=auth.currentUser,data=event.detail||{};
+    if(!user){status.textContent="Connecte-toi pour signaler une annonce.";return;}
+    const targetType=String(data.targetType||""),targetId=String(data.targetId||"").trim();
+    const reason=String(data.reason||""),description=String(data.description||"").trim();
+    if(!["company","product_listing","service_listing","work_profile","work_opening","deal"].includes(targetType)||
+      !targetId||targetId.length>160||!["fraud","counterfeit","misleading","duplicate","unsafe","spam","other"].includes(reason)||description.length>1000){
+      status.textContent="Vérifie le type, la référence, le motif et le commentaire.";return;
+    }
+    try{
+      await addDoc(collection(db,"trustReports"),{reporterUid:user.uid,targetType,targetId,reason,description,status:"pending",createdAt:serverTimestamp()});
+      await loadCloudRecords(user);
+      status.textContent="Signalement transmis. Il sera examiné par l'équipe de modération.";
+    }catch(err){console.error("Signalement impossible :",err);status.textContent="Signalement impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-review-trust-report",async event=>{
+    const user=auth.currentUser,{reportId,decision,note}=event.detail||{};
+    if(!user||!reportId||!["reviewed","actioned","false_positive"].includes(decision))return;
+    try{
+      const token=await user.getIdTokenResult();
+      if(token.claims.dealhunterAdmin!==true)throw new Error("Action réservée à un modérateur autorisé.");
+      await updateDoc(doc(db,"trustReports",reportId),{status:decision,reviewerNote:String(note||"").slice(0,500),reviewedAt:serverTimestamp()});
+      await loadCloudRecords(user);
+      status.textContent="Traitement du signalement enregistré.";
+    }catch(err){console.error("Traitement du signalement impossible :",err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+
+  window.addEventListener("dealhunter-create-verification-request", async event => {
+    const user = auth.currentUser, data = event.detail || {};
+    if (!user) { status.textContent = "Connecte-toi pour demander une vérification."; return; }
+    const subjectType = String(data.subjectType || "");
+    const subjectName = String(data.subjectName || "").trim();
+    const countryCode = String(data.countryCode || "").trim().toUpperCase();
+    const evidenceLabel = String(data.evidenceLabel || "").trim();
+    const publicEvidenceUrl = String(data.publicEvidenceUrl || "").trim();
+    if (!["company", "qualification"].includes(subjectType) || subjectName.length < 2 ||
+        subjectName.length > 120 || !/^[A-Z]{2}$/.test(countryCode) ||
+        evidenceLabel.length < 2 || evidenceLabel.length > 160 ||
+        !/^https:\/\//i.test(publicEvidenceUrl) || publicEvidenceUrl.length > 500) {
+      status.textContent = "Vérifie le type, le nom, le pays, le libellé et l'URL HTTPS publique.";
+      return;
+    }
+    try {
+      await addDoc(collection(db, "verificationRequests"), {
+        ownerUid: user.uid, subjectType, subjectName, countryCode, evidenceLabel,
+        publicEvidenceUrl, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      await loadCloudRecords(user);
+      status.textContent = "Demande enregistrée. Elle restera en attente jusqu'à une vérification humaine.";
+    } catch (error) {
+      console.error("Demande de vérification impossible :", error);
+      status.textContent = "Demande impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+  window.addEventListener("dealhunter-review-verification-request", async event => {
+    const user = auth.currentUser, { requestId, decision } = event.detail || {};
+    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) return;
+    try {
+      const token = await user.getIdTokenResult();
+      const ref = doc(db, "verificationRequests", requestId);
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists() || snapshot.data().status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+      if (decision === "withdrawn") {
+        if (snapshot.data().ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
+        await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
+      } else {
+        if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
+        await updateDoc(ref, {
+          status: decision,
+          reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+          reviewedAt: serverTimestamp()
+        });
+      }
+      await loadCloudRecords(user);
+      status.textContent = decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.";
+    } catch (error) {
+      console.error("Décision de vérification impossible :", error);
+      status.textContent = "Action impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+  window.addEventListener("dealhunter-delete-work-record", async event => {
+    const user = auth.currentUser;
+    const { collectionName, recordId } = event.detail || {};
+    if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName) ||
+        typeof recordId !== "string" || !recordId) {
+      status.textContent = "Retrait impossible : profil, offre ou compte invalide.";
+      return;
+    }
+    try {
+      const target = doc(db, collectionName, recordId);
+      const snapshot = await getDoc(target);
+      if (!snapshot.exists() || snapshot.data().ownerUid !== user.uid) {
+        throw new Error("Cette fiche n’existe plus ou ne t’appartient pas.");
+      }
+      await deleteDoc(target);
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicWorkerProfiles"
+        ? "Ton profil professionnel a été retiré du catalogue."
+        : "Ton offre professionnelle a été retirée du catalogue.";
+    } catch (error) {
+      console.error("Retrait de la fiche professionnelle impossible :", error);
+      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
 
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
@@ -318,7 +729,7 @@ if (!ready) {
         throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
       }
       const original = privateSnap.data();
-      const updated = { company, product, category, quantity, unitPrice, location };
+      const updated = { company, product, category, quantity, unitPrice, location, unit: original.unit || "unit", currency: original.currency || "EUR", countryCode: original.countryCode || "FR" };
       const batch = writeBatch(db);
       batch.update(privateRef, updated);
       batch.set(publicRef, {
@@ -475,6 +886,17 @@ if (!ready) {
     const record = Object.fromEntries(fields.map(([key, id, type]) => [
       key, type === "number" ? Number(document.getElementById(id).value) : document.getElementById(id).value.trim()
     ]));
+    if (record.currency) record.currency = record.currency.toUpperCase();
+    if (record.countryCode) record.countryCode = record.countryCode.toUpperCase();
+    if (record.unit) record.unit = record.unit.trim();
+    if (record.currency && !/^[A-Z]{3}$/.test(record.currency)) {
+      status.textContent = "La devise doit être un code ISO 4217 à trois lettres (ex. EUR, USD).";
+      return;
+    }
+    if (record.countryCode && !/^[A-Z]{2}$/.test(record.countryCode)) {
+      status.textContent = "Le pays doit être un code ISO à deux lettres (ex. FR, US).";
+      return;
+    }
     try {
       const privateRef = await addDoc(collection(db, "users", user.uid, collectionName), {
         ...record,
@@ -484,8 +906,8 @@ if (!ready) {
       const isSeller = collectionName === "sellerOffers";
       const publicCollection = isSeller ? "publicOffers" : "publicNeeds";
       const publicRecord = isSeller
-        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, location: record.location, status: "active", createdAt: serverTimestamp() }
-        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, location: record.location, status: "active", createdAt: serverTimestamp() };
+        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() }
+        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() };
       await setDoc(doc(db, publicCollection, privateRef.id), publicRecord);
       await loadCloudRecords(user);
       status.textContent = collectionName === "sellerOffers"
@@ -504,12 +926,12 @@ if (!ready) {
     if (event.target === sellerForm) {
       saveBusinessRecord(event, sellerForm, "sellerOffers", [
         ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
-        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["location", "sLocation"]
+        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["unit", "sUnit"], ["currency", "sCurrency"], ["countryCode", "sCountry"], ["location", "sLocation"]
       ]);
     } else if (event.target === buyerForm) {
       saveBusinessRecord(event, buyerForm, "buyerNeeds", [
         ["company", "bCompany"], ["product", "bProduct"], ["category", "bCategory"],
-        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["location", "bLocation"]
+        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["unit", "bUnit"], ["currency", "bCurrency"], ["countryCode", "bCountry"], ["location", "bLocation"]
       ]);
     }
   }, true);

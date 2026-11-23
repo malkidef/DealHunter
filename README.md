@@ -24,6 +24,48 @@ Les offres et besoins privés sont associés au compte connecté. Le code publie
 
 `docs/APPWRITE_SCHEMA.md` est un ancien schéma de conception : Appwrite n'est pas le backend actuellement utilisé par le code.
 
+## Moteur de matching des services — première brique
+
+Le module pur `functions/matching/src/service-matching.js` prépare le rapprochement entre :
+- une entreprise qui propose une prestation ;
+- un client professionnel qui recherche cette prestation.
+
+Le moteur applique d'abord des critères d'éligibilité : fiches actives, propriétaires différents, catégorie suffisamment proche, zone compatible (ou distanciel accepté par les deux parties) et qualifications obligatoires présentes. Il classe ensuite les candidats par score indicatif.
+
+Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés au workflow CI.
+
+Le moteur de services est relié aux collections Firestore `publicServiceOffers` et `publicServiceRequests`. Les demandes de mise en relation, le consentement bilatéral et la messagerie privée sont implémentés dans `serviceMatchRequests` et `serviceMatchMessages`. Le marché du travail suit un parcours séparé.
+
+## Mise en relation de services — consentement bilatéral
+
+Depuis l'onglet **Services B2B**, une entreprise propriétaire de l'une des deux fiches compatibles peut demander une mise en relation. DealHunter relit les deux fiches dans Firestore avant de créer la demande ; le client ne peut pas inventer les identifiants ni les propriétaires.
+
+La demande est enregistrée dans `serviceMatchRequests`, visible uniquement par les deux participants. Seul le destinataire peut l'accepter ou la refuser, et une demande en attente ne peut pas être modifiée par son auteur. Après acceptation, les deux entreprises disposent d'une messagerie dédiée (`serviceMatchMessages`) ; les messages sont réservés aux participants et aucun partage automatique de coordonnées n'est effectué.
+
+## Marketplace de services B2B — première interface
+
+L'onglet **Services B2B** permet aux entreprises connectées de publier :
+- une prestation proposée (`publicServiceOffers`) ;
+- une prestation recherchée (`publicServiceRequests`) ;
+- la catégorie, la zone, le code pays ISO, les qualifications et l'acceptation du distanciel.
+
+Les fiches ne contiennent pas d'e-mail, de téléphone ni de coordonnées privées. Les règles Firestore autorisent la lecture aux utilisateurs connectés et réservent la création, la modification et la suppression au propriétaire de la fiche. Les tests de règles couvrent les accès, l'usurpation, les champs privés et les données invalides.
+
+Le premier affichage des correspondances est volontairement conservateur : catégorie identique, même zone, ou distanciel accepté par les deux parties ; les qualifications demandées doivent être présentes chez le prestataire. Le rayon kilométrique est enregistré mais **n'est pas utilisé pour élargir la zone tant qu'un calcul géographique fiable n'est pas installé**. Les scores sont indicatifs et ne vérifient ni les certificats ni la capacité réelle des prestataires.
+
+Les suggestions de recrutement ne déclenchent aucune décision d'embauche. Le consentement bilatéral et la messagerie sont gérés séparément pour le marché du travail.
+
+## Marché des compétences et du recrutement
+
+DealHunter dispose désormais d'un parcours de publication de profils professionnels et d'offres de travail, avec deux types distincts : `employment` (emploi salarié) et `independent` (mission indépendante).
+
+Les collections Firestore `publicWorkerProfiles` et `publicWorkOpenings` sont protégées par des règles de propriété et une liste blanche de champs. La publication d'un profil exige un consentement explicite ; le propriétaire peut retirer sa fiche depuis le catalogue.
+
+Le moteur `functions/matching/src/work-matching.js` calcule des suggestions indicatives selon métier, compétences, qualifications déclarées, zone, disponibilité et distanciel. Il ne certifie pas les qualifications et ne prend aucune décision d'embauche. Les coordonnées privées ne sont pas publiées.
+
+Les formulaires sont intégrés à l'onglet Services. Le détail du schéma et des garde-fous est décrit dans `docs/WORK_MARKET_SCHEMA.md`.
+
+**Limites avant ouverture publique :** vérification des demandes par un réviseur humain, attribution sécurisée du claim modérateur, définition d'une politique de conservation/effacement, modération et recours, validation juridique pays par pays, configuration Firebase réelle et test complet en environnement de préproduction.
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
@@ -66,3 +108,35 @@ Le pipeline et les règles de validation sont décrits dans [docs/PIPELINE_SOURC
 5. Étudier les autres places de marché uniquement via des accès officiellement autorisés.
 
 Aucun scraping non autorisé, message automatique, enchère, commande ou paiement ne doit être déclenché par les connecteurs.
+
+
+## Mise en relation du marché du travail — consentement bilatéral
+
+Les correspondances entre profils professionnels et offres peuvent désormais déclencher une demande de mise en relation dans `workMatchRequests`. Le parcours conserve la séparation entre emploi salarié (`employment`) et mission indépendante (`independent`) et relit les deux fiches actives avant de créer la demande. Le profil candidat doit avoir été publié avec consentement explicite. Seul le destinataire peut accepter ou refuser ; après acceptation, les participants échangent dans `workMatchMessages`. Les messages sont limités à 2 000 caractères, réservés aux participants et ne peuvent contenir de champs supplémentaires de coordonnées. Aucun contact n'est partagé automatiquement.
+
+Les règles Firestore et les tests couvrent l'identité des propriétaires, la correspondance du type d'engagement, les décisions du destinataire, les accès des tiers et la messagerie après acceptation. Cette fonction ne vérifie pas les diplômes, habilitations ou employeurs, et ne prend aucune décision de recrutement.
+
+
+## Vérification humaine des entreprises et qualifications
+
+Le formulaire de vérification est disponible dans le marché des compétences. Les utilisateurs soumettent uniquement un lien HTTPS vers une preuve publique ; aucun document privé ni pièce d'identité n'est collecté. Les demandes sont privées, en attente par défaut et visibles globalement uniquement aux comptes portant le claim Firebase `dealhunterAdmin: true`. Seul un réviseur autorisé peut les valider ou les refuser ; le propriétaire peut retirer sa demande en attente. Voir [docs/VERIFICATION_REVIEW.md](docs/VERIFICATION_REVIEW.md) pour le modèle de revue et l'attribution sécurisée du rôle.
+
+Cette revue est manuelle et n'est pas une certification automatisée. L'identité, la validité temporelle des qualifications et la conformité locale doivent être vérifiées humainement. Les tests applicatifs et les tests des règles Firestore associés à cette brique ont réussi sur la branche de travail ; le déploiement réel reste à effectuer et à vérifier.
+
+
+## Avis et signalements de confiance
+
+- Un participant peut déposer un seul avis par transaction, uniquement après que les deux parties ont confirmé la réalisation. Les avis sont immuables et visibles aux utilisateurs connectés.
+- Les signalements de fraude, contrefaçon, annonce trompeuse, doublon, risque de sécurité ou spam sont privés : le déclarant et les comptes de modération autorisés peuvent les consulter.
+- Seul un compte portant le claim Firebase `dealhunterAdmin: true` peut traiter un signalement. Les actions de modération sont journalisées dans le statut et l'horodatage ; aucune sanction automatique n'est appliquée.
+- Les avis et signalements ne prouvent pas à eux seuls une fraude ou une bonne qualité. Une revue humaine est nécessaire et les décisions doivent pouvoir être contestées.
+
+
+## Détection de doublons — signal indicatif
+
+Le module `functions/matching/src/listing-dedupe.js` compare les titres de produits normalisés, la catégorie et la zone déclarée. Il signale les paires très proches sans supprimer, bloquer ni fusionner automatiquement les annonces. Le calcul est limité à un échantillon de 500 annonces par chargement pour préserver les quotas du projet gratuit ; il ne garantit donc pas une détection mondiale exhaustive.
+
+
+## Préparation au lancement
+
+Le statut des fonctionnalités, les tests CI et les conditions bloquantes avant production sont suivis dans [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md). À ce stade, DealHunter n'est pas prêt pour une ouverture publique : aucun déploiement Firebase ni paiement n'a été activé.
