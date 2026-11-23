@@ -867,43 +867,60 @@ if (!ready) {
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId, record } = event.detail || {};
-    if (!user || collectionName !== "sellerOffers" || typeof recordId !== "string" || !recordId || !record) {
-      status.textContent = "Modification impossible : compte ou stock non valide.";
-      return;
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-update-result", {
+      detail: { success, message, collectionName, recordId }
+    }));
+    if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName) || typeof recordId !== "string" || !recordId || !record) {
+      const message = "Modification impossible : compte ou annonce non valide.";
+      status.textContent = message; result(false, message); return;
     }
     const company = String(record.company || "").trim();
     const product = String(record.product || "").trim();
     const category = String(record.category || "").trim();
     const location = String(record.location || "").trim();
     const quantity = Number(record.quantity);
-    const unitPrice = Number(record.unitPrice);
-    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
-      status.textContent = "Vérifie les champs : quantité entière positive et prix unitaire supérieur à zéro.";
-      return;
+    const price = Number(collectionName === "sellerOffers" ? record.unitPrice : record.maxUnitBudget);
+    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0
+      || !Number.isFinite(price) || price <= 0) {
+      const message = "Vérifie les champs : quantité entière positive et prix/budget supérieur à zéro.";
+      status.textContent = message; result(false, message); return;
     }
     try {
-      const privateRef = doc(db, "users", user.uid, "sellerOffers", recordId);
-      const publicRef = doc(db, "publicOffers", recordId);
+      const privateRef = doc(db, "users", user.uid, collectionName, recordId);
+      const publicCollection = collectionName === "sellerOffers" ? "publicOffers" : "publicNeeds";
+      const publicRef = doc(db, publicCollection, recordId);
       const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
-      if (!privateSnap.exists()) throw new Error("Ce stock n’existe plus dans ton compte.");
+      if (!privateSnap.exists()) throw new Error("Cette annonce n’existe plus dans ton compte.");
       if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
         throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
       }
       const original = privateSnap.data();
-      const updated = { company, product, category, quantity, unitPrice, location, unit: original.unit || "unit", currency: original.currency || "EUR", countryCode: original.countryCode || "FR" };
-      const batch = writeBatch(db);
-      batch.update(privateRef, updated);
-      batch.set(publicRef, {
-        ownerUid: user.uid, ...updated, status: "active",
+      const common = {
+        company, product, category, quantity, location,
+        unit: original.unit || "unit", currency: original.currency || "EUR",
+        countryCode: original.countryCode || "FR", status: "active"
+      };
+      const privatePayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const publicPayload = {
+        ownerUid: user.uid, ...common,
+        ...(collectionName === "sellerOffers" ? { unitPrice: price } : { maxUnitBudget: price }),
         createdAt: original.createdAt || serverTimestamp()
-      });
+      };
+      const batch = writeBatch(db);
+      batch.set(privateRef, { ...privatePayload, updatedAt: serverTimestamp() }, { merge: true });
+      batch.set(publicRef, publicPayload, { merge: true });
       await batch.commit();
       await loadCloudRecords(user);
-      status.textContent = "Stock modifié et catalogue partagé synchronisé.";
-      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated"));
+      const message = collectionName === "sellerOffers"
+        ? "Stock modifié et catalogue partagé synchronisé."
+        : "Besoin acheteur modifié et catalogue partagé synchronisé.";
+      status.textContent = message; result(true, message);
     } catch (error) {
-      console.error("Modification du stock impossible :", error);
-      status.textContent = "Modification impossible : " + (error.message || error.code || "erreur inconnue");
+      console.error("Modification de l’annonce impossible :", error);
+      const message = "Modification impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
     }
   });
 
