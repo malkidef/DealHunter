@@ -426,6 +426,10 @@ if (!ready) {
         location: data.location || ""
       };
     });
+    const duplicatePairs = window.DealHunterListingDedupe
+      ? window.DealHunterListingDedupe.findPotentialDuplicates(sellers)
+      : [];
+    window.dispatchEvent(new CustomEvent("dealhunter-duplicate-signals", { detail: { pairs: duplicatePairs } }));
     const buyers = publicBuyerSnapshot.docs.filter(item => !staleNeedIds.has(item.id)).map(item => {
       const data = item.data();
       return {
