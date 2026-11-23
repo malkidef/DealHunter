@@ -122,7 +122,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <section class="dashboard-section">
 <h3>Transactions et litiges</h3>
 <p class="muted">Suivi des accords et confirmations des deux entreprises. La commission de 5 % est calculée à titre indicatif uniquement : aucun paiement ni prélèvement n’est activé.</p>
-<div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div>
+<div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div><h3 style="margin-top:24px">Avis reçus</h3><div id="dealReviewsReceived" class="empty">Aucun avis reçu pour le moment.</div>
 </section>
 </section>
 <section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div><h3 style="margin-top:24px">Mises en relation — services B2B</h3><p class="muted">La conversation ne sera disponible qu'après acceptation de la proposition par l'autre entreprise.</p><div id="serviceMatchRequestList" class="cards"><div class="empty">Aucune demande de service pour le moment.</div></div></section>
@@ -936,6 +936,26 @@ document.addEventListener('click',e=>{
  const confirm=e.target.closest('[data-deal-confirm]');
  if(confirm){confirm.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
 });
+window.dealhunterReviewsGiven=[];
+window.addEventListener('dealhunter-deal-reviews',e=>{
+ window.dealhunterReviewsGiven=Array.isArray(e.detail?.given)?e.detail.given:[];
+ const received=Array.isArray(e.detail?.received)?e.detail.received:[];
+ const box=$('dealReviewsReceived');
+ if(box){
+  box.className=received.length?'cards':'empty';
+  box.innerHTML=received.length?received.map(r=>'<article class="item"><strong>'+escapeHtml(String(r.rating)+'/5')+'</strong><div>'+escapeHtml(r.comment||'')+'</div></article>').join(''):'Aucun avis reçu pour le moment.';
+ }
+});
+document.addEventListener('submit',e=>{
+ const form=e.target.closest('form[data-deal-review]');if(!form)return;
+ e.preventDefault();
+ const button=form.querySelector('button[type="submit"]');button.disabled=true;
+ window.dispatchEvent(new CustomEvent('dealhunter-create-deal-review',{detail:{
+  dealId:form.dataset.dealReview,rating:form.elements.rating.value,comment:form.elements.comment.value
+ }}));
+ button.textContent='Publication…';
+ setTimeout(()=>{button.disabled=false;button.textContent='Publier mon avis';},1500);
+});
 window.addEventListener('dealhunter-deals',e=>{
  const deals=Array.isArray(e.detail?.deals)?e.detail.deals:[];
  const list=$('dealDashboardList');
@@ -963,7 +983,9 @@ window.addEventListener('dealhunter-deals',e=>{
   const total=Number(d.totalAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const fee=Number(d.commissionAmount||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
   const state=d.status==='proposed'?'En attente d’accord':d.status==='agreed'?'En attente des confirmations':d.status==='completed'?'Terminée (deux confirmations)':'Refusée';
-  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div></article>';
+  const hasReview=window.dealhunterReviewsGiven.some(r=>r.dealId===d.id);
+  const reviewForm=d.status==='completed'&&!hasReview?'<form data-deal-review="'+escapeHtml(d.id)+'" class="review-form"><label>Ta note <select name="rating" required><option value="5">5 — Excellent</option><option value="4">4 — Très bien</option><option value="3">3 — Correct</option><option value="2">2 — Décevant</option><option value="1">1 — Très mauvais</option></select></label><label>Commentaire (facultatif)<textarea name="comment" maxlength="800"></textarea></label><button type="submit">Publier mon avis</button></form>':'';
+  return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(d.product||'Vente')+'</h3><div>'+escapeHtml(d.quantity)+' unités · '+total+'</div><div class="muted">Commission indicative de 5 % : '+fee+'</div><div class="muted">Vendeur : '+(d.sellerConfirmed?'confirmé':'en attente')+' · Acheteur : '+(d.buyerConfirmed?'confirmé':'en attente')+'</div>'+reviewForm+'</article>';
  }).join(''):'Aucun accord de vente proposé pour le moment.';
 });
 
