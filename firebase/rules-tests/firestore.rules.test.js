@@ -430,6 +430,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const review={dealId:"completed-review",reviewerUid:"alice",subjectUid:"bob",rating:5,comment:"Transaction conforme.",createdAt:new Date()};
     await assertSucceeds(setDoc(doc(alice,"dealReviews","completed-review_alice"),review));
     await assertSucceeds(getDoc(doc(bob,"dealReviews","completed-review_alice")));
+    await assertFails(getDoc(doc(outsider,"dealReviews","completed-review_alice")));
     await assertFails(setDoc(doc(alice,"dealReviews","completed-review_alice"),review));
     await assertFails(setDoc(doc(alice,"dealReviews","active-review_alice"),{...review,dealId:"active-review"}));
     await assertFails(setDoc(doc(alice,"dealReviews","self_alice"),{...review,subjectUid:"alice"}));
