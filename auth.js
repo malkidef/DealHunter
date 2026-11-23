@@ -376,6 +376,7 @@ if (!ready) {
           category: data.category || "Autre / à classer",
           quantity: Number(data.quantity ?? data.qty ?? 0),
           unitPrice: Number(data.unitPrice ?? data.price ?? 0),
+          unit: data.unit || "unit", currency: data.currency || "EUR", countryCode: data.countryCode || "FR",
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
         }, { merge: true });
@@ -387,6 +388,7 @@ if (!ready) {
           category: data.category || "Autre / à classer",
           quantity: Number(data.quantity ?? data.qty ?? 0),
           maxUnitBudget: Number(data.maxUnitBudget ?? data.budget ?? 0),
+          unit: data.unit || "unit", currency: data.currency || "EUR", countryCode: data.countryCode || "FR",
           location: data.location || "", status: "active",
           createdAt: data.createdAt || serverTimestamp()
         }, { merge: true });
@@ -727,7 +729,7 @@ if (!ready) {
         throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
       }
       const original = privateSnap.data();
-      const updated = { company, product, category, quantity, unitPrice, location };
+      const updated = { company, product, category, quantity, unitPrice, location, unit: original.unit || "unit", currency: original.currency || "EUR", countryCode: original.countryCode || "FR" };
       const batch = writeBatch(db);
       batch.update(privateRef, updated);
       batch.set(publicRef, {
@@ -893,8 +895,8 @@ if (!ready) {
       const isSeller = collectionName === "sellerOffers";
       const publicCollection = isSeller ? "publicOffers" : "publicNeeds";
       const publicRecord = isSeller
-        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, location: record.location, status: "active", createdAt: serverTimestamp() }
-        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, location: record.location, status: "active", createdAt: serverTimestamp() };
+        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() }
+        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() };
       await setDoc(doc(db, publicCollection, privateRef.id), publicRecord);
       await loadCloudRecords(user);
       status.textContent = collectionName === "sellerOffers"
@@ -913,12 +915,12 @@ if (!ready) {
     if (event.target === sellerForm) {
       saveBusinessRecord(event, sellerForm, "sellerOffers", [
         ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
-        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["location", "sLocation"]
+        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["unit", "sUnit"], ["currency", "sCurrency"], ["countryCode", "sCountry"], ["location", "sLocation"]
       ]);
     } else if (event.target === buyerForm) {
       saveBusinessRecord(event, buyerForm, "buyerNeeds", [
         ["company", "bCompany"], ["product", "bProduct"], ["category", "bCategory"],
-        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["location", "bLocation"]
+        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["unit", "bUnit"], ["currency", "bCurrency"], ["countryCode", "bCountry"], ["location", "bLocation"]
       ]);
     }
   }, true);
