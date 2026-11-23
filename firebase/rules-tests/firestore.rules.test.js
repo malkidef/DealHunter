@@ -440,6 +440,23 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(deleteDoc(doc(alice,"dealReviews","completed-review_alice")));
   });
 
+  it("protège les signalements de confiance et leur traitement", async () => {
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const bob=testEnv.authenticatedContext("bob").firestore();
+    const admin=testEnv.authenticatedContext("reviewer",{dealhunterAdmin:true}).firestore();
+    const report={reporterUid:"alice",targetType:"product_listing",targetId:"listing-1",reason:"fraud",description:"Prix anormal et annonce incohérente.",status:"pending",createdAt:new Date()};
+    await assertSucceeds(setDoc(doc(alice,"trustReports","report-1"),report));
+    await assertSucceeds(getDoc(doc(alice,"trustReports","report-1")));
+    await assertFails(getDoc(doc(bob,"trustReports","report-1")));
+    await assertSucceeds(getDoc(doc(admin,"trustReports","report-1")));
+    await assertFails(setDoc(doc(alice,"trustReports","self-reviewed"),{...report,status:"actioned"}));
+    await assertFails(setDoc(doc(alice,"trustReports","extra"),{...report,phone:"0600000000"}));
+    await assertFails(updateDoc(doc(alice,"trustReports","report-1"),{status:"actioned",reviewedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(admin,"trustReports","report-1"),{status:"actioned",reviewerNote:"Annonce examinée.",reviewedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"trustReports","report-1"),{status:"reviewed",reviewedAt:new Date()}));
+    await assertFails(deleteDoc(doc(alice,"trustReports","report-1")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
