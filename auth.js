@@ -186,7 +186,7 @@ if (!ready) {
       if(p.status!=="active"||o.status!=="active"||p.publicProfileConsent!==true)throw new Error("Le profil ou l'offre n'est plus actif.");
       if(p.ownerUid===o.ownerUid||![p.ownerUid,o.ownerUid].includes(user.uid))throw new Error("Seul le candidat ou l'employeur concerné peut lancer cette demande.");
       if(!Array.isArray(p.engagementTypes)||!p.engagementTypes.includes(o.engagementType)||d.engagementType!==o.engagementType)throw new Error("Le type d'engagement ne correspond pas.");
-      const existing=await getDocs(query(collection(db,"workMatchRequests"),where("candidateProfileId","==",d.candidateProfileId)));
+      const existing=await getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)));
       if(existing.docs.some(x=>x.data().openingId===d.openingId&&x.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
       const candidate=user.uid===p.ownerUid;
       await addDoc(collection(db,"workMatchRequests"),{candidateProfileId:d.candidateProfileId,openingId:d.openingId,candidateUid:p.ownerUid,employerUid:o.ownerUid,participantUids:[p.ownerUid,o.ownerUid],requesterUid:user.uid,recipientUid:candidate?o.ownerUid:p.ownerUid,engagementType:o.engagementType,candidateTitle:p.title,openingTitle:o.title,status:"pending",createdAt:serverTimestamp()});
