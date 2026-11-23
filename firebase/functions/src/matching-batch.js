@@ -11,6 +11,7 @@ const matching = require("../../../functions/matching/src/main.js");
 const { adaptPublicOffer, adaptPublicNeed } = require("../../../functions/matching/src/firestore-adapter.js");
 
 const MAX_DOCUMENTS = 5000;
+const MAX_PAIR_COMPARISONS = 250000;
 const BATCH_SIZE = 400;
 
 function initialize() {
@@ -45,6 +46,10 @@ async function run() {
   ]);
   const offers = offerDocs.map((doc) => adaptPublicOffer(doc.id, doc.data()));
   const needs = needDocs.map((doc) => adaptPublicNeed(doc.id, doc.data()));
+  const comparisons = offers.length * needs.length;
+  if (comparisons > MAX_PAIR_COMPARISONS) {
+    throw new Error(`Trop de combinaisons à analyser (${comparisons}). Limite de sécurité : ${MAX_PAIR_COMPARISONS}. Réduire le lot ou mettre en place un index de matching avant d'augmenter la capacité.`);
+  }
   const candidates = matching.makeCandidates(offers, needs);
   let created = 0;
   let existing = 0;
