@@ -26,11 +26,12 @@ jobs:
         with:
           node-version: "20"
       - name: Exécuter les tests du moteur de matching
-        run: node --test tests/test_matching.js tests/test_frontend_matching.js tests/test_firestore_adapter.js tests/test_service_matching.js
+        run: node --test tests/test_matching.js tests/test_frontend_matching.js tests/test_firestore_adapter.js tests/test_service_matching.js tests/test_work_matching.js
       - name: Vérifier les fonctions Firebase
         run: |
           node --check functions/matching/src/firestore-adapter.js
           node --check functions/matching/src/service-matching.js
+  node --check functions/matching/src/work-matching.js
           node --check firebase/functions/src/matching-batch.js
           node --check firebase/functions/src/index.js
           node --check firebase/functions/src/payments.js
