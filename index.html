@@ -273,6 +273,15 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
     <div class="field"><label for="vrEvidenceUrl">URL HTTPS publique</label><input id="vrEvidenceUrl" type="url" required maxlength="500" placeholder="https://..."></div>
     <button type="submit">Soumettre pour vérification humaine</button>
   </form>
+  <h4>Signaler une annonce ou un comportement suspect</h4>
+  <form id="trustReportForm">
+    <div class="field"><label for="trType">Type de cible</label><select id="trType"><option value="company">Entreprise</option><option value="product_listing">Annonce produit</option><option value="service_listing">Annonce de service</option><option value="work_profile">Profil professionnel</option><option value="work_opening">Offre d'emploi / mission</option><option value="deal">Transaction</option></select></div>
+    <div class="field"><label for="trTarget">Référence de la fiche ou transaction</label><input id="trTarget" required maxlength="160"></div>
+    <div class="field"><label for="trReason">Motif</label><select id="trReason"><option value="fraud">Fraude présumée</option><option value="counterfeit">Contrefaçon</option><option value="misleading">Information trompeuse</option><option value="duplicate">Doublon</option><option value="unsafe">Risque de sécurité</option><option value="spam">Spam</option><option value="other">Autre</option></select></div>
+    <div class="field"><label for="trDescription">Description (sans données personnelles)</label><textarea id="trDescription" maxlength="1000"></textarea></div>
+    <button type="submit">Envoyer le signalement</button>
+  </form>
+  <h4>Mes signalements / modération</h4><div id="trustReportList" class="cards">Aucun signalement.</div>
   <h4>Mes demandes et décisions de vérification</h4>
   <div id="verificationRequestList" class="cards"><div class="empty">Aucune demande de vérification.</div></div>
 </section>
@@ -1109,6 +1118,26 @@ window.addEventListener('dealhunter-work-data',e=>{
  }
 });
 
+$('trustReportForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ window.dispatchEvent(new CustomEvent('dealhunter-create-trust-report',{detail:{
+  targetType:$('trType').value,targetId:$('trTarget').value,reason:$('trReason').value,description:$('trDescription').value
+ }}));
+});
+window.addEventListener('dealhunter-trust-reports',e=>{
+ const reports=Array.isArray(e.detail?.reports)?e.detail.reports:[],isAdmin=e.detail?.isAdmin===true,el=$('trustReportList');
+ if(!el)return;
+ const labels={pending:'En attente',reviewed:'Examiné',actioned:'Action prise',false_positive:'Non confirmé'};
+ el.className=reports.length?'cards':'empty';
+ el.innerHTML=reports.length?reports.map(r=>{
+  const actions=isAdmin&&r.status==='pending'?'<button data-report-action="actioned" data-report-id="'+escapeHtml(r.id)+'">Action prise</button><button class="secondary" data-report-action="reviewed" data-report-id="'+escapeHtml(r.id)+'">Examiner</button><button class="secondary" data-report-action="false_positive" data-report-id="'+escapeHtml(r.id)+'">Non confirmé</button>':'';
+  return '<article class="item"><strong>'+escapeHtml(r.targetType)+' · '+escapeHtml(r.targetId)+'</strong><div>'+escapeHtml(r.reason)+' — '+escapeHtml(labels[r.status]||r.status)+'</div><div>'+escapeHtml(r.description||'')+'</div>'+actions+'</article>';
+ }).join(''):'Aucun signalement.';
+});
+$('trustReportList').addEventListener('click',e=>{
+ const b=e.target.closest('[data-report-action]');if(!b)return;b.disabled=true;
+ window.dispatchEvent(new CustomEvent('dealhunter-review-trust-report',{detail:{reportId:b.dataset.reportId,decision:b.dataset.reportAction,note:'Examiné par la modération.'}}));
+});
 $('verificationRequestForm').addEventListener('submit',e=>{
  e.preventDefault();
  window.dispatchEvent(new CustomEvent('dealhunter-create-verification-request',{detail:{
