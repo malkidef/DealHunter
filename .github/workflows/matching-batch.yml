@@ -1,0 +1,41 @@
+name: DealHunter — matching périodique
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealhunter-matching-batch
+  cancel-in-progress: false
+
+jobs:
+  matching:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Installer les dépendances Firebase Admin
+        working-directory: firebase/functions
+        run: npm install --no-audit --no-fund
+      - name: Vérifier la présence du secret
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Ajoute le secret FIREBASE_SERVICE_ACCOUNT dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - name: Exécuter le matching sans contacter les utilisateurs
+        working-directory: firebase/functions
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node src/matching-batch.js
