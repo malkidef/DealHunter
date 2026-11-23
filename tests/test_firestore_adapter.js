@@ -21,6 +21,7 @@ test("adapte une offre publique vers le schéma canonique", () => {
   assert.equal(result.productName, "Moteurs électriques");
   assert.equal(result.unit, "unit");
   assert.equal(result.currency, "EUR");
+  assert.equal(result.countryCode, "FR");
   assert.equal(result.city, "Lille");
 });
 
@@ -52,4 +53,20 @@ test("ne rapproche pas une entreprise avec son propre besoin", () => {
   const listing = adaptPublicOffer("offer-4", { ...offer, ownerUid: "same-company" });
   const request = adaptPublicNeed("need-4", { ...need, ownerUid: "same-company" });
   assert.equal(matching.scorePair(listing, request), null);
+});
+
+test("conserve les unités, devises et pays explicitement fournis", () => {
+  const result = adaptPublicOffer("offer-world", { ...offer, unit: "kg", currency: "USD", countryCode: "US" });
+  assert.equal(result.unit, "kg");
+  assert.equal(result.currency, "USD");
+  assert.equal(result.countryCode, "US");
+  const buyer = adaptPublicNeed("need-world", { ...need, unit: "kg", currency: "USD", countryCode: "US" });
+  assert.equal(buyer.unit, "kg");
+  assert.equal(buyer.currency, "USD");
+  assert.equal(buyer.countryCode, "US");
+});
+test("rejette les prix et codes de pays ou devise invalides", () => {
+  assert.throws(() => adaptPublicOffer("bad-price", { ...offer, unitPrice: 0 }), /unitPrice/);
+  assert.throws(() => adaptPublicOffer("bad-currency", { ...offer, currency: "EURO" }), /currency/);
+  assert.throws(() => adaptPublicNeed("bad-country", { ...need, countryCode: "USA" }), /countryCode/);
 });
