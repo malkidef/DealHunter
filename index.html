@@ -1046,13 +1046,22 @@ $('workOpeningForm').addEventListener('submit',e=>{
   startDate:$('woStart').value,remoteAccepted:$('woRemote').checked
  }}}));
 });
+
+$('workCatalog').addEventListener('click',e=>{
+ const button=e.target.closest('[data-work-delete]');
+ if(!button)return;
+ if(!confirm('Retirer cette fiche du catalogue DealHunter ?'))return;
+ button.disabled=true;
+ window.dispatchEvent(new CustomEvent('dealhunter-delete-work-record',{detail:{collectionName:button.dataset.workCollection,recordId:button.dataset.workDelete}}));
+});
+
 window.addEventListener('dealhunter-work-data',e=>{
  const profiles=Array.isArray(e.detail?.profiles)?e.detail.profiles:[];
  const openings=Array.isArray(e.detail?.openings)?e.detail.openings:[];
  const catalog=$('workCatalog'),matches=$('workMatches');
  if(catalog){
   const cards=[...profiles.map(x=>({...x,kind:'Professionnel'})),...openings.map(x=>({...x,kind:x.engagementType==='employment'?'Recrutement salarié':'Mission indépendante'}))];
-  catalog.innerHTML=cards.length?cards.map(x=>'<article class="item"><span class="pill">'+escapeHtml(x.kind)+'</span><h4>'+escapeHtml(x.title||'')+'</h4><div>'+escapeHtml(x.category||'')+' · '+escapeHtml(x.location||'')+' · '+escapeHtml(x.countryCode||'')+'</div><p>'+escapeHtml(x.description||'')+'</p><div class="muted">'+escapeHtml((x.skills||x.requiredSkills||[]).join(', '))+'</div></article>').join(''):'<div class="empty">Aucun profil ou poste publié.</div>';
+  catalog.innerHTML=cards.length?cards.map(x=>'<article class="item"><span class="pill">'+escapeHtml(x.kind)+'</span><h4>'+escapeHtml(x.title||'')+'</h4><div>'+escapeHtml(x.category||'')+' · '+escapeHtml(x.location||'')+' · '+escapeHtml(x.countryCode||'')+'</div><p>'+escapeHtml(x.description||'')+'</p><div class="muted">'+escapeHtml((x.skills||x.requiredSkills||[]).join(', '))+'</div>'+(x.ownerUid===(window.dealhunterUserUid||'')?'<button type="button" class="secondary" data-work-delete="'+escapeHtml(x.id)+'" data-work-collection="'+(x.kind==='Professionnel'?'publicWorkerProfiles':'publicWorkOpenings')+'">Retirer ma fiche</button>':'')+'</article>').join(''):'<div class="empty">Aucun profil ou poste publié.</div>';
  }
  const engine=window.DealHunterWorkMatching;
  if(matches&&engine){
