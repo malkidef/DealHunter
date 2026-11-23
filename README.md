@@ -55,16 +55,17 @@ Le premier affichage des correspondances est volontairement conservateur : caté
 
 Cette interface ne contacte personne automatiquement et ne traite pas encore le recrutement de salariés ou de travailleurs indépendants. La prochaine brique est la demande de mise en relation avec acceptation des deux entreprises, puis le parcours distinct des travailleurs.
 
-## Marché des compétences — moteur de matching initial
+## Marché des compétences et du recrutement
 
-Le module pur functions/matching/src/work-matching.js rapproche des profils professionnels et des offres d’entreprises. Il sépare deux engagements : employment (poste salarié) et independent (mission indépendante).
+DealHunter dispose désormais d'un parcours de publication de profils professionnels et d'offres de travail, avec deux types distincts : `employment` (emploi salarié) et `independent` (mission indépendante).
 
-Les filtres contrôlent le statut actif, les propriétaires, le type d’engagement, la catégorie métier, la zone, le distanciel, les compétences et les qualifications obligatoires. Les résultats sont des suggestions, jamais une décision de recrutement.
+Les collections Firestore `publicWorkerProfiles` et `publicWorkOpenings` sont protégées par des règles de propriété et une liste blanche de champs. La publication d'un profil exige un consentement explicite ; le propriétaire peut retirer sa fiche depuis le catalogue.
 
-Le schéma cible est décrit dans docs/WORK_MARKET_SCHEMA.md. Les tests sont dans tests/test_work_matching.js et intégrés au workflow CI.
+Le moteur `functions/matching/src/work-matching.js` calcule des suggestions indicatives selon métier, compétences, qualifications déclarées, zone, disponibilité et distanciel. Il ne certifie pas les qualifications et ne prend aucune décision d'embauche. Les coordonnées privées ne sont pas publiées.
 
-Ce commit ajoute le moteur et le schéma, pas encore les formulaires ni les collections Firestore. Les profils publics ne devront contenir aucune coordonnée personnelle ni donnée sensible. Les qualifications déclarées restent à vérifier humainement.
+Les formulaires sont intégrés à l'onglet Services. Le détail du schéma et des garde-fous est décrit dans `docs/WORK_MARKET_SCHEMA.md`.
 
+**Limites avant ouverture publique :** vérification manuelle des entreprises et qualifications, consentement bilatéral et messagerie spécifiques au marché du travail, politique de conservation/effacement, et validation juridique pays par pays.
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
