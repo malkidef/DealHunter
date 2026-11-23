@@ -371,6 +371,16 @@ if (!ready) {
     window.dispatchEvent(new CustomEvent("dealhunter-service-data", {
       detail: { offers: serviceOffers, requests: serviceRequests }
     }));
+    const [workerProfileSnapshot, workOpeningSnapshot] = await Promise.all([
+      getDocs(collection(db, "publicWorkerProfiles")),
+      getDocs(collection(db, "publicWorkOpenings"))
+    ]);
+    window.dispatchEvent(new CustomEvent("dealhunter-work-data", {
+      detail: {
+        profiles: workerProfileSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
+        openings: workOpeningSnapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+      }
+    }));
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
       detail: { sellers, buyers }
     }));
@@ -418,6 +428,70 @@ if (!ready) {
         : "Demande de service publiée dans le catalogue professionnel.";
     } catch (error) {
       console.error("Publication du service impossible :", error);
+      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+
+  window.addEventListener("dealhunter-save-work-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    const record = data.record || {};
+    const collectionName = data.collectionName;
+    if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName)) {
+      status.textContent = "Connecte-toi pour publier un profil ou une offre professionnelle.";
+      return;
+    }
+    const textValue = key => String(record[key] || "").trim();
+    const listValue = key => Array.isArray(record[key]) ? record[key].map(x => String(x).trim()).filter(Boolean).slice(0, 40) : [];
+    const countryCode = textValue("countryCode").toUpperCase();
+    if (!textValue("title") || !textValue("category") || !textValue("description") ||
+        !textValue("location") || !/^[A-Z]{2}$/.test(countryCode)) {
+      status.textContent = "Complète le titre, métier, description, ville et code pays ISO à deux lettres.";
+      return;
+    }
+    let payload;
+    if (collectionName === "publicWorkerProfiles") {
+      const engagementTypes = listValue("engagementTypes");
+      if (!record.publicProfileConsent || !engagementTypes.length ||
+          engagementTypes.some(x => !["employment", "independent"].includes(x))) {
+        status.textContent = "Confirme la publication publique et sélectionne au moins un type d'engagement.";
+        return;
+      }
+      payload = {
+        ownerUid: user.uid, title: textValue("title"), category: textValue("category"),
+        description: textValue("description"), location: textValue("location"), countryCode,
+        skills: listValue("skills"), qualifications: listValue("qualifications"),
+        engagementTypes, availableFrom: textValue("availableFrom"),
+        remote: record.remote === true, publicProfileConsent: true, status: "active",
+        updatedAt: serverTimestamp()
+      };
+    } else {
+      const engagementType = textValue("engagementType");
+      if (!textValue("company") || !["employment", "independent"].includes(engagementType)) {
+        status.textContent = "Indique l'entreprise et choisis salarié ou mission indépendante.";
+        return;
+      }
+      payload = {
+        ownerUid: user.uid, company: textValue("company"), title: textValue("title"),
+        category: textValue("category"), description: textValue("description"),
+        location: textValue("location"), countryCode,
+        requiredSkills: listValue("requiredSkills"), requiredQualifications: listValue("requiredQualifications"),
+        engagementType, startDate: textValue("startDate"),
+        remoteAccepted: record.remoteAccepted === true, status: "active", updatedAt: serverTimestamp()
+      };
+    }
+    try {
+      const recordId = String(data.recordId || "").trim();
+      const target = recordId ? doc(db, collectionName, recordId) : doc(collection(db, collectionName));
+      if (!recordId) payload.createdAt = serverTimestamp();
+      await setDoc(target, payload, { merge: true });
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicWorkerProfiles"
+        ? "Profil professionnel publié. Tu peux le retirer en le fermant ou en le supprimant."
+        : "Offre professionnelle publiée dans le catalogue DealHunter.";
+    } catch (error) {
+      console.error("Publication professionnelle impossible :", error);
       status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
     }
   });
