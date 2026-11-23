@@ -123,6 +123,11 @@ service cloud.firestore {
         && request.resource.data.status == "pending"
         && request.resource.data.sellerId is string
         && request.resource.data.buyerId is string
+        // Les identifiants doivent désigner les annonces actives de ces propriétaires.
+        && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.ownerUid == request.resource.data.sellerUid
+        && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
+        && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.ownerUid == request.resource.data.buyerUid
+        && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
         && request.resource.data.requesterCompany is string
         && request.resource.data.recipientCompany is string
         && request.resource.data.product is string
