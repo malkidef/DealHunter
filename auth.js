@@ -916,7 +916,9 @@ if (!ready) {
       const message = collectionName === "sellerOffers"
         ? "Stock modifié et catalogue partagé synchronisé."
         : "Besoin acheteur modifié et catalogue partagé synchronisé.";
-      status.textContent = message; result(true, message);
+      status.textContent = message;
+      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated"));
+      result(true, message);
     } catch (error) {
       console.error("Modification de l’annonce impossible :", error);
       const message = "Modification impossible : " + (error.code || error.message || "erreur inconnue");
