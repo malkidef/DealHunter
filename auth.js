@@ -55,11 +55,14 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
-    const [snap, dealSnap, generatedSnap] = await Promise.all([
+    const [snap, dealSnap, generatedSnap, serviceRequestSnap] = await Promise.all([
       getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
-      getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid)))
+      getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid)))
     ]);
+    const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
+    window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
@@ -97,6 +100,49 @@ if (!ready) {
     }
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
   };
+  window.addEventListener("dealhunter-create-service-match-request",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.offerId||!d.serviceRequestId){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
+    try{
+      const [offerSnap,needSnap]=await Promise.all([
+        getDoc(doc(db,"publicServiceOffers",d.offerId)),
+        getDoc(doc(db,"publicServiceRequests",d.serviceRequestId))
+      ]);
+      if(!offerSnap.exists()||!needSnap.exists())throw new Error("Une des fiches de service n'existe plus.");
+      const offer=offerSnap.data(),need=needSnap.data();
+      if(offer.status!=="active"||need.status!=="active"||!offer.ownerUid||!need.ownerUid||offer.ownerUid===need.ownerUid)
+        throw new Error("Ces entreprises ne peuvent pas être mises en relation.");
+      if(![offer.ownerUid,need.ownerUid].includes(user.uid))throw new Error("Seule une des deux entreprises concernées peut lancer la demande.");
+      const existing=await getDocs(query(collection(db,"serviceMatchRequests"),where("offerId","==",d.offerId),where("serviceRequestId","==",d.serviceRequestId)));
+      if(existing.docs.some(item=>item.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
+      const isProvider=user.uid===offer.ownerUid;
+      await addDoc(collection(db,"serviceMatchRequests"),{
+        offerId:d.offerId,serviceRequestId:d.serviceRequestId,
+        providerUid:offer.ownerUid,clientUid:need.ownerUid,
+        participantUids:[offer.ownerUid,need.ownerUid],
+        requesterUid:user.uid,recipientUid:isProvider?need.ownerUid:offer.ownerUid,
+        requesterCompany:isProvider?offer.company:need.company,
+        recipientCompany:isProvider?need.company:offer.company,
+        serviceTitle:offer.title,needTitle:need.title,
+        status:"pending",createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Proposition envoyée. L'autre entreprise doit accepter avant l'ouverture de la conversation.";
+    }catch(err){console.error(err);status.textContent="Demande impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-update-service-match-request",async e=>{
+    const user=auth.currentUser,{requestId,decision}=e.detail||{};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    try{
+      const ref=doc(db,"serviceMatchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")
+        throw new Error("Cette demande ne peut plus être modifiée.");
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});
+      await loadMatchRequests(user);
+      status.textContent=decision==="accepted"?"Mise en relation de services acceptée. La conversation peut maintenant être ouverte.":"Demande de service refusée.";
+    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
