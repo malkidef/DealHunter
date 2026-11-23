@@ -267,14 +267,26 @@ if (!ready) {
       status.textContent=message;result(false,message);return;
     }
     try{
-      const isSeller=user.uid===d.sellerUid;
+      if(!d.sellerId||!d.buyerId)throw new Error("Identifiants de l’offre et du besoin manquants.");
+      const [sellerSnap,buyerSnap]=await Promise.all([
+        getDoc(doc(db,"publicOffers",d.sellerId)),
+        getDoc(doc(db,"publicNeeds",d.buyerId))
+      ]);
+      if(!sellerSnap.exists()||!buyerSnap.exists())throw new Error("L’offre ou le besoin n’existe plus dans le catalogue partagé.");
+      const sellerRecord=sellerSnap.data(),buyerRecord=buyerSnap.data();
+      if(sellerRecord.status!=="active"||buyerRecord.status!=="active"
+        ||sellerRecord.ownerUid!==d.sellerUid||buyerRecord.ownerUid!==d.buyerUid
+        ||sellerRecord.ownerUid===buyerRecord.ownerUid) {
+        throw new Error("Les annonces ne correspondent pas aux deux comptes participants ou ne sont plus actives.");
+      }
+      const isSeller=user.uid===sellerRecord.ownerUid;
       await addDoc(collection(db,"matchRequests"),{
-        sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,
-        participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,
-        recipientUid:isSeller?d.buyerUid:d.sellerUid,
-        requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,
-        recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,
-        product:d.product||"",status:"pending",createdAt:serverTimestamp()
+        sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:sellerRecord.ownerUid,buyerUid:buyerRecord.ownerUid,
+        participantUids:[sellerRecord.ownerUid,buyerRecord.ownerUid],requesterUid:user.uid,
+        recipientUid:isSeller?sellerRecord.ownerUid===user.uid?buyerRecord.ownerUid:sellerRecord.ownerUid:sellerRecord.ownerUid,
+        requesterCompany:isSeller?(sellerRecord.company||d.sellerCompany):(buyerRecord.company||d.buyerCompany),
+        recipientCompany:isSeller?(buyerRecord.company||d.buyerCompany):(sellerRecord.company||d.sellerCompany),
+        product:sellerRecord.product||d.product||"",status:"pending",createdAt:serverTimestamp()
       });
       const message="Demande de mise en relation envoyée. Elle apparaît dans « Demandes ».";
       status.textContent=message;result(true,message);
