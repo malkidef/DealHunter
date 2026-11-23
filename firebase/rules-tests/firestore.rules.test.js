@@ -270,6 +270,27 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-extra"),{...request,privateEmail:"secret@example.test"}));
   });
 
+  it("ouvre la messagerie de services uniquement après acceptation bilatérale", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db=context.firestore();
+      await setDoc(doc(db,"serviceMatchRequests","svc-accepted"),{
+        providerUid:"alice",clientUid:"bob",participantUids:["alice","bob"],status:"accepted"
+      });
+      await setDoc(doc(db,"serviceMatchRequests","svc-pending"),{
+        providerUid:"alice",clientUid:"bob",participantUids:["alice","bob"],status:"pending"
+      });
+    });
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const message={requestId:"svc-accepted",senderUid:"alice",text:"Bonjour, parlons du besoin.",createdAt:new Date()};
+    await assertSucceeds(addDoc(collection(alice,"serviceMatchMessages"),message));
+    await assertSucceeds(getDocs(collection(alice,"serviceMatchMessages")));
+    await assertFails(addDoc(collection(alice,"serviceMatchMessages"),{...message,requestId:"svc-pending"}));
+    await assertFails(addDoc(collection(outsider,"serviceMatchMessages"),{...message,senderUid:"charlie"}));
+    await assertFails(addDoc(collection(alice,"serviceMatchMessages"),{...message,privateEmail:"secret@example.test"}));
+    await assertFails(updateDoc(doc(alice,"serviceMatchMessages","message-1"),{text:"modifié"}));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
