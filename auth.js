@@ -67,6 +67,9 @@ if (!ready) {
     const emptySnapshot = { docs: [] };
     const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] =
       reads.map(result => result.status === "fulfilled" ? result.value : emptySnapshot);
+    // Les suggestions automatiques sont indépendantes des messages et services.
+    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const failedReads = reads
       .map((result,index) => result.status === "rejected"
         ? ["matchRequests","deals","matches","serviceMatchRequests","workMatchRequests"][index] + ": " +
@@ -80,19 +83,29 @@ if (!ready) {
     const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
     for(const request of serviceRequests){
       if(request.status!=="accepted")continue;
-      const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
-      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      try {
+        const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
+        request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      } catch (messageError) {
+        request.messages=[];
+        request.messageLoadError=messageError.code||messageError.message||"erreur inconnue";
+        console.warn("Messages de service indisponibles :", messageError);
+      }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
     const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
     for(const request of workRequests){
       if(request.status!=="accepted")continue;
-      const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
-      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      try {
+        const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
+        request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+      } catch (messageError) {
+        request.messages=[];
+        request.messageLoadError=messageError.code||messageError.message||"erreur inconnue";
+        console.warn("Messages de travail indisponibles :", messageError);
+      }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests}}));
-    const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
-    window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
     // Publier d'abord les demandes : les avis sont secondaires et ne doivent
     // jamais empêcher l'affichage de la boîte de réception.
@@ -434,12 +447,6 @@ if (!ready) {
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
     ];
-    for (let i = 0; i < stalePublicDocs.length; i += 400) {
-      const batch = writeBatch(db);
-      stalePublicDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
-      await batch.commit();
-    }
-
     const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -464,46 +471,80 @@ if (!ready) {
         location: data.location || ""
       };
     });
-    const [serviceOfferSnapshot, serviceRequestSnapshot] = await Promise.all([
+    // Publie immédiatement le catalogue produits : les modules optionnels (services,
+    // emploi, vérification) ne doivent jamais laisser l'écran produit sur « Chargement… ».
+    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
+      detail: { sellers, buyers }
+    }));
+
+    // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
+    try {
+      for (let i = 0; i < stalePublicDocs.length; i += 400) {
+        const batch = writeBatch(db);
+        stalePublicDocs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+        await batch.commit();
+      }
+    } catch (cleanupError) {
+      console.warn("Nettoyage des anciennes annonces publiques reporté :", cleanupError);
+    }
+
+    // Chaque domaine optionnel est isolé. Une collection non configurée ou une règle
+    // Firestore manquante ne doit pas bloquer les autres fonctions de DealHunter.
+    const serviceReads = await Promise.allSettled([
       getDocs(query(collection(db, "publicServiceOffers"), limit(500))),
       getDocs(query(collection(db, "publicServiceRequests"), limit(500)))
     ]);
-    const serviceOffers = serviceOfferSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
-    const serviceRequests = serviceRequestSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    const serviceOffers = serviceReads[0].status === "fulfilled"
+      ? serviceReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const serviceRequests = serviceReads[1].status === "fulfilled"
+      ? serviceReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (serviceReads.some(result => result.status === "rejected"))
+      console.warn("Catalogue de services partiellement indisponible :", serviceReads);
     window.dispatchEvent(new CustomEvent("dealhunter-service-data", {
       detail: { offers: serviceOffers, requests: serviceRequests }
     }));
-    const [workerProfileSnapshot, workOpeningSnapshot] = await Promise.all([
+
+    const workReads = await Promise.allSettled([
       getDocs(query(collection(db, "publicWorkerProfiles"), limit(500))),
       getDocs(query(collection(db, "publicWorkOpenings"), limit(500)))
     ]);
+    const profiles = workReads[0].status === "fulfilled"
+      ? workReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const openings = workReads[1].status === "fulfilled"
+      ? workReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (workReads.some(result => result.status === "rejected"))
+      console.warn("Catalogue emploi partiellement indisponible :", workReads);
     window.dispatchEvent(new CustomEvent("dealhunter-work-data", {
-      detail: {
-        profiles: workerProfileSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
-        openings: workOpeningSnapshot.docs.map(item => ({ id: item.id, ...item.data() }))
-      }
+      detail: { profiles, openings }
     }));
-    const tokenResult = await user.getIdTokenResult();
-    const isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+
+    let isVerificationAdmin = false;
+    try {
+      const tokenResult = await user.getIdTokenResult();
+      isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+    } catch (tokenError) {
+      console.warn("Statut de vérification administrateur indisponible :", tokenError);
+    }
     const verificationQuery = isVerificationAdmin
       ? collection(db, "verificationRequests")
       : query(collection(db, "verificationRequests"), where("ownerUid", "==", user.uid));
-    const verificationSnapshot = await getDocs(verificationQuery);
     const reportsQuery = isVerificationAdmin
       ? collection(db, "trustReports")
       : query(collection(db, "trustReports"), where("reporterUid", "==", user.uid));
-    const reportsSnapshot = await getDocs(reportsQuery);
+    const trustReads = await Promise.allSettled([
+      getDocs(verificationQuery), getDocs(reportsQuery)
+    ]);
+    const verificationRequests = trustReads[0].status === "fulfilled"
+      ? trustReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    const trustReports = trustReads[1].status === "fulfilled"
+      ? trustReads[1].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
+    if (trustReads.some(result => result.status === "rejected"))
+      console.warn("Données de confiance/vérification partiellement indisponibles :", trustReads);
     window.dispatchEvent(new CustomEvent("dealhunter-trust-reports", {
-      detail: { reports: reportsSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), isAdmin: isVerificationAdmin }
+      detail: { reports: trustReports, isAdmin: isVerificationAdmin }
     }));
     window.dispatchEvent(new CustomEvent("dealhunter-verification-data", {
-      detail: {
-        requests: verificationSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
-        isAdmin: isVerificationAdmin
-      }
-    }));
-    window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { requests: verificationRequests, isAdmin: isVerificationAdmin }
     }));
   };
 
@@ -826,22 +867,26 @@ if (!ready) {
       status.append(label);
       signOutButton.classList.remove("hidden");
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
-      let firestoreStep = "profil";
-      try {
-        await saveUserProfile(user);
-        firestoreStep = "annonces privées et catalogues partagés";
-        await loadCloudRecords(user);
-        firestoreStep = "demandes de mise en relation";
-        await loadMatchRequests(user);
-        status.dataset.firestore = "saved";
-      } catch (error) {
-        console.error("Erreur Firestore (" + firestoreStep + ") :", error);
-        status.dataset.firestore = "error";
-        status.append(document.createTextNode(" · Erreur Firestore (" + firestoreStep + ") : " + (error.code || error.message || "erreur inconnue")));
+      const startupTasks = await Promise.allSettled([
+        saveUserProfile(user),
+        loadCloudRecords(user),
+        loadMatchRequests(user)
+      ]);
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions"];
+      const startupErrors = startupTasks.flatMap((result, index) => {
+        if (result.status === "fulfilled") return [];
+        console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
+        return [startupLabels[index] + " : " + (result.reason?.code || result.reason?.message || "erreur inconnue")];
+      });
+      status.dataset.firestore = startupErrors.length ? "partial" : "saved";
+      if (startupErrors.length) {
+        status.append(document.createTextNode(" · Chargement partiel — " + startupErrors.join(" · ")));
       }
     } else {
       status.textContent = "Aucun compte connecté.";
       delete status.dataset.firestore;
+      window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", { detail: { sellers: [], buyers: [] } }));
+      window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail: { matches: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
       signOutButton.classList.add("hidden");
