@@ -4,7 +4,8 @@ Dernière revue : 23 novembre 2026. Branche : `fix/firestore-matching-bridge`.
 
 ## Fonctionnalités implémentées dans le code
 
-- Catalogue produits/offres et besoins avec adaptateur vers le moteur de matching existant.
+- Catalogue produits/offres et besoins avec adaptateur vers le moteur de matching existant ; les nouveaux formulaires collectent unité, devise ISO 4217 et pays ISO alpha-2, et les règles Firestore valident ces champs lorsqu'ils sont fournis. Les anciens documents conservent les valeurs historiques par défaut `unit` / `EUR` / `FR` jusqu'à migration.
+- Matching planifié des produits via GitHub Actions, avec création idempotente des suggestions ; garde-fou de 250 000 comparaisons par exécution pour protéger les quotas gratuits.
 - Matching B2B de services, avec qualifications requises, localisation et compatibilité distanciel.
 - Marché des compétences avec parcours distincts salarié (`employment`) et indépendant (`independent`).
 - Demandes de mise en relation avec consentement bilatéral et messagerie privée pour les services et le marché du travail.
@@ -17,9 +18,9 @@ Dernière revue : 23 novembre 2026. Branche : `fix/firestore-matching-bridge`.
 
 ## Vérifications CI
 
-- Tests Python, tests des moteurs Node.js, vérifications syntaxiques des fonctions Firebase et du JavaScript : réussis sur le commit `d9366fc03e6f8020b152050b7414ad411b6e3ac6`.
-- Tests des règles Firestore couvrant les transactions, avis privés, signalements et vérification : réussis sur les commits `f71346c54738093b44d74c7d149bdf7207febf55` et `0d12215e67068db738f50b77cca7347eb2c67100`. Les règles Firestore n'ont pas été modifiées depuis ces tests.
-- Un contrôle Firestore supplémentaire sur un commit ultérieur était encore en cours lors de la revue.
+- Les tests Python, les tests Node.js du moteur et les vérifications syntaxiques ont réussi sur les derniers commits testés avant la mise à jour finale des métadonnées internationales.
+- Les tests des règles Firestore incluant les nouveaux champs internationaux sont en cours sur la branche ; ne pas déclarer leur succès avant la fin du workflow GitHub Actions.
+- Les tests CI ne remplacent pas les tests de bout en bout sur un vrai projet Firebase de préproduction.
 - Les tests CI ne remplacent pas les tests de bout en bout sur un vrai projet Firebase de préproduction.
 
 ## Bloqueurs avant mise en production
@@ -31,7 +32,7 @@ Dernière revue : 23 novembre 2026. Branche : `fix/firestore-matching-bridge`.
 5. **Cadre légal mondial** : vérifier pays par pays les règles sur le courtage, l'emploi, l'intérim, la sous-traitance, les qualifications réglementées, la consommation, les sanctions et les transferts internationaux.
 6. **Sources** : vérifier les licences et conditions d'utilisation de chaque source et obtenir les clés/API nécessaires. Une annonce collectée n'est jamais un stock confirmé.
 7. **Paiement/commission** : aucun paiement ni prélèvement n'est activé. La commission affichée de 5 % est indicative. Définir le rôle contractuel de DealHunter et les conditions de facturation avant toute collecte d'argent.
-8. **Capacité** : les lectures de catalogue sont bornées à 500 documents par collection pour protéger les quotas gratuits. La couverture mondiale exhaustive, la pagination et les alertes de fraîcheur ne sont pas encore garanties.
+8. **Capacité** : les lectures de catalogue dans l'interface sont bornées à 500 documents par collection ; le matching planifié est borné à 5 000 documents actifs par collection et à 250 000 paires par exécution. La couverture mondiale exhaustive, la pagination complète et les alertes de fraîcheur ne sont pas garanties.
 9. **Sécurité** : faire auditer les règles, les droits des réviseurs, les flux de contact, les abus, les injections de contenu et les accès multi-tenant par un tiers avant ouverture publique.
 
 ## Contraintes de coût
