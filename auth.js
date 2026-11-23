@@ -292,10 +292,65 @@ if (!ready) {
         location: data.location || ""
       };
     });
+    const [serviceOfferSnapshot, serviceRequestSnapshot] = await Promise.all([
+      getDocs(collection(db, "publicServiceOffers")),
+      getDocs(collection(db, "publicServiceRequests"))
+    ]);
+    const serviceOffers = serviceOfferSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    const serviceRequests = serviceRequestSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+    window.dispatchEvent(new CustomEvent("dealhunter-service-data", {
+      detail: { offers: serviceOffers, requests: serviceRequests }
+    }));
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
       detail: { sellers, buyers }
     }));
   };
+
+  window.addEventListener("dealhunter-save-service-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    if (!user || !["publicServiceOffers", "publicServiceRequests"].includes(data.collectionName)) {
+      status.textContent = "Connecte-toi pour publier une offre ou une demande de service.";
+      return;
+    }
+    const collectionName = data.collectionName;
+    const record = data.record || {};
+    const company = String(record.company || "").trim();
+    const title = String(record.title || "").trim();
+    const description = String(record.description || "").trim();
+    const category = String(record.category || "").trim();
+    const location = String(record.location || "").trim();
+    const countryCode = String(record.countryCode || "").trim().toUpperCase();
+    const qualifications = Array.isArray(record.qualifications)
+      ? record.qualifications.map(value => String(value).trim()).filter(Boolean).slice(0, 30) : [];
+    const remote = record.remote === true;
+    const coverageRadiusKm = Number(record.coverageRadiusKm || 0);
+    if (!company || !title || !description || !category || !location || !/^[A-Z]{2}$/.test(countryCode)
+      || !Number.isFinite(coverageRadiusKm) || coverageRadiusKm < 0 || coverageRadiusKm > 5000) {
+      status.textContent = "Vérifie les champs obligatoires, le code pays ISO à 2 lettres et le rayon (0 à 5 000 km).";
+      return;
+    }
+    try {
+      const recordId = String(data.recordId || "").trim();
+      const target = recordId ? doc(db, collectionName, recordId) : doc(collection(db, collectionName));
+      const payload = {
+        ownerUid: user.uid, company, title, description, category, location, countryCode,
+        qualifications, remote, coverageRadiusKm,
+        requiredQualifications: collectionName === "publicServiceRequests" ? qualifications : [],
+        remoteAccepted: collectionName === "publicServiceRequests" && remote,
+        status: "active", updatedAt: serverTimestamp()
+      };
+      if (!recordId) payload.createdAt = serverTimestamp();
+      await setDoc(target, payload, { merge: true });
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicServiceOffers"
+        ? "Offre de service publiée dans le catalogue professionnel."
+        : "Demande de service publiée dans le catalogue professionnel.";
+    } catch (error) {
+      console.error("Publication du service impossible :", error);
+      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
 
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
