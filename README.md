@@ -40,7 +40,7 @@ Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés 
 
 Depuis l'onglet **Services B2B**, une entreprise propriétaire de l'une des deux fiches compatibles peut demander une mise en relation. DealHunter relit les deux fiches dans Firestore avant de créer la demande ; le client ne peut pas inventer les identifiants ni les propriétaires.
 
-La demande est enregistrée dans `serviceMatchRequests`, visible uniquement par les deux participants. Seul le destinataire peut l'accepter ou la refuser, et une demande en attente ne peut pas être modifiée par son auteur. La conversation et le partage de coordonnées ne sont pas ouverts par cette première brique : ils doivent être activés dans une étape séparée après l'accord bilatéral.
+La demande est enregistrée dans `serviceMatchRequests`, visible uniquement par les deux participants. Seul le destinataire peut l'accepter ou la refuser, et une demande en attente ne peut pas être modifiée par son auteur. Après acceptation, les deux entreprises disposent d'une messagerie dédiée (`serviceMatchMessages`) ; les messages sont réservés aux participants et aucun partage automatique de coordonnées n'est effectué.
 
 ## Marketplace de services B2B — première interface
 
