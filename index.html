@@ -1095,12 +1095,43 @@ window.addEventListener('dealhunter-service-data',e=>{
 });
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
+window.addEventListener('dealhunter-business-record-result',e=>{
+ const d=e.detail||{};
+ const form=d.collectionName==='sellerOffers'?$('sellerForm'):d.collectionName==='buyerNeeds'?$('buyerForm'):null;
+ if(!form)return;
+ const button=form.querySelector('button[type="submit"]');
+ button.disabled=false;
+ if(d.collectionName==='sellerOffers')button.textContent=form.dataset.editingId?'Enregistrer les modifications':'Enregistrer le stock';
+ else button.textContent='Enregistrer le besoin';
+ if(d.success){form.reset();if(d.collectionName==='sellerOffers'){delete form.dataset.editingId;$('cancelSellerEdit').classList.add('hidden');}}
+});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
-$('sellerForm').addEventListener('submit',e=>{e.preventDefault();const editingId=e.target.dataset.editingId;if(editingId){window.dispatchEvent(new CustomEvent('dealhunter-update-business-record',{detail:{collectionName:'sellerOffers',recordId:editingId,record:{company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,quantity:Number($('sQty').value),unitPrice:Number($('sPrice').value),location:$('sLocation').value.trim()}}}));return;}sellers.push({company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,qty:Number($('sQty').value),price:Number($('sPrice').value),location:$('sLocation').value.trim()});e.target.reset();save()});
+$('sellerForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const form=e.currentTarget,button=$('sellerSubmitButton'),editingId=form.dataset.editingId;
+ if(editingId){
+  window.dispatchEvent(new CustomEvent('dealhunter-update-business-record',{detail:{collectionName:'sellerOffers',recordId:editingId,record:{company:$('sCompany').value.trim(),product:$('sProduct').value.trim(),category:$('sCategory').value,quantity:Number($('sQty').value),unitPrice:Number($('sPrice').value),location:$('sLocation').value.trim()}}}));
+  return;
+ }
+ button.disabled=true;button.textContent='Publication…';
+ window.dispatchEvent(new CustomEvent('dealhunter-save-business-record',{detail:{collectionName:'sellerOffers',record:{
+  company:$('sCompany').value,product:$('sProduct').value,category:$('sCategory').value,
+  quantity:$('sQty').value,unitPrice:$('sPrice').value,unit:$('sUnit').value,
+  currency:$('sCurrency').value,countryCode:$('sCountry').value,location:$('sLocation').value
+ }}}));
+});
 $('sellerList').addEventListener('click',e=>{const b=e.target.closest('[data-edit-business-record]');if(!b)return;const item=sellers.find(x=>x.id===b.dataset.recordId&&x.ownerUid===(window.dealhunterUserUid||''));if(!item)return;const form=$('sellerForm');form.dataset.editingId=item.id;$('sCompany').value=item.company||'';$('sProduct').value=item.product||'';$('sCategory').value=item.category||'Autre / à classer';$('sQty').value=item.qty??'';$('sPrice').value=item.price??'';$('sLocation').value=item.location||'';$('sellerSubmitButton').textContent='Enregistrer les modifications';$('cancelSellerEdit').classList.remove('hidden');form.scrollIntoView({behavior:'smooth',block:'start'});});
 $('cancelSellerEdit').addEventListener('click',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 window.addEventListener('dealhunter-business-record-updated',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
-$('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
+$('buyerForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
+ window.dispatchEvent(new CustomEvent('dealhunter-save-business-record',{detail:{collectionName:'buyerNeeds',record:{
+  company:$('bCompany').value,product:$('bProduct').value,category:$('bCategory').value,
+  quantity:$('bQty').value,maxUnitBudget:$('bBudget').value,unit:$('bUnit').value,
+  currency:$('bCurrency').value,countryCode:$('bCountry').value,location:$('bLocation').value
+ }}}));
+});
 
 $('workerProfileForm').addEventListener('submit',e=>{
  e.preventDefault();
