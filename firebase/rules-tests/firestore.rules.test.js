@@ -359,6 +359,32 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(getDocs(query(collection(outsider,"workMatchMessages"),where("requestId","==","work-1"))));
   });
 
+  it("protège les demandes de vérification des entreprises et qualifications", async () => {
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const bob=testEnv.authenticatedContext("bob").firestore();
+    const admin=testEnv.authenticatedContext("reviewer",{dealhunterAdmin:true}).firestore();
+    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const request={
+      ownerUid:"alice",subjectType:"company",subjectName:"Entreprise A",countryCode:"FR",
+      evidenceLabel:"Registre public des entreprises",publicEvidenceUrl:"https://annuaire-entreprises.data.gouv.fr/",
+      status:"pending",createdAt:new Date(),updatedAt:new Date()
+    };
+    await assertSucceeds(setDoc(doc(alice,"verificationRequests","verify-1"),request));
+    await assertSucceeds(getDoc(doc(alice,"verificationRequests","verify-1")));
+    await assertFails(getDoc(doc(bob,"verificationRequests","verify-1")));
+    await assertSucceeds(getDoc(doc(admin,"verificationRequests","verify-1")));
+    await assertFails(setDoc(doc(alice,"verificationRequests","self-verified"),{...request,status:"verified"}));
+    await assertFails(setDoc(doc(alice,"verificationRequests","private-data"),{...request,phone:"0600000000"}));
+    await assertFails(setDoc(doc(alice,"verificationRequests","http"),{...request,publicEvidenceUrl:"http://example.test"}));
+    await assertFails(updateDoc(doc(alice,"verificationRequests","verify-1"),{status:"verified",updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(alice,"verificationRequests","verify-1"),{status:"withdrawn",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(alice,"verificationRequests","verify-1"),{status:"pending",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"verificationRequests","verify-1"),{status:"verified",reviewedAt:new Date()}));
+    await assertSucceeds(setDoc(doc(alice,"verificationRequests","verify-2"),{...request,subjectType:"qualification",subjectName:"Habilitation électrique"}));
+    await assertSucceeds(updateDoc(doc(admin,"verificationRequests","verify-2"),{status:"verified",reviewerNote:"Vérification effectuée auprès de l'émetteur.",reviewedAt:new Date()}));
+    await assertFails(getDoc(doc(outsider,"verificationRequests","verify-2")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
