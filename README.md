@@ -121,7 +121,7 @@ Les règles Firestore et les tests couvrent l'identité des propriétaires, la c
 
 Le formulaire de vérification est disponible dans le marché des compétences. Les utilisateurs soumettent uniquement un lien HTTPS vers une preuve publique ; aucun document privé ni pièce d'identité n'est collecté. Les demandes sont privées, en attente par défaut et visibles globalement uniquement aux comptes portant le claim Firebase `dealhunterAdmin: true`. Seul un réviseur autorisé peut les valider ou les refuser ; le propriétaire peut retirer sa demande en attente. Voir [docs/VERIFICATION_REVIEW.md](docs/VERIFICATION_REVIEW.md) pour le modèle de revue et l'attribution sécurisée du rôle.
 
-Cette revue est manuelle et n'est pas encore une certification automatisée. L'identité, la validité temporelle des qualifications et la conformité locale doivent être vérifiées humainement. Les règles et le parcours doivent encore passer les derniers tests CI de cette branche.
+Cette revue est manuelle et n'est pas une certification automatisée. L'identité, la validité temporelle des qualifications et la conformité locale doivent être vérifiées humainement. Les tests applicatifs et les tests des règles Firestore associés à cette brique ont réussi sur la branche de travail ; le déploiement réel reste à effectuer et à vérifier.
 
 
 ## Avis et signalements de confiance
