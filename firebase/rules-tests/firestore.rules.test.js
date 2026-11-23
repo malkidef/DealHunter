@@ -14,7 +14,9 @@ import {
   setDoc,
   updateDoc,
   addDoc,
-  deleteDoc
+  deleteDoc,
+  query,
+  where
 } from "firebase/firestore";
 
 const projectId = process.env.GCLOUD_PROJECT || "demo-dealhunter";
@@ -279,16 +281,22 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       await setDoc(doc(db,"serviceMatchRequests","svc-pending"),{
         providerUid:"alice",clientUid:"bob",participantUids:["alice","bob"],status:"pending"
       });
+      await setDoc(doc(db,"serviceMatchMessages","seeded-message"),{
+        requestId:"svc-accepted",senderUid:"bob",text:"Message existant",createdAt:new Date()
+      });
     });
     const alice=testEnv.authenticatedContext("alice").firestore();
     const outsider=testEnv.authenticatedContext("charlie").firestore();
     const message={requestId:"svc-accepted",senderUid:"alice",text:"Bonjour, parlons du besoin.",createdAt:new Date()};
     await assertSucceeds(addDoc(collection(alice,"serviceMatchMessages"),message));
-    await assertSucceeds(getDocs(collection(alice,"serviceMatchMessages")));
+    const ownThread=query(collection(alice,"serviceMatchMessages"),where("requestId","==","svc-accepted"));
+    const outsiderThread=query(collection(outsider,"serviceMatchMessages"),where("requestId","==","svc-accepted"));
+    await assertSucceeds(getDocs(ownThread));
+    await assertFails(getDocs(outsiderThread));
     await assertFails(addDoc(collection(alice,"serviceMatchMessages"),{...message,requestId:"svc-pending"}));
     await assertFails(addDoc(collection(outsider,"serviceMatchMessages"),{...message,senderUid:"charlie"}));
     await assertFails(addDoc(collection(alice,"serviceMatchMessages"),{...message,privateEmail:"secret@example.test"}));
-    await assertFails(updateDoc(doc(alice,"serviceMatchMessages","message-1"),{text:"modifié"}));
+    await assertFails(updateDoc(doc(alice,"serviceMatchMessages","seeded-message"),{text:"modifié"}));
   });
 
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
