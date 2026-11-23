@@ -413,6 +413,33 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(deleteDoc(doc(alice,"deals","deal-1")));
   });
 
+  it("autorise un avis unique seulement après une vente terminée", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(),"deals","completed-review"),{
+        requestId:"deal-match",sellerUid:"alice",buyerUid:"bob",participantUids:["alice","bob"],
+        status:"completed",sellerConfirmed:true,buyerConfirmed:true
+      });
+      await setDoc(doc(context.firestore(),"deals","active-review"),{
+        requestId:"deal-match",sellerUid:"alice",buyerUid:"bob",participantUids:["alice","bob"],
+        status:"agreed",sellerConfirmed:false,buyerConfirmed:false
+      });
+    });
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const bob=testEnv.authenticatedContext("bob").firestore();
+    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const review={dealId:"completed-review",reviewerUid:"alice",subjectUid:"bob",rating:5,comment:"Transaction conforme.",createdAt:new Date()};
+    await assertSucceeds(setDoc(doc(alice,"dealReviews","completed-review_alice"),review));
+    await assertSucceeds(getDoc(doc(bob,"dealReviews","completed-review_alice")));
+    await assertFails(setDoc(doc(alice,"dealReviews","completed-review_alice"),review));
+    await assertFails(setDoc(doc(alice,"dealReviews","active-review_alice"),{...review,dealId:"active-review"}));
+    await assertFails(setDoc(doc(alice,"dealReviews","self_alice"),{...review,subjectUid:"alice"}));
+    await assertFails(setDoc(doc(outsider,"dealReviews","completed-review_charlie"),{...review,reviewerUid:"charlie"}));
+    await assertFails(setDoc(doc(alice,"dealReviews","bad-rating_alice"),{...review,rating:6}));
+    await assertFails(setDoc(doc(alice,"dealReviews","extra_alice"),{...review,email:"alice@example.test"}));
+    await assertFails(updateDoc(doc(alice,"dealReviews","completed-review_alice"),{rating:1}));
+    await assertFails(deleteDoc(doc(alice,"dealReviews","completed-review_alice")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
