@@ -135,3 +135,8 @@ Cette revue est manuelle et n'est pas une certification automatisée. L'identit�
 ## Détection de doublons — signal indicatif
 
 Le module `functions/matching/src/listing-dedupe.js` compare les titres de produits normalisés, la catégorie et la zone déclarée. Il signale les paires très proches sans supprimer, bloquer ni fusionner automatiquement les annonces. Le calcul est limité à un échantillon de 500 annonces par chargement pour préserver les quotas du projet gratuit ; il ne garantit donc pas une détection mondiale exhaustive.
+
+
+## Préparation au lancement
+
+Le statut des fonctionnalités, les tests CI et les conditions bloquantes avant production sont suivis dans [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md). À ce stade, DealHunter n'est pas prêt pour une ouverture publique : aucun déploiement Firebase ni paiement n'a été activé.
