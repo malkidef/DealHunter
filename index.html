@@ -214,6 +214,53 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <p class="muted">Les fiches sont publiques uniquement pour les utilisateurs connectés. Les coordonnées ne sont jamais affichées ici.</p>
 <div id="serviceCatalog" class="cards"><div class="empty">Connecte-toi pour charger les offres et demandes de services.</div></div><h3 style="margin-top:20px">Correspondances de services</h3><div id="serviceMatches" class="cards"><div class="empty">Les rapprochements apparaîtront après le chargement du catalogue.</div></div>
 </section>
+
+<section class="panel" style="grid-column:1/-1">
+<h2>Marché des compétences et du recrutement</h2>
+<p class="muted">Publie un profil professionnel ou une offre. Les coordonnées personnelles ne sont jamais publiées. Le rapprochement est indicatif et ne décide jamais d'un recrutement.</p>
+<div class="grid">
+  <section class="panel">
+    <h3>Je propose mes compétences</h3>
+    <form id="workerProfileForm">
+      <div class="field"><label for="wpTitle">Intitulé professionnel</label><input id="wpTitle" required maxlength="120" placeholder="Électricien monteur câbleur"></div>
+      <div class="field"><label for="wpCategory">Métier / spécialité</label><input id="wpCategory" required maxlength="100" placeholder="Électricité industrielle"></div>
+      <div class="field"><label for="wpDescription">Expérience et savoir-faire</label><textarea id="wpDescription" required maxlength="1200"></textarea></div>
+      <div class="field"><label for="wpSkills">Compétences (séparées par virgules)</label><input id="wpSkills" maxlength="600" placeholder="câblage, maintenance, lecture de plans"></div>
+      <div class="field"><label for="wpQualifications">Qualifications / habilitations (séparées par virgules)</label><input id="wpQualifications" maxlength="600"></div>
+      <div class="field"><label for="wpLocation">Ville / zone de travail</label><input id="wpLocation" required maxlength="120"></div>
+      <div class="field"><label for="wpCountry">Code pays ISO</label><input id="wpCountry" value="FR" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}"></div>
+      <div class="field"><label for="wpAvailable">Disponible à partir du (facultatif)</label><input id="wpAvailable" type="date"></div>
+      <label><input id="wpEmployment" type="checkbox" checked style="width:auto"> Je recherche un emploi salarié</label>
+      <label><input id="wpIndependent" type="checkbox" style="width:auto"> Je propose aussi des missions indépendantes</label>
+      <label><input id="wpRemote" type="checkbox" style="width:auto"> Travail à distance possible</label>
+      <label><input id="wpConsent" type="checkbox" required style="width:auto"> J'accepte la publication de ce profil professionnel aux membres connectés.</label>
+      <button type="submit">Publier mon profil</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h3>Mon entreprise recrute / cherche un professionnel</h3>
+    <form id="workOpeningForm">
+      <div class="field"><label for="woCompany">Entreprise</label><input id="woCompany" required maxlength="120"></div>
+      <div class="field"><label for="woTitle">Poste ou mission</label><input id="woTitle" required maxlength="120"></div>
+      <div class="field"><label for="woCategory">Métier / spécialité</label><input id="woCategory" required maxlength="100"></div>
+      <div class="field"><label for="woDescription">Description du besoin</label><textarea id="woDescription" required maxlength="1500"></textarea></div>
+      <div class="field"><label for="woSkills">Compétences obligatoires (séparées par virgules)</label><input id="woSkills" maxlength="600"></div>
+      <div class="field"><label for="woQualifications">Qualifications obligatoires (séparées par virgules)</label><input id="woQualifications" maxlength="600"></div>
+      <div class="field"><label for="woLocation">Ville / zone du poste ou chantier</label><input id="woLocation" required maxlength="120"></div>
+      <div class="field"><label for="woCountry">Code pays ISO</label><input id="woCountry" value="FR" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}"></div>
+      <div class="field"><label for="woType">Type d'engagement</label><select id="woType" required><option value="employment">Emploi salarié</option><option value="independent">Mission indépendante / sous-traitance</option></select></div>
+      <div class="field"><label for="woStart">Date de début (facultatif)</label><input id="woStart" type="date"></div>
+      <label><input id="woRemote" type="checkbox" style="width:auto"> Travail à distance accepté</label>
+      <button type="submit">Publier l'offre</button>
+    </form>
+  </section>
+</div>
+<h3>Profils et offres publiés</h3>
+<div id="workCatalog" class="cards"><div class="empty">Connecte-toi pour charger les profils et offres.</div></div>
+<h3>Correspondances professionnelles</h3>
+<p class="muted">Les scores sont indicatifs. Les diplômes, habilitations et autorisations doivent être vérifiés par l'entreprise.</p>
+<div id="workMatches" class="cards"><div class="empty">Les correspondances apparaîtront après publication.</div></div>
+</section>
 </div>
 <section id="imports" class="panel hidden">
 <h2>Importer des opportunités CSV</h2>
@@ -294,6 +341,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 </main>
 <footer>DEALHUNTER © 2026 — Matching multi-entreprises en phase de test.</footer>
+<script src="functions/matching/src/work-matching.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
@@ -976,6 +1024,43 @@ $('sellerList').addEventListener('click',e=>{const b=e.target.closest('[data-edi
 $('cancelSellerEdit').addEventListener('click',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 window.addEventListener('dealhunter-business-record-updated',()=>{const form=$('sellerForm');delete form.dataset.editingId;form.reset();$('sellerSubmitButton').textContent='Enregistrer le stock';$('cancelSellerEdit').classList.add('hidden');});
 $('buyerForm').addEventListener('submit',e=>{e.preventDefault();buyers.push({company:$('bCompany').value.trim(),product:$('bProduct').value.trim(),category:$('bCategory').value,qty:Number($('bQty').value),budget:Number($('bBudget').value),location:$('bLocation').value.trim()});e.target.reset();save()});
+
+$('workerProfileForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const engagementTypes=[];
+ if($('wpEmployment').checked)engagementTypes.push('employment');
+ if($('wpIndependent').checked)engagementTypes.push('independent');
+ window.dispatchEvent(new CustomEvent('dealhunter-save-work-record',{detail:{collectionName:'publicWorkerProfiles',record:{
+  title:$('wpTitle').value,category:$('wpCategory').value,description:$('wpDescription').value,
+  skills:splitQualifications($('wpSkills').value),qualifications:splitQualifications($('wpQualifications').value),
+  location:$('wpLocation').value,countryCode:$('wpCountry').value.toUpperCase(),availableFrom:$('wpAvailable').value,
+  engagementTypes,remote:$('wpRemote').checked,publicProfileConsent:$('wpConsent').checked
+ }}}));
+});
+$('workOpeningForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ window.dispatchEvent(new CustomEvent('dealhunter-save-work-record',{detail:{collectionName:'publicWorkOpenings',record:{
+  company:$('woCompany').value,title:$('woTitle').value,category:$('woCategory').value,description:$('woDescription').value,
+  requiredSkills:splitQualifications($('woSkills').value),requiredQualifications:splitQualifications($('woQualifications').value),
+  location:$('woLocation').value,countryCode:$('woCountry').value.toUpperCase(),engagementType:$('woType').value,
+  startDate:$('woStart').value,remoteAccepted:$('woRemote').checked
+ }}}));
+});
+window.addEventListener('dealhunter-work-data',e=>{
+ const profiles=Array.isArray(e.detail?.profiles)?e.detail.profiles:[];
+ const openings=Array.isArray(e.detail?.openings)?e.detail.openings:[];
+ const catalog=$('workCatalog'),matches=$('workMatches');
+ if(catalog){
+  const cards=[...profiles.map(x=>({...x,kind:'Professionnel'})),...openings.map(x=>({...x,kind:x.engagementType==='employment'?'Recrutement salarié':'Mission indépendante'}))];
+  catalog.innerHTML=cards.length?cards.map(x=>'<article class="item"><span class="pill">'+escapeHtml(x.kind)+'</span><h4>'+escapeHtml(x.title||'')+'</h4><div>'+escapeHtml(x.category||'')+' · '+escapeHtml(x.location||'')+' · '+escapeHtml(x.countryCode||'')+'</div><p>'+escapeHtml(x.description||'')+'</p><div class="muted">'+escapeHtml((x.skills||x.requiredSkills||[]).join(', '))+'</div></article>').join(''):'<div class="empty">Aucun profil ou poste publié.</div>';
+ }
+ const engine=window.DealHunterWorkMatching;
+ if(matches&&engine){
+  const pairs=engine.makeWorkCandidates(profiles,openings).filter(x=>x.candidateUid===(window.dealhunterUserUid||'')||x.employerUid===(window.dealhunterUserUid||''));
+  matches.innerHTML=pairs.length?pairs.map(x=>'<article class="item"><span class="pill">Compatibilité indicative : '+x.compatibilityScore+'/100</span><h4>'+escapeHtml(x.category)+' · '+(x.engagementType==='employment'?'Salariat':'Mission indépendante')+'</h4><div>'+escapeHtml(x.locationMode==='remote'?'Distanciel accepté':'Même zone géographique')+'</div><p class="muted">Correspondance professionnelle à examiner. Aucune coordonnée n’est partagée automatiquement.</p></article>').join(''):'<div class="empty">Aucune correspondance compatible pour le moment.</div>';
+ }
+});
+
 render();
 syncGsaFeed();
 syncSamFeed();
