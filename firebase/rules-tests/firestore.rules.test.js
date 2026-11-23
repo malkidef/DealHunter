@@ -94,6 +94,18 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(setDoc(doc(alice, "publicNeeds", "need-1"), need));
     await assertSucceeds(getDoc(doc(bob, "publicOffers", "offer-1")));
     await assertSucceeds(getDoc(doc(bob, "publicNeeds", "need-1")));
+    await assertSucceeds(setDoc(doc(alice, "publicOffers", "offer-world"), {
+      ...offer, unit: "kg", currency: "USD", countryCode: "US"
+    }));
+    await assertSucceeds(setDoc(doc(alice, "publicNeeds", "need-world"), {
+      ...need, unit: "kg", currency: "USD", countryCode: "US"
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-bad-currency"), {
+      ...offer, currency: "EURO"
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-bad-country"), {
+      ...need, countryCode: "USA"
+    }));
 
     await assertFails(setDoc(doc(bob, "publicOffers", "offer-1"), { ...offer, ownerUid: "bob" }));
     await assertFails(setDoc(doc(bob, "publicNeeds", "need-1"), { ...need, ownerUid: "bob" }));
