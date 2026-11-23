@@ -207,6 +207,84 @@ service cloud.firestore {
         && contactId == resource.data.requestId + "_" + request.auth.uid;
       allow delete: if false;
     }
+    // Catalogues de prestations : informations commerciales uniquement, sans coordonnées.
+    // Seul le propriétaire peut créer, modifier ou retirer sa fiche.
+    match /publicServiceOffers/{offerId} {
+      function validServiceOffer() {
+        return request.resource.data.keys().hasOnly([
+          "ownerUid", "company", "title", "description", "category", "location",
+          "countryCode", "qualifications", "remote", "coverageRadiusKm",
+          "requiredQualifications", "remoteAccepted", "status", "createdAt", "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid", "company", "title", "description", "category", "location",
+          "countryCode", "qualifications", "remote", "coverageRadiusKm",
+          "status", "updatedAt"
+        ])
+        && request.resource.data.ownerUid is string
+        && request.resource.data.company is string
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.category is string
+        && request.resource.data.location is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.qualifications is list
+        && request.resource.data.remote is bool
+        && request.resource.data.coverageRadiusKm is number
+        && request.resource.data.coverageRadiusKm >= 0
+        && request.resource.data.coverageRadiusKm <= 5000
+        && request.resource.data.status == "active"
+        && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && validServiceOffer()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid && validServiceOffer()
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /publicServiceRequests/{requestId} {
+      function validServiceRequest() {
+        return request.resource.data.keys().hasOnly([
+          "ownerUid", "company", "title", "description", "category", "location",
+          "countryCode", "qualifications", "remote", "coverageRadiusKm",
+          "requiredQualifications", "remoteAccepted", "status", "createdAt", "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid", "company", "title", "description", "category", "location",
+          "countryCode", "qualifications", "remote", "coverageRadiusKm",
+          "requiredQualifications", "remoteAccepted", "status", "updatedAt"
+        ])
+        && request.resource.data.ownerUid is string
+        && request.resource.data.company is string
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.category is string
+        && request.resource.data.location is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.qualifications is list
+        && request.resource.data.requiredQualifications is list
+        && request.resource.data.remote is bool
+        && request.resource.data.remoteAccepted is bool
+        && request.resource.data.coverageRadiusKm is number
+        && request.resource.data.coverageRadiusKm >= 0
+        && request.resource.data.coverageRadiusKm <= 5000
+        && request.resource.data.status == "active"
+        && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && validServiceRequest()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+      allow update: if request.auth != null && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid && validServiceRequest()
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
