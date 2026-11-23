@@ -45,4 +45,5 @@ function scoreWorkPair(candidate,opening) {
   return {candidateId:candidate.id,openingId:opening.id,candidateUid:candidate.ownerUid,employerUid:opening.ownerUid,engagementType:opening.engagementType,category:opening.category,compatibilityScore:Math.min(100,categoryScore+skillsScore+qualsScore+locationScore+availabilityScore+titleScore),locationMode:sameArea?"same_area":"remote",status:"suggested"};
 }
 function makeWorkCandidates(candidates,openings) { if(!Array.isArray(candidates)||!Array.isArray(openings))throw new TypeError("Les profils et offres doivent être des tableaux."); const out=[]; for(const c of candidates)for(const o of openings){const match=scoreWorkPair(c,o);if(match)out.push(match);} return out.sort((a,b)=>b.compatibilityScore-a.compatibilityScore); }
-module.exports={scoreWorkPair,makeWorkCandidates,validateCandidate,validateOpening};
+if (typeof module !== "undefined" && module.exports) module.exports={scoreWorkPair,makeWorkCandidates,validateCandidate,validateOpening};
+if (typeof globalThis !== "undefined") globalThis.DealHunterWorkMatching={scoreWorkPair,makeWorkCandidates,validateCandidate,validateOpening};
