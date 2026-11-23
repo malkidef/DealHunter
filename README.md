@@ -115,3 +115,10 @@ Aucun scraping non autorisé, message automatique, enchère, commande ou paiemen
 Les correspondances entre profils professionnels et offres peuvent désormais déclencher une demande de mise en relation dans `workMatchRequests`. Le parcours conserve la séparation entre emploi salarié (`employment`) et mission indépendante (`independent`) et relit les deux fiches actives avant de créer la demande. Le profil candidat doit avoir été publié avec consentement explicite. Seul le destinataire peut accepter ou refuser ; après acceptation, les participants échangent dans `workMatchMessages`. Les messages sont limités à 2 000 caractères, réservés aux participants et ne peuvent contenir de champs supplémentaires de coordonnées. Aucun contact n'est partagé automatiquement.
 
 Les règles Firestore et les tests couvrent l'identité des propriétaires, la correspondance du type d'engagement, les décisions du destinataire, les accès des tiers et la messagerie après acceptation. Cette fonction ne vérifie pas les diplômes, habilitations ou employeurs, et ne prend aucune décision de recrutement.
+
+
+## Vérification humaine des entreprises et qualifications
+
+Le formulaire de vérification est disponible dans le marché des compétences. Les utilisateurs soumettent uniquement un lien HTTPS vers une preuve publique ; aucun document privé ni pièce d'identité n'est collecté. Les demandes sont privées, en attente par défaut et visibles globalement uniquement aux comptes portant le claim Firebase `dealhunterAdmin: true`. Seul un réviseur autorisé peut les valider ou les refuser ; le propriétaire peut retirer sa demande en attente. Voir [docs/VERIFICATION_REVIEW.md](docs/VERIFICATION_REVIEW.md) pour le modèle de revue et l'attribution sécurisée du rôle.
+
+Cette revue est manuelle et n'est pas encore une certification automatisée. L'identité, la validité temporelle des qualifications et la conformité locale doivent être vérifiées humainement. Les règles et le parcours doivent encore passer les derniers tests CI de cette branche.
