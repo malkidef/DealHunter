@@ -36,6 +36,19 @@ Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés 
 
 **Limite importante :** cette brique est un moteur de calcul testé par le workflow à venir, pas encore un parcours utilisateur branché à Firestore. Les formulaires, collections, règles de sécurité et consentements spécifiques aux services doivent être définis avant d'activer les échanges réels. Les travailleurs salariés/candidats et le recrutement sont volontairement exclus de cette première brique : ils nécessitent un parcours distinct du marché de prestations entre entreprises.
 
+## Marketplace de services B2B — première interface
+
+L'onglet **Services B2B** permet aux entreprises connectées de publier :
+- une prestation proposée (`publicServiceOffers`) ;
+- une prestation recherchée (`publicServiceRequests`) ;
+- la catégorie, la zone, le code pays ISO, les qualifications et l'acceptation du distanciel.
+
+Les fiches ne contiennent pas d'e-mail, de téléphone ni de coordonnées privées. Les règles Firestore autorisent la lecture aux utilisateurs connectés et réservent la création, la modification et la suppression au propriétaire de la fiche. Les tests de règles couvrent les accès, l'usurpation, les champs privés et les données invalides.
+
+Le premier affichage des correspondances est volontairement conservateur : catégorie identique, même zone, ou distanciel accepté par les deux parties ; les qualifications demandées doivent être présentes chez le prestataire. Le rayon kilométrique est enregistré mais **n'est pas utilisé pour élargir la zone tant qu'un calcul géographique fiable n'est pas installé**. Les scores sont indicatifs et ne vérifient ni les certificats ni la capacité réelle des prestataires.
+
+Cette interface ne contacte personne automatiquement et ne traite pas encore le recrutement de salariés ou de travailleurs indépendants. La prochaine brique est la demande de mise en relation avec acceptation des deux entreprises, puis le parcours distinct des travailleurs.
+
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
