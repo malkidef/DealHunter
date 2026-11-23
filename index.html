@@ -56,19 +56,34 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="stat"><strong id="matchCount">0</strong><span>Correspondances</span></div>
 </section>
 <div class="tabs" id="mainTabs">
-<button type="button" class="active" data-tab="matches">Correspondances</button>
-<button type="button" class="secondary" data-tab="matchRequests">Demandes</button>
-<button type="button" class="secondary" data-tab="dashboard">Tableau de bord</button>
-<button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
-<button type="button" class="secondary" data-tab="sellers">Déposer un surplus</button>
-<button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
-<button type="button" class="secondary" data-tab="services">Services B2B</button>
-<button type="button" class="secondary" data-tab="imports">Import CSV</button>
-<button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
-<button type="button" class="secondary" data-tab="bodacc">Signaux BODACC</button>
-<button type="button" class="secondary" data-tab="agrasc">Ventes AGRASC</button>
-<button type="button" class="secondary" data-tab="sources">Sources</button>
+<button type="button" class="active" data-tab="matches" onclick="window.dealhunterShowTab('matches',this)">Correspondances</button>
+<button type="button" class="secondary" data-tab="matchRequests" onclick="window.dealhunterShowTab('matchRequests',this)">Demandes</button>
+<button type="button" class="secondary" data-tab="dashboard" onclick="window.dealhunterShowTab('dashboard',this)">Tableau de bord</button>
+<button type="button" class="secondary" data-tab="account" onclick="window.dealhunterShowTab('account',this)">Connexion / Compte</button>
+<button type="button" class="secondary" data-tab="sellers" onclick="window.dealhunterShowTab('sellers',this)">Déposer un surplus</button>
+<button type="button" class="secondary" data-tab="buyers" onclick="window.dealhunterShowTab('buyers',this)">Besoins acheteurs</button>
+<button type="button" class="secondary" data-tab="services" onclick="window.dealhunterShowTab('services',this)">Services B2B</button>
+<button type="button" class="secondary" data-tab="imports" onclick="window.dealhunterShowTab('imports',this)">Import CSV</button>
+<button type="button" class="secondary" data-tab="gsa" onclick="window.dealhunterShowTab('gsa',this)">Annonces GSA</button>
+<button type="button" class="secondary" data-tab="bodacc" onclick="window.dealhunterShowTab('bodacc',this)">Signaux BODACC</button>
+<button type="button" class="secondary" data-tab="agrasc" onclick="window.dealhunterShowTab('agrasc',this)">Ventes AGRASC</button>
+<button type="button" class="secondary" data-tab="sources" onclick="window.dealhunterShowTab('sources',this)">Sources</button>
 </div>
+<script>
+window.dealhunterShowTab = function(target, button) {
+  const allowedTabs = ["matches","matchRequests","dashboard","account","sellers","buyers","services","imports","gsa","bodacc","agrasc","sources"];
+  if (!allowedTabs.includes(target)) return;
+  document.querySelectorAll('#mainTabs button[data-tab]').forEach(function(tab) {
+    const active = tab.dataset.tab === target;
+    tab.classList.toggle('active', active);
+    tab.classList.toggle('secondary', !active);
+  });
+  allowedTabs.forEach(function(id) {
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.toggle('hidden', id !== target);
+  });
+};
+</script>
 <section id="account" class="panel hidden">
 <h2>Compte entreprise</h2>
 <p class="muted">Crée un compte ou connecte-toi pour préparer ton espace DealHunter. L’authentification sera active après configuration du projet Firebase.</p>
