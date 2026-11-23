@@ -38,7 +38,7 @@ Parcours individuel distinct des prestations B2B (publicServiceOffers / publicSe
 
 ## À faire avant ouverture publique
 - Vérifier manuellement l'identité des entreprises et les qualifications annoncées.
-- Ajouter consentement bilatéral et messagerie dédiés aux rapprochements professionnels.
+- Consentement bilatéral et messagerie dédiés : implémentés dans `workMatchRequests` et `workMatchMessages`.
 - Définir durée de conservation, retrait et suppression des données liées.
 - Vérifier les obligations de droit du travail, non-discrimination, RGPD et recrutement dans chaque pays.
 
@@ -47,3 +47,8 @@ Parcours individuel distinct des prestations B2B (publicServiceOffers / publicSe
 Une suggestion entre un profil candidat et une offre ne partage aucune coordonnée. Un candidat ou l'employeur propriétaire de la fiche peut créer une demande dans `workMatchRequests`. Firestore vérifie que les deux fiches existent et sont actives, que le profil a un consentement public explicite, que les propriétaires sont distincts et que le type d'engagement est identique des deux côtés. Seul le destinataire peut accepter ou refuser la demande. Après acceptation, la conversation dédiée est enregistrée dans `workMatchMessages` ; seuls les deux participants peuvent lire ou envoyer des messages (1 à 2 000 caractères). Les messages ne permettent pas d'ajouter de champs e-mail ou téléphone. Le salariat et les missions indépendantes restent deux parcours distincts.
 
 La mise en relation n'est pas une validation de candidature, de diplôme, d'habilitation, d'autorisation de travail ou de capacité employeur. Les contrôles humains et les obligations locales restent nécessaires.
+
+
+## Demandes de vérification
+
+La collection privée `verificationRequests` reçoit les demandes de contrôle d'entreprise ou de qualification avec un lien HTTPS public. Les demandes sont créées par le propriétaire, visibles par lui et les réviseurs autorisés uniquement, et ne peuvent être validées ou refusées que par un compte Firebase portant le custom claim `dealhunterAdmin: true`. Le propriétaire peut retirer une demande en attente. Aucun justificatif privé n'est téléversé. Détails : [VERIFICATION_REVIEW.md](VERIFICATION_REVIEW.md).
