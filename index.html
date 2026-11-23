@@ -212,7 +212,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <section class="panel" style="grid-column:1/-1">
 <h2>Catalogue des services</h2>
 <p class="muted">Les fiches sont publiques uniquement pour les utilisateurs connectés. Les coordonnées ne sont jamais affichées ici.</p>
-<div id="serviceCatalog" class="cards"><div class="empty">Connecte-toi pour charger les offres et demandes de services.</div></div>
+<div id="serviceCatalog" class="cards"><div class="empty">Connecte-toi pour charger les offres et demandes de services.</div></div><h3 style="margin-top:20px">Correspondances de services</h3><div id="serviceMatches" class="cards"><div class="empty">Les rapprochements apparaîtront après le chargement du catalogue.</div></div>
 </section>
 </div>
 <section id="imports" class="panel hidden">
@@ -916,6 +916,24 @@ window.addEventListener('dealhunter-service-data',e=>{
  const requests=Array.isArray(e.detail?.requests)?e.detail.requests:[];
  const cards=[...offers.map(x=>({...x,kind:'Prestataire'})),...requests.map(x=>({...x,kind:'Recherche'}))];
  el.innerHTML=cards.length?cards.map(x=>'<article class="item"><span class="pill">'+escapeHtml(x.kind)+'</span><h3>'+escapeHtml(x.title||'Service')+'</h3><div>'+escapeHtml(x.company||'')+' · '+escapeHtml(x.category||'')+'</div><p>'+escapeHtml(x.description||'')+'</p><div class="muted">'+escapeHtml(x.location||'')+' · '+escapeHtml(x.countryCode||'')+(x.remote?' · À distance possible':'')+'</div><div class="muted">Qualifications : '+escapeHtml((x.qualifications||[]).join(', ')||'Non précisées')+'</div></article>').join(''):'<div class="empty">Aucune offre ou recherche de service publiée.</div>';
+ const normalizeService=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
+ const pairs=[];
+ offers.forEach(o=>requests.forEach(r=>{
+  if(!o.ownerUid||!r.ownerUid||o.ownerUid===r.ownerUid||o.status!=='active'||r.status!=='active')return;
+  const remote=o.remote===true&&r.remoteAccepted===true;
+  const sameArea=normalizeService(o.location)===normalizeService(r.location);
+  if(!remote&&!sameArea)return;
+  const category=normalizeService(o.category), wanted=normalizeService(r.category);
+  if(!category||!wanted||category!==wanted)return;
+  const qualifications=Array.isArray(r.requiredQualifications)?r.requiredQualifications.map(normalizeService):[];
+  const available=new Set((Array.isArray(o.qualifications)?o.qualifications:[]).map(normalizeService));
+  if(qualifications.some(q=>!available.has(q)))return;
+  const score=Math.min(100,45+(remote?20:20)+(qualifications.length?10:5));
+  pairs.push({o,r,score,mode:remote?'Distanciel accepté':'Même zone'});
+ }));
+ pairs.sort((a,b)=>b.score-a.score);
+ const matchEl=$('serviceMatches');
+ if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><div class="muted">Aucune demande ni coordonnées envoyées automatiquement.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
 });
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
