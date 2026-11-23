@@ -34,7 +34,7 @@ Le moteur applique d'abord des critères d'éligibilité : fiches actives, propr
 
 Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés au workflow CI.
 
-**Limite importante :** cette brique est un moteur de calcul testé par le workflow à venir, pas encore un parcours utilisateur branché à Firestore. Les formulaires, collections, règles de sécurité et consentements spécifiques aux services doivent être définis avant d'activer les échanges réels. Les travailleurs salariés/candidats et le recrutement sont volontairement exclus de cette première brique : ils nécessitent un parcours distinct du marché de prestations entre entreprises.
+Le moteur de services est relié aux collections Firestore `publicServiceOffers` et `publicServiceRequests`. Les demandes de mise en relation, le consentement bilatéral et la messagerie privée sont implémentés dans `serviceMatchRequests` et `serviceMatchMessages`. Le marché du travail suit un parcours séparé.
 
 ## Mise en relation de services — consentement bilatéral
 
@@ -53,7 +53,7 @@ Les fiches ne contiennent pas d'e-mail, de téléphone ni de coordonnées privé
 
 Le premier affichage des correspondances est volontairement conservateur : catégorie identique, même zone, ou distanciel accepté par les deux parties ; les qualifications demandées doivent être présentes chez le prestataire. Le rayon kilométrique est enregistré mais **n'est pas utilisé pour élargir la zone tant qu'un calcul géographique fiable n'est pas installé**. Les scores sont indicatifs et ne vérifient ni les certificats ni la capacité réelle des prestataires.
 
-Cette interface ne contacte personne automatiquement et ne traite pas encore le recrutement de salariés ou de travailleurs indépendants. La prochaine brique est la demande de mise en relation avec acceptation des deux entreprises, puis le parcours distinct des travailleurs.
+Les suggestions de recrutement ne déclenchent aucune décision d'embauche. Le consentement bilatéral et la messagerie sont gérés séparément pour le marché du travail.
 
 ## Marché des compétences et du recrutement
 
@@ -65,7 +65,7 @@ Le moteur `functions/matching/src/work-matching.js` calcule des suggestions indi
 
 Les formulaires sont intégrés à l'onglet Services. Le détail du schéma et des garde-fous est décrit dans `docs/WORK_MARKET_SCHEMA.md`.
 
-**Limites avant ouverture publique :** vérification manuelle des entreprises et qualifications, consentement bilatéral et messagerie spécifiques au marché du travail, politique de conservation/effacement, et validation juridique pays par pays.
+**Limites avant ouverture publique :** vérification des demandes par un réviseur humain, attribution sécurisée du claim modérateur, définition d'une politique de conservation/effacement, modération et recours, validation juridique pays par pays, configuration Firebase réelle et test complet en environnement de préproduction.
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
