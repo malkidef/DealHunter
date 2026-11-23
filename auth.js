@@ -113,8 +113,9 @@ if (!ready) {
       if(offer.status!=="active"||need.status!=="active"||!offer.ownerUid||!need.ownerUid||offer.ownerUid===need.ownerUid)
         throw new Error("Ces entreprises ne peuvent pas être mises en relation.");
       if(![offer.ownerUid,need.ownerUid].includes(user.uid))throw new Error("Seule une des deux entreprises concernées peut lancer la demande.");
-      const existing=await getDocs(query(collection(db,"serviceMatchRequests"),where("offerId","==",d.offerId),where("serviceRequestId","==",d.serviceRequestId)));
-      if(existing.docs.some(item=>item.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
+      const existing=await getDocs(query(collection(db,"serviceMatchRequests"),where("offerId","==",d.offerId)));
+      if(existing.docs.some(item=>item.data().serviceRequestId===d.serviceRequestId&&item.data().status!=="rejected"))
+        throw new Error("Une demande existe déjà pour cette correspondance.");
       const isProvider=user.uid===offer.ownerUid;
       await addDoc(collection(db,"serviceMatchRequests"),{
         offerId:d.offerId,serviceRequestId:d.serviceRequestId,
