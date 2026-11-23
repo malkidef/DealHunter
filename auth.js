@@ -62,6 +62,11 @@ if (!ready) {
       getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid)))
     ]);
     const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
+    for(const request of serviceRequests){
+      if(request.status!=="accepted")continue;
+      const messages=await getDocs(query(collection(db,"serviceMatchMessages"),where("requestId","==",request.id)));
+      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+    }
     window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
@@ -131,6 +136,24 @@ if (!ready) {
       status.textContent="Proposition envoyée. L'autre entreprise doit accepter avant l'ouverture de la conversation.";
     }catch(err){console.error(err);status.textContent="Demande impossible : "+(err.message||err.code);}
   });
+  window.addEventListener("dealhunter-send-service-match-message",async e=>{
+    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
+    const message=String(messageText||"").trim();
+    if(!user||!requestId||!message||message.length>2000)return;
+    try{
+      const requestSnap=await getDoc(doc(db,"serviceMatchRequests",requestId));
+      if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
+      const request=requestSnap.data();
+      if(request.status!=="accepted"||!request.participantUids?.includes(user.uid))
+        throw new Error("La messagerie est réservée aux deux entreprises après acceptation.");
+      await addDoc(collection(db,"serviceMatchMessages"),{
+        requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Message envoyé aux participants de la mise en relation.";
+    }catch(err){console.error(err);status.textContent="Envoi du message impossible : "+(err.message||err.code);}
+  });
+
   window.addEventListener("dealhunter-update-service-match-request",async e=>{
     const user=auth.currentUser,{requestId,decision}=e.detail||{};
     if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
