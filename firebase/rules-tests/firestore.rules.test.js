@@ -299,6 +299,37 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(updateDoc(doc(alice,"serviceMatchMessages","seeded-message"),{text:"modifié"}));
   });
 
+
+  it("sécurise les profils professionnels et les offres d'emploi", async () => {
+    const alice=testEnv.authenticatedContext("alice").firestore();
+    const bob=testEnv.authenticatedContext("bob").firestore();
+    const profile={
+      ownerUid:"alice",title:"Électricien monteur câbleur",category:"électricité industrielle",
+      description:"Câblage et maintenance",location:"Lille",countryCode:"FR",
+      skills:["câblage","maintenance"],qualifications:["habilitation électrique"],
+      engagementTypes:["employment","independent"],availableFrom:"2026-12-01",remote:false,
+      publicProfileConsent:true,status:"active",createdAt:new Date(),updatedAt:new Date()
+    };
+    const opening={
+      ownerUid:"alice",company:"Entreprise A",title:"Monteur câbleur",category:"électricité industrielle",
+      description:"Poste atelier",location:"Lille",countryCode:"FR",
+      requiredSkills:["câblage"],requiredQualifications:["habilitation électrique"],
+      engagementType:"employment",startDate:"2026-12-05",remoteAccepted:false,
+      status:"active",createdAt:new Date(),updatedAt:new Date()
+    };
+    await assertSucceeds(setDoc(doc(alice,"publicWorkerProfiles","profile-1"),profile));
+    await assertSucceeds(getDoc(doc(bob,"publicWorkerProfiles","profile-1")));
+    await assertFails(setDoc(doc(bob,"publicWorkerProfiles","profile-1"),{...profile,ownerUid:"bob"}));
+    await assertFails(setDoc(doc(alice,"publicWorkerProfiles","profile-private"),{...profile,privateEmail:"alice@example.test"}));
+    await assertFails(setDoc(doc(alice,"publicWorkerProfiles","profile-no-consent"),{...profile,publicProfileConsent:false}));
+    await assertSucceeds(setDoc(doc(alice,"publicWorkOpenings","opening-1"),opening));
+    await assertSucceeds(getDoc(doc(bob,"publicWorkOpenings","opening-1")));
+    await assertFails(setDoc(doc(bob,"publicWorkOpenings","opening-1"),{...opening,ownerUid:"bob"}));
+    await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-private"),{...opening,privatePhone:"0600000000"}));
+    await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-invalid"),{...opening,engagementType:"any"}));
+    await assertSucceeds(deleteDoc(doc(alice,"publicWorkerProfiles","profile-1")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
