@@ -425,6 +425,18 @@ if (!ready) {
         openings: workOpeningSnapshot.docs.map(item => ({ id: item.id, ...item.data() }))
       }
     }));
+    const tokenResult = await user.getIdTokenResult();
+    const isVerificationAdmin = tokenResult.claims.dealhunterAdmin === true;
+    const verificationQuery = isVerificationAdmin
+      ? collection(db, "verificationRequests")
+      : query(collection(db, "verificationRequests"), where("ownerUid", "==", user.uid));
+    const verificationSnapshot = await getDocs(verificationQuery);
+    window.dispatchEvent(new CustomEvent("dealhunter-verification-data", {
+      detail: {
+        requests: verificationSnapshot.docs.map(item => ({ id: item.id, ...item.data() })),
+        isAdmin: isVerificationAdmin
+      }
+    }));
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
       detail: { sellers, buyers }
     }));
@@ -540,6 +552,61 @@ if (!ready) {
     }
   });
 
+
+  window.addEventListener("dealhunter-create-verification-request", async event => {
+    const user = auth.currentUser, data = event.detail || {};
+    if (!user) { status.textContent = "Connecte-toi pour demander une vérification."; return; }
+    const subjectType = String(data.subjectType || "");
+    const subjectName = String(data.subjectName || "").trim();
+    const countryCode = String(data.countryCode || "").trim().toUpperCase();
+    const evidenceLabel = String(data.evidenceLabel || "").trim();
+    const publicEvidenceUrl = String(data.publicEvidenceUrl || "").trim();
+    if (!["company", "qualification"].includes(subjectType) || subjectName.length < 2 ||
+        subjectName.length > 120 || !/^[A-Z]{2}$/.test(countryCode) ||
+        evidenceLabel.length < 2 || evidenceLabel.length > 160 ||
+        !/^https:\/\//i.test(publicEvidenceUrl) || publicEvidenceUrl.length > 500) {
+      status.textContent = "Vérifie le type, le nom, le pays, le libellé et l'URL HTTPS publique.";
+      return;
+    }
+    try {
+      await addDoc(collection(db, "verificationRequests"), {
+        ownerUid: user.uid, subjectType, subjectName, countryCode, evidenceLabel,
+        publicEvidenceUrl, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      await loadCloudRecords(user);
+      status.textContent = "Demande enregistrée. Elle restera en attente jusqu'à une vérification humaine.";
+    } catch (error) {
+      console.error("Demande de vérification impossible :", error);
+      status.textContent = "Demande impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
+  window.addEventListener("dealhunter-review-verification-request", async event => {
+    const user = auth.currentUser, { requestId, decision } = event.detail || {};
+    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) return;
+    try {
+      const token = await user.getIdTokenResult();
+      const ref = doc(db, "verificationRequests", requestId);
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists() || snapshot.data().status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+      if (decision === "withdrawn") {
+        if (snapshot.data().ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
+        await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
+      } else {
+        if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
+        await updateDoc(ref, {
+          status: decision,
+          reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+          reviewedAt: serverTimestamp()
+        });
+      }
+      await loadCloudRecords(user);
+      status.textContent = decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.";
+    } catch (error) {
+      console.error("Décision de vérification impossible :", error);
+      status.textContent = "Action impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
 
   window.addEventListener("dealhunter-delete-work-record", async event => {
     const user = auth.currentUser;
