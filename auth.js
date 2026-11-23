@@ -496,6 +496,32 @@ if (!ready) {
     }
   });
 
+
+  window.addEventListener("dealhunter-delete-work-record", async event => {
+    const user = auth.currentUser;
+    const { collectionName, recordId } = event.detail || {};
+    if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName) ||
+        typeof recordId !== "string" || !recordId) {
+      status.textContent = "Retrait impossible : profil, offre ou compte invalide.";
+      return;
+    }
+    try {
+      const target = doc(db, collectionName, recordId);
+      const snapshot = await getDoc(target);
+      if (!snapshot.exists() || snapshot.data().ownerUid !== user.uid) {
+        throw new Error("Cette fiche n’existe plus ou ne t’appartient pas.");
+      }
+      await deleteDoc(target);
+      await loadCloudRecords(user);
+      status.textContent = collectionName === "publicWorkerProfiles"
+        ? "Ton profil professionnel a été retiré du catalogue."
+        : "Ton offre professionnelle a été retirée du catalogue.";
+    } catch (error) {
+      console.error("Retrait de la fiche professionnelle impossible :", error);
+      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+    }
+  });
+
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId, record } = event.detail || {};
