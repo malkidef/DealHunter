@@ -24,6 +24,18 @@ Les offres et besoins privés sont associés au compte connecté. Le code publie
 
 `docs/APPWRITE_SCHEMA.md` est un ancien schéma de conception : Appwrite n'est pas le backend actuellement utilisé par le code.
 
+## Moteur de matching des services — première brique
+
+Le module pur `functions/matching/src/service-matching.js` prépare le rapprochement entre :
+- une entreprise qui propose une prestation ;
+- un client professionnel qui recherche cette prestation.
+
+Le moteur applique d'abord des critères d'éligibilité : fiches actives, propriétaires différents, catégorie suffisamment proche, zone compatible (ou distanciel accepté par les deux parties) et qualifications obligatoires présentes. Il classe ensuite les candidats par score indicatif.
+
+Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés au workflow CI.
+
+**Limite importante :** cette brique est un moteur de calcul testé par le workflow à venir, pas encore un parcours utilisateur branché à Firestore. Les formulaires, collections, règles de sécurité et consentements spécifiques aux services doivent être définis avant d'activer les échanges réels. Les travailleurs salariés/candidats et le recrutement sont volontairement exclus de cette première brique : ils nécessitent un parcours distinct du marché de prestations entre entreprises.
+
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
