@@ -36,6 +36,12 @@ Les tests associés sont dans `tests/test_service_matching.js` et sont ajoutés 
 
 **Limite importante :** cette brique est un moteur de calcul testé par le workflow à venir, pas encore un parcours utilisateur branché à Firestore. Les formulaires, collections, règles de sécurité et consentements spécifiques aux services doivent être définis avant d'activer les échanges réels. Les travailleurs salariés/candidats et le recrutement sont volontairement exclus de cette première brique : ils nécessitent un parcours distinct du marché de prestations entre entreprises.
 
+## Mise en relation de services — consentement bilatéral
+
+Depuis l'onglet **Services B2B**, une entreprise propriétaire de l'une des deux fiches compatibles peut demander une mise en relation. DealHunter relit les deux fiches dans Firestore avant de créer la demande ; le client ne peut pas inventer les identifiants ni les propriétaires.
+
+La demande est enregistrée dans `serviceMatchRequests`, visible uniquement par les deux participants. Seul le destinataire peut l'accepter ou la refuser, et une demande en attente ne peut pas être modifiée par son auteur. La conversation et le partage de coordonnées ne sont pas ouverts par cette première brique : ils doivent être activés dans une étape séparée après l'accord bilatéral.
+
 ## Marketplace de services B2B — première interface
 
 L'onglet **Services B2B** permet aux entreprises connectées de publier :
