@@ -48,14 +48,15 @@ async function run() {
   const candidates = matching.makeCandidates(offers, needs);
   let created = 0;
   let existing = 0;
-  let written = 0;
+  const offersById = new Map(offers.map((item) => [item.$id, item]));
+  const needsById = new Map(needs.map((item) => [item.$id, item]));
 
   for (let offset = 0; offset < candidates.length; offset += BATCH_SIZE) {
     const chunk = candidates.slice(offset, offset + BATCH_SIZE);
     const batch = db.batch();
     for (const candidate of chunk) {
-      const offer = offers.find((item) => item.$id === candidate.listingId);
-      const need = needs.find((item) => item.$id === candidate.requestId);
+      const offer = offersById.get(candidate.listingId);
+      const need = needsById.get(candidate.requestId);
       if (!offer || !need) continue;
       const id = crypto.createHash("sha256")
         .update(`${candidate.listingId}:${candidate.requestId}`)
@@ -75,7 +76,6 @@ async function run() {
         source: "scheduled_matching_v1",
         createdAt: FieldValue.serverTimestamp()
       });
-      written += 1;
     }
     try {
       await batch.commit();
@@ -84,8 +84,8 @@ async function run() {
       // A batch may fail because some deterministic match IDs already exist.
       // Fall back to idempotent per-document transactions.
       for (const candidate of chunk) {
-        const offer = offers.find((item) => item.$id === candidate.listingId);
-        const need = needs.find((item) => item.$id === candidate.requestId);
+        const offer = offersById.get(candidate.listingId);
+        const need = needsById.get(candidate.requestId);
         if (!offer || !need) continue;
         const id = crypto.createHash("sha256")
           .update(`${candidate.listingId}:${candidate.requestId}`)
@@ -113,7 +113,6 @@ async function run() {
         if (result === "created") created += 1;
         else existing += 1;
       }
-      if (!error) throw error;
     }
   }
 
