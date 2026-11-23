@@ -55,13 +55,28 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
-    const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] = await Promise.all([
+    // Une collection secondaire indisponible ne doit pas bloquer les suggestions
+    // automatiques ni laisser l'onglet Demandes sur « Chargement… ».
+    const reads = await Promise.allSettled([
       getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)))
     ]);
+    const emptySnapshot = { docs: [] };
+    const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] =
+      reads.map(result => result.status === "fulfilled" ? result.value : emptySnapshot);
+    const failedReads = reads
+      .map((result,index) => result.status === "rejected"
+        ? ["matchRequests","deals","matches","serviceMatchRequests","workMatchRequests"][index] + ": " +
+          (result.reason?.code || result.reason?.message || "erreur inconnue")
+        : null)
+      .filter(Boolean);
+    if (failedReads.length) {
+      console.error("Certaines collections DealHunter n'ont pas pu être chargées :", failedReads);
+      status.textContent = "Chargement partiel des demandes : " + failedReads.join(" · ");
+    }
     const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
     for(const request of serviceRequests){
       if(request.status!=="accepted")continue;
