@@ -585,6 +585,67 @@ if (!ready) {
     }));
   };
 
+  window.addEventListener("dealhunter-save-business-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    const collectionName = data.collectionName;
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-record-result", {
+      detail: { success, message, collectionName }
+    }));
+    if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName)) {
+      const message = "Connecte-toi pour publier un stock ou un besoin acheteur.";
+      status.textContent = message; result(false, message); return;
+    }
+    const record = data.record || {};
+    const company = String(record.company || "").trim();
+    const product = String(record.product || "").trim();
+    const category = String(record.category || "Autre / à classer").trim();
+    const location = String(record.location || "").trim();
+    const quantity = Number(record.quantity);
+    const price = Number(collectionName === "sellerOffers" ? record.unitPrice : record.maxUnitBudget);
+    const unit = String(record.unit || "unit").trim();
+    const currency = String(record.currency || "EUR").trim().toUpperCase();
+    const countryCode = String(record.countryCode || "FR").trim().toUpperCase();
+    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0
+      || !Number.isFinite(price) || price <= 0 || !/^[A-Z]{3}$/.test(currency)
+      || !/^[A-Z]{2}$/.test(countryCode) || unit.length > 20) {
+      const message = "Vérifie l’entreprise, le produit, la zone, la quantité, le prix/budget et les codes pays/devise.";
+      status.textContent = message; result(false, message); return;
+    }
+    try {
+      const privateRef = doc(collection(db, "users", user.uid, collectionName));
+      const publicCollection = collectionName === "sellerOffers" ? "publicOffers" : "publicNeeds";
+      const publicRef = doc(db, publicCollection, privateRef.id);
+      const common = {
+        ownerUid: user.uid, company, product, category, quantity, unit, currency,
+        countryCode, location, status: "active", createdAt: serverTimestamp()
+      };
+      const privatePayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const publicPayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const batch = writeBatch(db);
+      batch.set(privateRef, privatePayload);
+      batch.set(publicRef, publicPayload);
+      await batch.commit();
+      const message = collectionName === "sellerOffers"
+        ? "Stock enregistré dans ton compte et publié dans le catalogue partagé."
+        : "Besoin acheteur enregistré dans ton compte et publié dans le catalogue partagé.";
+      status.textContent = message; result(true, message);
+      try { await loadCloudRecords(user); }
+      catch (refreshError) {
+        console.error("Annonce enregistrée, mais actualisation du catalogue impossible :", refreshError);
+        status.textContent = message + " Actualise la page pour recharger les correspondances.";
+      }
+    } catch (error) {
+      console.error("Publication de l’annonce impossible :", error);
+      const message = "Publication impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
+    }
+  });
+
   window.addEventListener("dealhunter-save-service-record", async event => {
     const user = auth.currentUser;
     const data = event.detail || {};
