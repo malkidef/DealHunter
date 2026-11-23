@@ -128,7 +128,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
 <div id="matchingDataStatus" class="muted" role="status">Chargement des données Firebase…</div>
-<div id="matchList" class="cards"></div>
+<div id="matchList" class="cards"></div><h3 style="margin-top:20px">Suggestions du moteur automatique</h3><p class="muted">Correspondances calculées en arrière-plan et visibles uniquement par les deux entreprises concernées.</p><div id="scheduledMatchList" class="cards"><div class="empty">Les suggestions apparaîtront après le prochain calcul automatique.</div></div>
 </section>
 <div id="sellers" class="grid hidden">
 <section class="panel"><h2>Déposer un surplus professionnel</h2><p class="muted">Publie directement un lot réellement disponible : produit, catégorie, quantité, prix unitaire et zone. Après connexion à ton compte entreprise, ton offre est enregistrée dans DealHunter, partagée dans le catalogue professionnel et prise en compte par le matching automatique. Aucune annonce d’une autre marketplace n’est copiée.</p>
@@ -734,6 +734,16 @@ $('importList').addEventListener('click',e=>{
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product}}));b.disabled=true;b.textContent='Demande en cours…';});
+window.addEventListener('dealhunter-generated-matches',e=>{
+ const el=$('scheduledMatchList');
+ if(!el)return;
+ const matches=Array.isArray(e.detail?.matches)?e.detail.matches:[];
+ el.innerHTML=matches.length?matches.map(m=>{
+  const can=!!window.dealhunterUserUid&&[m.sellerUid,m.buyerUid].includes(window.dealhunterUserUid);
+  const score=Math.max(0,Math.min(100,Number(m.compatibilityScore)||0));
+  return '<article class="item match"><span class="pill">Suggestion automatique</span><h3>'+escapeHtml(m.sellerCompany||'Vendeur')+' → '+escapeHtml(m.buyerCompany||'Acheteur')+'</h3><div>'+escapeHtml(m.product||'Produit')+'</div><p class="match-score">Compatibilité indicative : '+score+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.listingId||'')+'" data-buyer="'+escapeHtml(m.requestId||'')+'" data-seller-uid="'+escapeHtml(m.sellerUid||'')+'" data-buyer-uid="'+escapeHtml(m.buyerUid||'')+'" data-seller-company="'+escapeHtml(m.sellerCompany||'')+'" data-buyer-company="'+escapeHtml(m.buyerCompany||'')+'" data-product="'+escapeHtml(m.product||'')+'">Demander la mise en relation</button>':'<div class="muted">Compte participant requis pour demander la mise en relation.</div>')+'</article>';
+ }).join(''):'<div class="empty">Aucune suggestion calculée pour ce compte pour le moment.</div>';
+});
 window.addEventListener('dealhunter-match-requests',e=>{
   const el=$('matchRequestList');
   if(!el)return;
