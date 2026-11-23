@@ -585,6 +585,67 @@ if (!ready) {
     }));
   };
 
+  window.addEventListener("dealhunter-save-business-record", async event => {
+    const user = auth.currentUser;
+    const data = event.detail || {};
+    const collectionName = data.collectionName;
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-record-result", {
+      detail: { success, message, collectionName }
+    }));
+    if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName)) {
+      const message = "Connecte-toi pour publier un stock ou un besoin acheteur.";
+      status.textContent = message; result(false, message); return;
+    }
+    const record = data.record || {};
+    const company = String(record.company || "").trim();
+    const product = String(record.product || "").trim();
+    const category = String(record.category || "Autre / à classer").trim();
+    const location = String(record.location || "").trim();
+    const quantity = Number(record.quantity);
+    const price = Number(collectionName === "sellerOffers" ? record.unitPrice : record.maxUnitBudget);
+    const unit = String(record.unit || "unit").trim();
+    const currency = String(record.currency || "EUR").trim().toUpperCase();
+    const countryCode = String(record.countryCode || "FR").trim().toUpperCase();
+    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0
+      || !Number.isFinite(price) || price <= 0 || !/^[A-Z]{3}$/.test(currency)
+      || !/^[A-Z]{2}$/.test(countryCode) || unit.length > 20) {
+      const message = "Vérifie l’entreprise, le produit, la zone, la quantité, le prix/budget et les codes pays/devise.";
+      status.textContent = message; result(false, message); return;
+    }
+    try {
+      const privateRef = doc(collection(db, "users", user.uid, collectionName));
+      const publicCollection = collectionName === "sellerOffers" ? "publicOffers" : "publicNeeds";
+      const publicRef = doc(db, publicCollection, privateRef.id);
+      const common = {
+        ownerUid: user.uid, company, product, category, quantity, unit, currency,
+        countryCode, location, status: "active", createdAt: serverTimestamp()
+      };
+      const privatePayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const publicPayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const batch = writeBatch(db);
+      batch.set(privateRef, privatePayload);
+      batch.set(publicRef, publicPayload);
+      await batch.commit();
+      const message = collectionName === "sellerOffers"
+        ? "Stock enregistré dans ton compte et publié dans le catalogue partagé."
+        : "Besoin acheteur enregistré dans ton compte et publié dans le catalogue partagé.";
+      status.textContent = message; result(true, message);
+      try { await loadCloudRecords(user); }
+      catch (refreshError) {
+        console.error("Annonce enregistrée, mais actualisation du catalogue impossible :", refreshError);
+        status.textContent = message + " Actualise la page pour recharger les correspondances.";
+      }
+    } catch (error) {
+      console.error("Publication de l’annonce impossible :", error);
+      const message = "Publication impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
+    }
+  });
+
   window.addEventListener("dealhunter-save-service-record", async event => {
     const user = auth.currentUser;
     const data = event.detail || {};
@@ -806,72 +867,97 @@ if (!ready) {
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId, record } = event.detail || {};
-    if (!user || collectionName !== "sellerOffers" || typeof recordId !== "string" || !recordId || !record) {
-      status.textContent = "Modification impossible : compte ou stock non valide.";
-      return;
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-update-result", {
+      detail: { success, message, collectionName, recordId }
+    }));
+    if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName) || typeof recordId !== "string" || !recordId || !record) {
+      const message = "Modification impossible : compte ou annonce non valide.";
+      status.textContent = message; result(false, message); return;
     }
     const company = String(record.company || "").trim();
     const product = String(record.product || "").trim();
     const category = String(record.category || "").trim();
     const location = String(record.location || "").trim();
     const quantity = Number(record.quantity);
-    const unitPrice = Number(record.unitPrice);
-    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
-      status.textContent = "Vérifie les champs : quantité entière positive et prix unitaire supérieur à zéro.";
-      return;
+    const price = Number(collectionName === "sellerOffers" ? record.unitPrice : record.maxUnitBudget);
+    if (!company || !product || !category || !location || !Number.isInteger(quantity) || quantity <= 0
+      || !Number.isFinite(price) || price <= 0) {
+      const message = "Vérifie les champs : quantité entière positive et prix/budget supérieur à zéro.";
+      status.textContent = message; result(false, message); return;
     }
     try {
-      const privateRef = doc(db, "users", user.uid, "sellerOffers", recordId);
-      const publicRef = doc(db, "publicOffers", recordId);
+      const privateRef = doc(db, "users", user.uid, collectionName, recordId);
+      const publicCollection = collectionName === "sellerOffers" ? "publicOffers" : "publicNeeds";
+      const publicRef = doc(db, publicCollection, recordId);
       const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
-      if (!privateSnap.exists()) throw new Error("Ce stock n’existe plus dans ton compte.");
+      if (!privateSnap.exists()) throw new Error("Cette annonce n’existe plus dans ton compte.");
       if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
         throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune modification effectuée.");
       }
       const original = privateSnap.data();
-      const updated = { company, product, category, quantity, unitPrice, location, unit: original.unit || "unit", currency: original.currency || "EUR", countryCode: original.countryCode || "FR" };
-      const batch = writeBatch(db);
-      batch.update(privateRef, updated);
-      batch.set(publicRef, {
-        ownerUid: user.uid, ...updated, status: "active",
+      const common = {
+        company, product, category, quantity, location,
+        unit: original.unit || "unit", currency: original.currency || "EUR",
+        countryCode: original.countryCode || "FR", status: "active"
+      };
+      const privatePayload = collectionName === "sellerOffers"
+        ? { ...common, unitPrice: price }
+        : { ...common, maxUnitBudget: price };
+      const publicPayload = {
+        ownerUid: user.uid, ...common,
+        ...(collectionName === "sellerOffers" ? { unitPrice: price } : { maxUnitBudget: price }),
         createdAt: original.createdAt || serverTimestamp()
-      });
+      };
+      const batch = writeBatch(db);
+      batch.set(privateRef, { ...privatePayload, updatedAt: serverTimestamp() }, { merge: true });
+      batch.set(publicRef, publicPayload, { merge: true });
       await batch.commit();
       await loadCloudRecords(user);
-      status.textContent = "Stock modifié et catalogue partagé synchronisé.";
-      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated"));
+      const message = collectionName === "sellerOffers"
+        ? "Stock modifié et catalogue partagé synchronisé."
+        : "Besoin acheteur modifié et catalogue partagé synchronisé.";
+      status.textContent = message;
+      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated", { detail: { collectionName } }));
+      result(true, message);
     } catch (error) {
-      console.error("Modification du stock impossible :", error);
-      status.textContent = "Modification impossible : " + (error.message || error.code || "erreur inconnue");
+      console.error("Modification de l’annonce impossible :", error);
+      const message = "Modification impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
     }
   });
 
   window.addEventListener("dealhunter-remove-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId } = event.detail || {};
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-remove-result", {
+      detail: { success, message, collectionName, recordId }
+    }));
     if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName) || typeof recordId !== "string" || !recordId) {
-      status.textContent = "Retrait impossible : annonce ou compte non valide.";
-      return;
+      const message = "Retrait impossible : annonce ou compte non valide.";
+      status.textContent = message; result(false, message); return;
     }
     const privateRef = doc(db, "users", user.uid, collectionName, recordId);
     const isSeller = collectionName === "sellerOffers";
     const publicRef = doc(db, isSeller ? "publicOffers" : "publicNeeds", recordId);
     try {
       const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
+      if (!privateSnap.exists()) throw new Error("Cette annonce n’existe plus dans ton compte.");
       if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
-        throw new Error("La copie du catalogue n'appartient pas à ce compte ; aucune annonce n'a été supprimée.");
+        throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune annonce n’a été supprimée.");
       }
       const batch = writeBatch(db);
-      if (privateSnap.exists()) batch.delete(privateRef);
+      batch.delete(privateRef);
       if (publicSnap.exists()) batch.delete(publicRef);
       await batch.commit();
       await loadCloudRecords(user);
-      status.textContent = isSeller
+      const message = isSeller
         ? "Stock retiré de tes annonces et du catalogue partagé."
         : "Besoin retiré de tes annonces et du catalogue partagé.";
+      status.textContent = message; result(true, message);
     } catch (error) {
-      console.error("Retrait de l'annonce impossible :", error);
-      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+      console.error("Retrait de l’annonce impossible :", error);
+      const message = "Retrait impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
     }
   });
 
@@ -986,70 +1072,6 @@ if (!ready) {
     try { await createUserWithEmailAndPassword(auth, email, password); }
     catch (error) { showError(error); }
   });
-  const sellerForm = document.getElementById("sellerForm");
-  const buyerForm = document.getElementById("buyerForm");
-  const saveBusinessRecord = async (event, form, collectionName, fields) => {
-    if (event.target !== form) return;
-    const user = auth.currentUser;
-    if (!user) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      status.textContent = "Connecte-toi avant d’enregistrer une offre ou un besoin.";
-      return;
-    }
-    const record = Object.fromEntries(fields.map(([key, id, type]) => [
-      key, type === "number" ? Number(document.getElementById(id).value) : document.getElementById(id).value.trim()
-    ]));
-    if (record.currency) record.currency = record.currency.toUpperCase();
-    if (record.countryCode) record.countryCode = record.countryCode.toUpperCase();
-    if (record.unit) record.unit = record.unit.trim();
-    if (record.currency && !/^[A-Z]{3}$/.test(record.currency)) {
-      status.textContent = "La devise doit être un code ISO 4217 à trois lettres (ex. EUR, USD).";
-      return;
-    }
-    if (record.countryCode && !/^[A-Z]{2}$/.test(record.countryCode)) {
-      status.textContent = "Le pays doit être un code ISO à deux lettres (ex. FR, US).";
-      return;
-    }
-    try {
-      const privateRef = await addDoc(collection(db, "users", user.uid, collectionName), {
-        ...record,
-        createdAt: serverTimestamp(),
-        status: "active"
-      });
-      const isSeller = collectionName === "sellerOffers";
-      const publicCollection = isSeller ? "publicOffers" : "publicNeeds";
-      const publicRecord = isSeller
-        ? { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, unitPrice: record.unitPrice, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() }
-        : { ownerUid: user.uid, company: record.company, product: record.product, category: record.category, quantity: record.quantity, maxUnitBudget: record.maxUnitBudget, unit: record.unit, currency: record.currency, countryCode: record.countryCode, location: record.location, status: "active", createdAt: serverTimestamp() };
-      await setDoc(doc(db, publicCollection, privateRef.id), publicRecord);
-      await loadCloudRecords(user);
-      status.textContent = collectionName === "sellerOffers"
-        ? "Stock enregistré et synchronisé depuis Firebase."
-        : "Besoin acheteur enregistré et synchronisé depuis Firebase.";
-    } catch (error) {
-      console.error("Enregistrement Firestore impossible :", error);
-      status.textContent = "Enregistrement cloud impossible : " + (error.message || error.code);
-    }
-  };
-  document.addEventListener("submit", event => {
-    if (event.target === sellerForm && sellerForm.dataset.editingId) {
-      event.preventDefault();
-      return;
-    }
-    if (event.target === sellerForm) {
-      saveBusinessRecord(event, sellerForm, "sellerOffers", [
-        ["company", "sCompany"], ["product", "sProduct"], ["category", "sCategory"],
-        ["quantity", "sQty", "number"], ["unitPrice", "sPrice", "number"], ["unit", "sUnit"], ["currency", "sCurrency"], ["countryCode", "sCountry"], ["location", "sLocation"]
-      ]);
-    } else if (event.target === buyerForm) {
-      saveBusinessRecord(event, buyerForm, "buyerNeeds", [
-        ["company", "bCompany"], ["product", "bProduct"], ["category", "bCategory"],
-        ["quantity", "bQty", "number"], ["maxUnitBudget", "bBudget", "number"], ["unit", "bUnit"], ["currency", "bCurrency"], ["countryCode", "bCountry"], ["location", "bLocation"]
-      ]);
-    }
-  }, true);
-
   const companyForm = document.getElementById("companyForm");
   companyForm.addEventListener("submit", async event => {
     event.preventDefault();
