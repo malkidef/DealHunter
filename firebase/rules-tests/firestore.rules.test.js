@@ -330,6 +330,33 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(deleteDoc(doc(alice,"publicWorkerProfiles","profile-1")));
   });
 
+  it("protège les mises en relation et messages du marché du travail", async () => {
+    const alice=testEnv.authenticatedContext("alice").firestore(),bob=testEnv.authenticatedContext("bob").firestore(),outsider=testEnv.authenticatedContext("charlie").firestore();
+    await testEnv.withSecurityRulesDisabled(async c=>{
+      const db=c.firestore();
+      await setDoc(doc(db,"publicWorkerProfiles","candidate-1"),{ownerUid:"alice",title:"Électricien câbleur",category:"électricité",description:"Câblage",location:"Lille",countryCode:"FR",skills:["câblage"],qualifications:[],engagementTypes:["employment","independent"],availableFrom:"2026-12-01",remote:false,publicProfileConsent:true,status:"active",createdAt:new Date(),updatedAt:new Date()});
+      await setDoc(doc(db,"publicWorkOpenings","opening-1"),{ownerUid:"bob",company:"Entreprise B",title:"Monteur câbleur",category:"électricité",description:"Poste",location:"Lille",countryCode:"FR",requiredSkills:[],requiredQualifications:[],engagementType:"employment",startDate:"2026-12-05",remoteAccepted:false,status:"active",createdAt:new Date(),updatedAt:new Date()});
+      await setDoc(doc(db,"publicWorkOpenings","opening-2"),{ownerUid:"bob",company:"Entreprise B",title:"Mission",category:"électricité",description:"Mission",location:"Lille",countryCode:"FR",requiredSkills:[],requiredQualifications:[],engagementType:"independent",startDate:"2026-12-05",remoteAccepted:false,status:"active",createdAt:new Date(),updatedAt:new Date()});
+    });
+    const req={candidateProfileId:"candidate-1",openingId:"opening-1",candidateUid:"alice",employerUid:"bob",participantUids:["alice","bob"],requesterUid:"alice",recipientUid:"bob",engagementType:"employment",candidateTitle:"Électricien câbleur",openingTitle:"Monteur câbleur",status:"pending",createdAt:new Date()};
+    await assertSucceeds(setDoc(doc(alice,"workMatchRequests","work-1"),req));
+    await assertFails(setDoc(doc(alice,"workMatchRequests","extra"),{...req,privateEmail:"alice@example.test"}));
+    await assertFails(setDoc(doc(alice,"workMatchRequests","wrong-type"),{...req,openingId:"opening-2"}));
+    await assertFails(setDoc(doc(outsider,"workMatchRequests","outsider"),{...req,requesterUid:"charlie"}));
+    await assertSucceeds(getDoc(doc(bob,"workMatchRequests","work-1")));await assertFails(getDoc(doc(outsider,"workMatchRequests","work-1")));
+    await assertFails(updateDoc(doc(alice,"workMatchRequests","work-1"),{status:"accepted",respondedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(bob,"workMatchRequests","work-1"),{status:"accepted",respondedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"workMatchRequests","work-1"),{status:"rejected",candidateUid:"charlie",respondedAt:new Date()}));
+    const msg={requestId:"work-1",senderUid:"alice",text:"Bonjour",createdAt:new Date()};
+    await assertSucceeds(addDoc(collection(alice,"workMatchMessages"),msg));
+    await assertFails(addDoc(collection(alice,"workMatchMessages"),{...msg,privatePhone:"0600000000"}));
+    await assertFails(addDoc(collection(outsider,"workMatchMessages"),{...msg,senderUid:"charlie"}));
+    const own=await getDocs(query(collection(alice,"workMatchMessages"),where("requestId","==","work-1")));
+    await assertFails(updateDoc(own.docs[0].ref,{text:"Modifié"}));
+    await assertSucceeds(getDocs(query(collection(bob,"workMatchMessages"),where("requestId","==","work-1"))));
+    await assertFails(getDocs(query(collection(outsider,"workMatchMessages"),where("requestId","==","work-1"))));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
