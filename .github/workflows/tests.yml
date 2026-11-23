@@ -30,6 +30,7 @@ jobs:
       - name: Vérifier les fonctions Firebase
         run: |
           node --check functions/matching/src/firestore-adapter.js
+          node --check firebase/functions/src/matching-batch.js
           node --check firebase/functions/src/index.js
           node --check firebase/functions/src/payments.js
       - name: Vérifier le JavaScript de l’application
