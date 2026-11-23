@@ -163,6 +163,82 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Accords commerciaux : seule une mise en relation produit acceptée peut porter une proposition.
+    match /deals/{dealId} {
+      function acceptedDealRequest() {
+        return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids;
+      }
+      allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "requestId","sellerUid","buyerUid","participantUids","proposerUid","accepterUid",
+          "product","quantity","unitPrice","totalAmount","commissionRate","commissionAmount",
+          "status","sellerConfirmed","buyerConfirmed","createdAt","updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "requestId","sellerUid","buyerUid","participantUids","proposerUid","accepterUid",
+          "product","quantity","unitPrice","totalAmount","commissionRate","commissionAmount",
+          "status","sellerConfirmed","buyerConfirmed","createdAt","updatedAt"
+        ])
+        && request.resource.data.requestId is string
+        && request.resource.data.sellerUid is string
+        && request.resource.data.buyerUid is string
+        && request.resource.data.sellerUid != request.resource.data.buyerUid
+        && request.resource.data.participantUids is list
+        && request.resource.data.participantUids.size() == 2
+        && request.resource.data.participantUids.hasAll([request.resource.data.sellerUid,request.resource.data.buyerUid])
+        && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.proposerUid == request.auth.uid
+        && request.resource.data.accepterUid in request.resource.data.participantUids
+        && request.resource.data.accepterUid != request.auth.uid
+        && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice > 0
+        && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount == request.resource.data.quantity * request.resource.data.unitPrice
+        && request.resource.data.commissionRate == 5
+        && request.resource.data.commissionAmount is number
+        && request.resource.data.commissionAmount >= 0
+        && request.resource.data.status == "proposed"
+        && request.resource.data.sellerConfirmed == false
+        && request.resource.data.buyerConfirmed == false
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && acceptedDealRequest();
+      allow update: if request.auth != null && (
+        (resource.data.status == "proposed"
+          && request.auth.uid == resource.data.accepterUid
+          && request.resource.data.status == "agreed"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","agreedAt","updatedAt"])
+          && request.resource.data.agreedAt is timestamp
+          && request.resource.data.updatedAt is timestamp)
+        ||
+        (resource.data.status == "agreed"
+          && request.auth.uid in resource.data.participantUids
+          && ((request.auth.uid == resource.data.sellerUid
+              && resource.data.sellerConfirmed == false
+              && request.resource.data.sellerConfirmed == true
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["sellerConfirmed","sellerConfirmedAt","status","updatedAt"])
+              && request.resource.data.sellerConfirmedAt is timestamp)
+            || (request.auth.uid == resource.data.buyerUid
+              && resource.data.buyerConfirmed == false
+              && request.resource.data.buyerConfirmed == true
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["buyerConfirmed","buyerConfirmedAt","status","updatedAt"])
+              && request.resource.data.buyerConfirmedAt is timestamp))
+          && request.resource.data.status == (
+            (request.auth.uid == resource.data.sellerUid ? resource.data.buyerConfirmed : resource.data.sellerConfirmed)
+              ? "completed" : "agreed")
+          && request.resource.data.updatedAt is timestamp)
+      );
+      allow delete: if false;
+    }
+
     match /matchContacts/{contactId} {
       function acceptedRequest(requestId) {
         return exists(/databases/$(database)/documents/matchRequests/$(requestId))
