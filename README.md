@@ -108,3 +108,10 @@ Le pipeline et les règles de validation sont décrits dans [docs/PIPELINE_SOURC
 5. Étudier les autres places de marché uniquement via des accès officiellement autorisés.
 
 Aucun scraping non autorisé, message automatique, enchère, commande ou paiement ne doit être déclenché par les connecteurs.
+
+
+## Mise en relation du marché du travail — consentement bilatéral
+
+Les correspondances entre profils professionnels et offres peuvent désormais déclencher une demande de mise en relation dans `workMatchRequests`. Le parcours conserve la séparation entre emploi salarié (`employment`) et mission indépendante (`independent`) et relit les deux fiches actives avant de créer la demande. Le profil candidat doit avoir été publié avec consentement explicite. Seul le destinataire peut accepter ou refuser ; après acceptation, les participants échangent dans `workMatchMessages`. Les messages sont limités à 2 000 caractères, réservés aux participants et ne peuvent contenir de champs supplémentaires de coordonnées. Aucun contact n'est partagé automatiquement.
+
+Les règles Firestore et les tests couvrent l'identité des propriétaires, la correspondance du type d'engagement, les décisions du destinataire, les accès des tiers et la messagerie après acceptation. Cette fonction ne vérifie pas les diplômes, habilitations ou employeurs, et ne prend aucune décision de recrutement.
