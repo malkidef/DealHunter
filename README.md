@@ -130,3 +130,8 @@ Cette revue est manuelle et n'est pas encore une certification automatisée. L'i
 - Les signalements de fraude, contrefaçon, annonce trompeuse, doublon, risque de sécurité ou spam sont privés : le déclarant et les comptes de modération autorisés peuvent les consulter.
 - Seul un compte portant le claim Firebase `dealhunterAdmin: true` peut traiter un signalement. Les actions de modération sont journalisées dans le statut et l'horodatage ; aucune sanction automatique n'est appliquée.
 - Les avis et signalements ne prouvent pas à eux seuls une fraude ou une bonne qualité. Une revue humaine est nécessaire et les décisions doivent pouvoir être contestées.
+
+
+## Détection de doublons — signal indicatif
+
+Le module `functions/matching/src/listing-dedupe.js` compare les titres de produits normalisés, la catégorie et la zone déclarée. Il signale les paires très proches sans supprimer, bloquer ni fusionner automatiquement les annonces. Le calcul est limité à un échantillon de 500 annonces par chargement pour préserver les quotas du projet gratuit ; il ne garantit donc pas une détection mondiale exhaustive.
