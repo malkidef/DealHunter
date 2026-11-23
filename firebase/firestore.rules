@@ -358,6 +358,83 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+
+    // Marché des compétences : profil public volontaire et offres d'emploi/missions.
+    // Les catalogues excluent coordonnées privées et attributs sensibles.
+    match /publicWorkerProfiles/{profileId} {
+      function validWorkerProfile() {
+        return request.resource.data.keys().hasOnly([
+          "ownerUid","title","category","description","location","countryCode",
+          "skills","qualifications","engagementTypes","availableFrom","remote",
+          "publicProfileConsent","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid","title","category","description","location","countryCode",
+          "skills","qualifications","engagementTypes","availableFrom","remote",
+          "publicProfileConsent","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.category is string
+        && request.resource.data.description is string
+        && request.resource.data.location is string
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.skills is list
+        && request.resource.data.qualifications is list
+        && request.resource.data.engagementTypes is list
+        && request.resource.data.engagementTypes.size() > 0
+        && request.resource.data.engagementTypes.hasOnly(["employment","independent"])
+        && request.resource.data.availableFrom is string
+        && request.resource.data.remote is bool
+        && request.resource.data.publicProfileConsent == true
+        && request.resource.data.status == "active"
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && validWorkerProfile();
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid && validWorkerProfile();
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /publicWorkOpenings/{openingId} {
+      function validWorkOpening() {
+        return request.resource.data.keys().hasOnly([
+          "ownerUid","company","title","category","description","location","countryCode",
+          "requiredSkills","requiredQualifications","engagementType","startDate",
+          "remoteAccepted","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid","company","title","category","description","location","countryCode",
+          "requiredSkills","requiredQualifications","engagementType","startDate",
+          "remoteAccepted","status","createdAt","updatedAt"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.company is string
+        && request.resource.data.title is string
+        && request.resource.data.category is string
+        && request.resource.data.description is string
+        && request.resource.data.location is string
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.requiredSkills is list
+        && request.resource.data.requiredQualifications is list
+        && request.resource.data.engagementType in ["employment","independent"]
+        && request.resource.data.startDate is string
+        && request.resource.data.remoteAccepted is bool
+        && request.resource.data.status == "active"
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && validWorkOpening();
+      allow update: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid && validWorkOpening();
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
