@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -395,8 +395,8 @@ if (!ready) {
 
     // Charge les annonces de tous les comptes connectés.
     const [publicSellerSnapshot, publicBuyerSnapshot] = await Promise.all([
-      getDocs(collection(db, "publicOffers")),
-      getDocs(collection(db, "publicNeeds"))
+      getDocs(query(collection(db, "publicOffers"), limit(500))),
+      getDocs(query(collection(db, "publicNeeds"), limit(500)))
     ]);
 
     // Nettoie uniquement les copies publiques orphelines appartenant à ce compte.
@@ -441,8 +441,8 @@ if (!ready) {
       };
     });
     const [serviceOfferSnapshot, serviceRequestSnapshot] = await Promise.all([
-      getDocs(collection(db, "publicServiceOffers")),
-      getDocs(collection(db, "publicServiceRequests"))
+      getDocs(query(collection(db, "publicServiceOffers"), limit(500))),
+      getDocs(query(collection(db, "publicServiceRequests"), limit(500)))
     ]);
     const serviceOffers = serviceOfferSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
     const serviceRequests = serviceRequestSnapshot.docs.map(item => ({ id:item.id, ...item.data() }));
@@ -450,8 +450,8 @@ if (!ready) {
       detail: { offers: serviceOffers, requests: serviceRequests }
     }));
     const [workerProfileSnapshot, workOpeningSnapshot] = await Promise.all([
-      getDocs(collection(db, "publicWorkerProfiles")),
-      getDocs(collection(db, "publicWorkOpenings"))
+      getDocs(query(collection(db, "publicWorkerProfiles"), limit(500))),
+      getDocs(query(collection(db, "publicWorkOpenings"), limit(500)))
     ]);
     window.dispatchEvent(new CustomEvent("dealhunter-work-data", {
       detail: {
