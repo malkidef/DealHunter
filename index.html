@@ -797,9 +797,18 @@ window.addEventListener('dealhunter-service-match-requests',e=>{
   const state=r.status==='pending'?'En attente':r.status==='accepted'?'Acceptée':'Refusée';
   const action=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
    ?'<button type="button" data-service-decision="'+escapeHtml(r.id)+'" data-decision="accepted">Accepter</button> <button type="button" class="secondary" data-service-decision="'+escapeHtml(r.id)+'" data-decision="rejected">Refuser</button>':'';
-  const accepted=r.status==='accepted'?'<div class="status-note">Accord bilatéral obtenu. La prochaine étape est l’accès à la messagerie dédiée aux prestations.</div>':'';
+  const accepted=r.status==='accepted'?'<section class="item"><h4>Conversation sécurisée</h4><div class="cards">'+((r.messages||[]).map(m=>'<article class="item"><strong>'+((m.senderUid||'')===(window.dealhunterUserUid||'')?'Moi':'Entreprise participante')+'</strong><p>'+escapeHtml(m.text||'')+'</p></article>').join('')||'<div class="empty">Aucun message pour le moment.</div>')+'</div><form data-service-message-form="'+escapeHtml(r.id)+'"><div class="field"><label>Message</label><textarea name="message" maxlength="2000" required rows="3" placeholder="Écris à l’entreprise…"></textarea></div><button type="submit">Envoyer</button></form></section>':'';
   return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(r.serviceTitle||'Service')+'</h3><div>'+escapeHtml(r.requesterCompany||'')+' → '+escapeHtml(r.recipientCompany||'')+'</div><p>Besoin : '+escapeHtml(r.needTitle||'')+'</p>'+action+accepted+'</article>';
  }).join(''):'<div class="empty">Aucune demande de service pour le moment.</div>';
+});
+$('serviceMatchRequestList').addEventListener('submit',e=>{
+ const form=e.target.closest('[data-service-message-form]');if(!form)return;
+ e.preventDefault();
+ const value=new FormData(form).get('message');
+ window.dispatchEvent(new CustomEvent('dealhunter-send-service-match-message',{detail:{
+  requestId:form.dataset.serviceMessageForm,text:value
+ }}));
+ form.reset();
 });
 $('serviceMatchRequestList').addEventListener('click',e=>{
  const button=e.target.closest('[data-service-decision]');if(!button)return;
