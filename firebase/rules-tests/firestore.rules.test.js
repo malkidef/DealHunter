@@ -151,9 +151,25 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(deleteDoc(doc(alice, "publicNeeds", "need-delete")));
   });
 
-  it("autorise une demande valide et refuse l'usurpation du demandeur", async () => {
+  it("autorise une demande valide uniquement pour les annonces actives des deux participants", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "publicOffers", "seller-record-1"), { ownerUid: "alice", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), { ownerUid: "bob", status: "active" });
+      await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", status: "closed" });
+    });
     const alice = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
+    const forgedOwner = requestData("alice", "bob");
+    forgedOwner.sellerId = "seller-owned-by-charlie";
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-owner"), forgedOwner));
+    const missingListing = requestData("alice", "bob");
+    missingListing.buyerId = "missing-buyer";
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-missing-listing"), missingListing));
+    const inactiveListing = requestData("alice", "bob");
+    inactiveListing.buyerId = "buyer-inactive";
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-inactive-listing"), inactiveListing));
     await assertFails(setDoc(doc(alice, "matchRequests", "request-2"), requestData("bob", "alice")));
     const extraParticipant = requestData("alice", "bob");
     extraParticipant.participantUids.push("charlie");
