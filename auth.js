@@ -283,7 +283,7 @@ if (!ready) {
       await addDoc(collection(db,"matchRequests"),{
         sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:sellerRecord.ownerUid,buyerUid:buyerRecord.ownerUid,
         participantUids:[sellerRecord.ownerUid,buyerRecord.ownerUid],requesterUid:user.uid,
-        recipientUid:isSeller?sellerRecord.ownerUid===user.uid?buyerRecord.ownerUid:sellerRecord.ownerUid:sellerRecord.ownerUid,
+        recipientUid:isSeller?buyerRecord.ownerUid:sellerRecord.ownerUid,
         requesterCompany:isSeller?(sellerRecord.company||d.sellerCompany):(buyerRecord.company||d.buyerCompany),
         recipientCompany:isSeller?(buyerRecord.company||d.buyerCompany):(sellerRecord.company||d.sellerCompany),
         product:sellerRecord.product||d.product||"",status:"pending",createdAt:serverTimestamp()
