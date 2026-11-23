@@ -470,9 +470,13 @@ window.addEventListener('dealhunter-cloud-data',event=>{
  sellers=Array.isArray(data.sellers)?data.sellers:[];
  buyers=Array.isArray(data.buyers)?data.buyers:[];
  const info=$('matchingDataStatus');
- if(info)info.textContent='Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.';
+ if(info)info.textContent=window.dealhunterUserUid
+  ?'Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.'
+  :'Connecte-toi pour synchroniser les annonces partagées et afficher les correspondances de ton compte.';
  const dashboardConnection=$('dashboardConnection');
- if(dashboardConnection)dashboardConnection.textContent='Firebase connecté · données synchronisées depuis ton compte. Les correspondances restent indicatives ; aucun paiement n’est activé.';
+ if(dashboardConnection)dashboardConnection.textContent=window.dealhunterUserUid
+  ?'Firebase connecté · données synchronisées depuis ton compte. Les correspondances restent indicatives ; aucun paiement n’est activé.'
+  :'Connexion requise pour accéder aux catalogues partagés.';
  render();
 });
 function render(){
