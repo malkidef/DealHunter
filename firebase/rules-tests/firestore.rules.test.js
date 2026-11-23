@@ -347,6 +347,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(updateDoc(doc(alice,"workMatchRequests","work-1"),{status:"accepted",respondedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(bob,"workMatchRequests","work-1"),{status:"accepted",respondedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"workMatchRequests","work-1"),{status:"rejected",candidateUid:"charlie",respondedAt:new Date()}));
+    await testEnv.withSecurityRulesDisabled(async c=>{await setDoc(doc(c.firestore(),"workMatchRequests","work-pending"),{...req,status:"pending"});});
+    await assertFails(addDoc(collection(alice,"workMatchMessages"),{requestId:"work-pending",senderUid:"alice",text:"Trop tôt",createdAt:new Date()}));
     const msg={requestId:"work-1",senderUid:"alice",text:"Bonjour",createdAt:new Date()};
     await assertSucceeds(addDoc(collection(alice,"workMatchMessages"),msg));
     await assertFails(addDoc(collection(alice,"workMatchMessages"),{...msg,privatePhone:"0600000000"}));
