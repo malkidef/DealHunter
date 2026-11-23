@@ -62,6 +62,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="button" class="secondary" data-tab="account">Connexion / Compte</button>
 <button type="button" class="secondary" data-tab="sellers">Déposer un surplus</button>
 <button type="button" class="secondary" data-tab="buyers">Besoins acheteurs</button>
+<button type="button" class="secondary" data-tab="services">Services B2B</button>
 <button type="button" class="secondary" data-tab="imports">Import CSV</button>
 <button type="button" class="secondary" data-tab="gsa">Annonces GSA</button>
 <button type="button" class="secondary" data-tab="bodacc">Signaux BODACC</button>
@@ -174,6 +175,44 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <p class="muted">Comparaison indicative des mots-clés entre tes stocks locaux et les avis SAM.gov / TED. Ce n’est pas une confirmation d’achat : aucun besoin public n’est ajouté à tes acheteurs enregistrés.</p>
 <div id="publicMatchSummary" class="muted"></div>
 <div id="publicMatchList" class="cards"></div>
+</section>
+</div>
+<div id="services" class="grid hidden">
+<section class="panel">
+<h2>Proposer un service professionnel</h2>
+<p class="muted">Publie une prestation disponible pour les entreprises. Ne renseigne aucune coordonnée personnelle.</p>
+<form id="serviceOfferForm">
+<div class="field"><label for="soCompany">Entreprise prestataire</label><input id="soCompany" required maxlength="120"></div>
+<div class="field"><label for="soTitle">Service proposé</label><input id="soTitle" required maxlength="120" placeholder="Maintenance électrique industrielle"></div>
+<div class="field"><label for="soDescription">Description</label><textarea id="soDescription" required maxlength="1500" rows="3"></textarea></div>
+<div class="field"><label for="soCategory">Catégorie / métier</label><input id="soCategory" required maxlength="100" placeholder="Maintenance électrique"></div>
+<div class="field"><label for="soLocation">Ville / zone d'intervention</label><input id="soLocation" required maxlength="120"></div>
+<div class="field"><label for="soCountry">Code pays ISO (ex. FR, BE, DE)</label><input id="soCountry" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}" value="FR"></div>
+<div class="field"><label for="soQualifications">Qualifications / habilitations (séparées par des virgules)</label><input id="soQualifications" maxlength="500" placeholder="habilitation électrique, CACES"></div>
+<div class="field"><label for="soRadius">Rayon d'intervention (km)</label><input id="soRadius" type="number" min="0" max="5000" value="50" required></div>
+<label><input id="soRemote" type="checkbox" style="width:auto"> Prestation réalisable à distance</label>
+<button type="submit">Publier mon service</button>
+</form>
+</section>
+<section class="panel">
+<h2>Rechercher un prestataire</h2>
+<p class="muted">Décris la prestation nécessaire. Les qualifications obligatoires seront contrôlées avant tout rapprochement.</p>
+<form id="serviceRequestForm">
+<div class="field"><label for="srCompany">Entreprise demandeuse</label><input id="srCompany" required maxlength="120"></div>
+<div class="field"><label for="srTitle">Service recherché</label><input id="srTitle" required maxlength="120"></div>
+<div class="field"><label for="srDescription">Description du besoin</label><textarea id="srDescription" required maxlength="1500" rows="3"></textarea></div>
+<div class="field"><label for="srCategory">Catégorie / métier</label><input id="srCategory" required maxlength="100"></div>
+<div class="field"><label for="srLocation">Ville / zone souhaitée</label><input id="srLocation" required maxlength="120"></div>
+<div class="field"><label for="srCountry">Code pays ISO</label><input id="srCountry" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}" value="FR"></div>
+<div class="field"><label for="srQualifications">Qualifications obligatoires (séparées par des virgules)</label><input id="srQualifications" maxlength="500"></div>
+<label><input id="srRemote" type="checkbox" style="width:auto"> Accepte une prestation à distance</label>
+<button type="submit">Publier ma recherche</button>
+</form>
+</section>
+<section class="panel" style="grid-column:1/-1">
+<h2>Catalogue des services</h2>
+<p class="muted">Les fiches sont publiques uniquement pour les utilisateurs connectés. Les coordonnées ne sont jamais affichées ici.</p>
+<div id="serviceCatalog" class="cards"><div class="empty">Connecte-toi pour charger les offres et demandes de services.</div></div>
 </section>
 </div>
 <section id="imports" class="panel hidden">
@@ -853,7 +892,31 @@ window.addEventListener('dealhunter-deals',e=>{
     }
   }}));
  });
-document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','services','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','services','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
+const splitQualifications=value=>value.split(',').map(x=>x.trim()).filter(Boolean);
+$('serviceOfferForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ window.dispatchEvent(new CustomEvent('dealhunter-save-service-record',{detail:{collectionName:'publicServiceOffers',record:{
+  company:$('soCompany').value,title:$('soTitle').value,description:$('soDescription').value,category:$('soCategory').value,
+  location:$('soLocation').value,countryCode:$('soCountry').value.toUpperCase(),qualifications:splitQualifications($('soQualifications').value),
+  coverageRadiusKm:Number($('soRadius').value),remote:$('soRemote').checked
+ }}}));
+});
+$('serviceRequestForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ window.dispatchEvent(new CustomEvent('dealhunter-save-service-record',{detail:{collectionName:'publicServiceRequests',record:{
+  company:$('srCompany').value,title:$('srTitle').value,description:$('srDescription').value,category:$('srCategory').value,
+  location:$('srLocation').value,countryCode:$('srCountry').value.toUpperCase(),qualifications:splitQualifications($('srQualifications').value),
+  coverageRadiusKm:0,remote:$('srRemote').checked
+ }}}));
+});
+window.addEventListener('dealhunter-service-data',e=>{
+ const el=$('serviceCatalog');if(!el)return;
+ const offers=Array.isArray(e.detail?.offers)?e.detail.offers:[];
+ const requests=Array.isArray(e.detail?.requests)?e.detail.requests:[];
+ const cards=[...offers.map(x=>({...x,kind:'Prestataire'})),...requests.map(x=>({...x,kind:'Recherche'}))];
+ el.innerHTML=cards.length?cards.map(x=>'<article class="item"><span class="pill">'+escapeHtml(x.kind)+'</span><h3>'+escapeHtml(x.title||'Service')+'</h3><div>'+escapeHtml(x.company||'')+' · '+escapeHtml(x.category||'')+'</div><p>'+escapeHtml(x.description||'')+'</p><div class="muted">'+escapeHtml(x.location||'')+' · '+escapeHtml(x.countryCode||'')+(x.remote?' · À distance possible':'')+'</div><div class="muted">Qualifications : '+escapeHtml((x.qualifications||[]).join(', ')||'Non précisées')+'</div></article>').join(''):'<div class="empty">Aucune offre ou recherche de service publiée.</div>';
+});
 $('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 document.addEventListener('click',e=>{const btn=e.target.closest('[data-remove-business-record]');if(!btn)return;const collectionName=btn.dataset.collection,recordId=btn.dataset.recordId;if(!['sellerOffers','buyerNeeds'].includes(collectionName)||!recordId)return;const label=collectionName==='sellerOffers'?'ce stock':'ce besoin';if(!window.confirm('Retirer '+label+' ? Sa copie du catalogue partagé sera également supprimée.'))return;btn.disabled=true;btn.textContent='Retrait…';window.dispatchEvent(new CustomEvent('dealhunter-remove-business-record',{detail:{collectionName,recordId}}));});
@@ -868,5 +931,5 @@ syncSamFeed();
 syncTedFeed();
 syncBodaccFeed();
 </script>
-<script type="module" src="auth.js?v=20261118-19"></script>
+<script type="module" src="auth.js?v=20261123-20"></script>
 </body></html>
