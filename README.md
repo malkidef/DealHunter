@@ -55,6 +55,16 @@ Le premier affichage des correspondances est volontairement conservateur : caté
 
 Cette interface ne contacte personne automatiquement et ne traite pas encore le recrutement de salariés ou de travailleurs indépendants. La prochaine brique est la demande de mise en relation avec acceptation des deux entreprises, puis le parcours distinct des travailleurs.
 
+## Marché des compétences — moteur de matching initial
+
+Le module pur functions/matching/src/work-matching.js rapproche des profils professionnels et des offres d’entreprises. Il sépare deux engagements : employment (poste salarié) et independent (mission indépendante).
+
+Les filtres contrôlent le statut actif, les propriétaires, le type d’engagement, la catégorie métier, la zone, le distanciel, les compétences et les qualifications obligatoires. Les résultats sont des suggestions, jamais une décision de recrutement.
+
+Le schéma cible est décrit dans docs/WORK_MARKET_SCHEMA.md. Les tests sont dans tests/test_work_matching.js et intégrés au workflow CI.
+
+Ce commit ajoute le moteur et le schéma, pas encore les formulaires ni les collections Firestore. Les profils publics ne devront contenir aucune coordonnée personnelle ni donnée sensible. Les qualifications déclarées restent à vérifier humainement.
+
 ## Premier connecteur de collecte : GSA Auctions
 
 Le connecteur utilise l'API GET officielle de la General Services Administration (GSA), qui fournit des annonces en JSON ou XML :
