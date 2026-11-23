@@ -55,11 +55,12 @@ if (!ready) {
 
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
-    const [snap, dealSnap, generatedSnap, serviceRequestSnap] = await Promise.all([
+    const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] = await Promise.all([
       getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid))),
-      getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid)))
+      getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid))),
+      getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)))
     ]);
     const serviceRequests = serviceRequestSnap.docs.map(item => ({id:item.id,...item.data()}));
     for(const request of serviceRequests){
@@ -68,6 +69,13 @@ if (!ready) {
       request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
     }
     window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
+    const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
+    for(const request of workRequests){
+      if(request.status!=="accepted")continue;
+      const messages=await getDocs(query(collection(db,"workMatchMessages"),where("requestId","==",request.id)));
+      request.messages=messages.docs.map(item=>({id:item.id,...item.data()})).sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));
+    }
+    window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests}}));
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
@@ -165,6 +173,42 @@ if (!ready) {
       await loadMatchRequests(user);
       status.textContent=decision==="accepted"?"Mise en relation de services acceptée. Vous pouvez désormais échanger dans la conversation privée.":"Demande de service refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+
+
+  window.addEventListener("dealhunter-create-work-match-request",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.candidateProfileId||!d.openingId){status.textContent="Connecte-toi pour demander cette mise en relation.";return;}
+    try{
+      const [ps,os]=await Promise.all([getDoc(doc(db,"publicWorkerProfiles",d.candidateProfileId)),getDoc(doc(db,"publicWorkOpenings",d.openingId))]);
+      if(!ps.exists()||!os.exists())throw new Error("Le profil ou l'offre n'existe plus.");
+      const p=ps.data(),o=os.data();
+      if(p.status!=="active"||o.status!=="active"||p.publicProfileConsent!==true)throw new Error("Le profil ou l'offre n'est plus actif.");
+      if(p.ownerUid===o.ownerUid||![p.ownerUid,o.ownerUid].includes(user.uid))throw new Error("Seul le candidat ou l'employeur concerné peut lancer cette demande.");
+      if(!Array.isArray(p.engagementTypes)||!p.engagementTypes.includes(o.engagementType)||d.engagementType!==o.engagementType)throw new Error("Le type d'engagement ne correspond pas.");
+      const existing=await getDocs(query(collection(db,"workMatchRequests"),where("candidateProfileId","==",d.candidateProfileId)));
+      if(existing.docs.some(x=>x.data().openingId===d.openingId&&x.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
+      const candidate=user.uid===p.ownerUid;
+      await addDoc(collection(db,"workMatchRequests"),{candidateProfileId:d.candidateProfileId,openingId:d.openingId,candidateUid:p.ownerUid,employerUid:o.ownerUid,participantUids:[p.ownerUid,o.ownerUid],requesterUid:user.uid,recipientUid:candidate?o.ownerUid:p.ownerUid,engagementType:o.engagementType,candidateTitle:p.title,openingTitle:o.title,status:"pending",createdAt:serverTimestamp()});
+      await loadMatchRequests(user);status.textContent="Demande envoyée. L'autre partie doit accepter avant l'ouverture de la conversation.";
+    }catch(err){console.error(err);status.textContent="Mise en relation impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-update-work-match-request",async e=>{
+    const user=auth.currentUser,{requestId,decision}=e.detail||{};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    try{const ref=doc(db,"workMatchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")throw new Error("Seul le destinataire peut répondre à cette demande.");
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);
+      status.textContent=decision==="accepted"?"Mise en relation professionnelle acceptée. Conversation privée ouverte.":"Demande professionnelle refusée.";
+    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+  });
+  window.addEventListener("dealhunter-send-work-match-message",async e=>{
+    const user=auth.currentUser,{requestId,text:messageText}=e.detail||{},message=String(messageText||"").trim();
+    if(!user||!requestId||!message||message.length>2000)return;
+    try{const snap=await getDoc(doc(db,"workMatchRequests",requestId));
+      if(!snap.exists()||snap.data().status!=="accepted"||!snap.data().participantUids?.includes(user.uid))throw new Error("Conversation accessible uniquement aux participants après acceptation.");
+      await addDoc(collection(db,"workMatchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});await loadMatchRequests(user);status.textContent="Message professionnel envoyé.";
+    }catch(err){console.error(err);status.textContent="Message non envoyé : "+(err.message||err.code);}
   });
 
   window.addEventListener("dealhunter-create-match-request",async e=>{
