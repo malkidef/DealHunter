@@ -886,6 +886,17 @@ if (!ready) {
     const record = Object.fromEntries(fields.map(([key, id, type]) => [
       key, type === "number" ? Number(document.getElementById(id).value) : document.getElementById(id).value.trim()
     ]));
+    if (record.currency) record.currency = record.currency.toUpperCase();
+    if (record.countryCode) record.countryCode = record.countryCode.toUpperCase();
+    if (record.unit) record.unit = record.unit.trim();
+    if (record.currency && !/^[A-Z]{3}$/.test(record.currency)) {
+      status.textContent = "La devise doit être un code ISO 4217 à trois lettres (ex. EUR, USD).";
+      return;
+    }
+    if (record.countryCode && !/^[A-Z]{2}$/.test(record.countryCode)) {
+      status.textContent = "Le pays doit être un code ISO à deux lettres (ex. FR, US).";
+      return;
+    }
     try {
       const privateRef = await addDoc(collection(db, "users", user.uid, collectionName), {
         ...record,
