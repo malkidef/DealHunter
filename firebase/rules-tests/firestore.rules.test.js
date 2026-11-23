@@ -236,6 +236,40 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(deleteDoc(doc(alice, "publicServiceOffers", "service-1")));
   });
 
+  it("impose le double consentement pour les mises en relation de services", async () => {
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    const bob = testEnv.authenticatedContext("bob").firestore();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db=context.firestore();
+      await setDoc(doc(db,"publicServiceOffers","offer-svc"),{
+        ownerUid:"alice",company:"Prestataire A",title:"Maintenance",description:"Service",
+        category:"maintenance",location:"Lille",countryCode:"FR",qualifications:[],
+        remote:false,coverageRadiusKm:30,requiredQualifications:[],remoteAccepted:false,
+        status:"active",createdAt:new Date(),updatedAt:new Date()
+      });
+      await setDoc(doc(db,"publicServiceRequests","need-svc"),{
+        ownerUid:"bob",company:"Client B",title:"Recherche maintenance",description:"Besoin",
+        category:"maintenance",location:"Lille",countryCode:"FR",qualifications:[],
+        requiredQualifications:[],remote:false,coverageRadiusKm:0,remoteAccepted:false,
+        status:"active",createdAt:new Date(),updatedAt:new Date()
+      });
+    });
+    const request = {
+      offerId:"offer-svc",serviceRequestId:"need-svc",providerUid:"alice",clientUid:"bob",
+      participantUids:["alice","bob"],requesterUid:"alice",recipientUid:"bob",
+      requesterCompany:"Prestataire A",recipientCompany:"Client B",
+      serviceTitle:"Maintenance",needTitle:"Recherche maintenance",
+      status:"pending",createdAt:new Date()
+    };
+    await assertSucceeds(setDoc(doc(alice,"serviceMatchRequests","svc-1"),request));
+    await assertSucceeds(getDoc(doc(bob,"serviceMatchRequests","svc-1")));
+    await assertFails(updateDoc(doc(alice,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",providerUid:"bob",respondedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"rejected",participantUids:["bob"],respondedAt:new Date()}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-extra"),{...request,privateEmail:"secret@example.test"}));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
