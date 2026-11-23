@@ -94,14 +94,8 @@ if (!ready) {
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
-    const [givenReviews, receivedReviews] = await Promise.all([
-      getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
-      getDocs(query(collection(db,"dealReviews"),where("subjectUid","==",user.uid)))
-    ]);
-    window.dispatchEvent(new CustomEvent("dealhunter-deal-reviews",{detail:{
-      given:givenReviews.docs.map(item=>({id:item.id,...item.data()})),
-      received:receivedReviews.docs.map(item=>({id:item.id,...item.data()}))
-    }}));
+    // Publier d'abord les demandes : les avis sont secondaires et ne doivent
+    // jamais empêcher l'affichage de la boîte de réception.
     window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
     const dealsByRequest = new Map();
     deals.forEach(deal => {
@@ -135,6 +129,19 @@ if (!ready) {
       }
     }
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
+    const reviewReads = await Promise.allSettled([
+      getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
+      getDocs(query(collection(db,"dealReviews"),where("subjectUid","==",user.uid)))
+    ]);
+    const emptyReviews = {docs:[]};
+    const givenReviews = reviewReads[0].status==="fulfilled" ? reviewReads[0].value : emptyReviews;
+    const receivedReviews = reviewReads[1].status==="fulfilled" ? reviewReads[1].value : emptyReviews;
+    if(reviewReads.some(result=>result.status==="rejected"))
+      console.warn("Avis DealHunter indisponibles ; les demandes restent affichées.");
+    window.dispatchEvent(new CustomEvent("dealhunter-deal-reviews",{detail:{
+      given:givenReviews.docs.map(item=>({id:item.id,...item.data()})),
+      received:receivedReviews.docs.map(item=>({id:item.id,...item.data()}))
+    }}));
   };
   window.addEventListener("dealhunter-create-service-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
