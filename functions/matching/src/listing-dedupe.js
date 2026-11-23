@@ -18,8 +18,9 @@
         const a=items[i],b=items[j];
         if(!a||!b||!a.id||!b.id||a.id===b.id)continue;
         const sameCategory=normalize(a.category)===normalize(b.category);
-        const sameCountry=normalize(a.countryCode)===normalize(b.countryCode);
-        if(!sameCategory||!sameCountry)continue;
+        const geoA=normalize(a.countryCode||a.location),geoB=normalize(b.countryCode||b.location);
+        const sameGeo=geoA&&geoB&&geoA===geoB;
+        if(!sameCategory||!sameGeo)continue;
         const titleA=a.product||a.title||a.name||"",titleB=b.product||b.title||b.name||"";
         const score=similarity(titleA,titleB);
         if(score>=threshold){
