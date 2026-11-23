@@ -11,10 +11,10 @@ test("calcule une similarité de tokens",()=>{
 });
 test("signale les titres proches dans la même catégorie et le même pays",()=>{
   const records=[
-    {id:"a",ownerUid:"seller-a",product:"Câble cuivre 100 m",category:"Câbles",countryCode:"FR"},
-    {id:"b",ownerUid:"seller-b",product:"Cable cuivre 100m",category:"Cables",countryCode:"FR"},
-    {id:"c",ownerUid:"seller-c",product:"Ordinateur portable",category:"Informatique",countryCode:"FR"},
-    {id:"d",ownerUid:"seller-d",product:"Câble cuivre 100m",category:"Câbles",countryCode:"DE"}
+    {id:"a",ownerUid:"seller-a",product:"Câble cuivre 100 m",category:"Câbles",location:"Paris"},
+    {id:"b",ownerUid:"seller-b",product:"Cable cuivre 100m",category:"Cables",location:"Paris"},
+    {id:"c",ownerUid:"seller-c",product:"Ordinateur portable",category:"Informatique",location:"Paris"},
+    {id:"d",ownerUid:"seller-d",product:"Câble cuivre 100m",category:"Câbles",location:"Berlin"}
   ];
   const pairs=findPotentialDuplicates(records);
   assert.equal(pairs.length,1);
