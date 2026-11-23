@@ -122,6 +122,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <section class="dashboard-section">
 <h3>Transactions et litiges</h3>
 <p class="muted">Suivi des accords et confirmations des deux entreprises. La commission de 5 % est calculée à titre indicatif uniquement : aucun paiement ni prélèvement n’est activé.</p>
+<h3>Doublons potentiels détectés</h3><p class="muted">Signalement indicatif : aucune annonce n’est supprimée automatiquement.</p><div id="duplicateSignalsList" class="empty">Aucun doublon potentiel détecté.</div>
 <div id="dealDashboardList" class="empty">Aucun accord de vente à afficher pour le moment.</div><h3 style="margin-top:24px">Avis reçus</h3><div id="dealReviewsReceived" class="empty">Aucun avis reçu pour le moment.</div>
 </section>
 </section>
@@ -366,6 +367,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </section>
 </main>
 <footer>DEALHUNTER © 2026 — Matching multi-entreprises en phase de test.</footer>
+<script src="functions/matching/src/listing-dedupe.js"></script>
 <script src="functions/matching/src/work-matching.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -944,6 +946,12 @@ document.addEventListener('click',e=>{
  if(accept){accept.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
  const confirm=e.target.closest('[data-deal-confirm]');
  if(confirm){confirm.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+});
+window.addEventListener('dealhunter-duplicate-signals',e=>{
+ const pairs=Array.isArray(e.detail?.pairs)?e.detail.pairs:[],el=$('duplicateSignalsList');
+ if(!el)return;
+ el.className=pairs.length?'cards':'empty';
+ el.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><strong>Doublon potentiel</strong><div>Fiches '+escapeHtml(p.firstId)+' et '+escapeHtml(p.secondId)+'</div><div class="muted">'+escapeHtml(p.reason)+' · similarité '+escapeHtml(String(Math.round(p.score*100)))+' %</div></article>').join(''):'Aucun doublon potentiel détecté.';
 });
 window.dealhunterReviewsGiven=[];
 window.addEventListener('dealhunter-deal-reviews',e=>{
