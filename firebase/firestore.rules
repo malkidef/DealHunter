@@ -645,6 +645,35 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Signalements de fraude ou d'annonces suspectes, privés par défaut.
+    match /trustReports/{reportId} {
+      function isTrustAdmin() {
+        return request.auth != null && request.auth.token.dealhunterAdmin == true;
+      }
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(["reporterUid","targetType","targetId","reason","description","status","createdAt"])
+        && request.resource.data.keys().hasAll(["reporterUid","targetType","targetId","reason","description","status","createdAt"])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.targetType in ["company","product_listing","service_listing","work_profile","work_opening","deal"]
+        && request.resource.data.targetId is string
+        && request.resource.data.targetId.size() >= 1
+        && request.resource.data.targetId.size() <= 160
+        && request.resource.data.reason in ["fraud","counterfeit","misleading","duplicate","unsafe","spam","other"]
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.status == "pending"
+        && request.resource.data.createdAt is timestamp;
+      allow read: if request.auth != null
+        && (resource.data.reporterUid == request.auth.uid || isTrustAdmin());
+      allow update: if isTrustAdmin()
+        && resource.data.status == "pending"
+        && request.resource.data.status in ["reviewed","actioned","false_positive"]
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","reviewedAt"])
+        && request.resource.data.reviewedAt is timestamp
+        && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500));
+      allow delete: if false;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
