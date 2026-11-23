@@ -864,6 +864,7 @@ $('importList').addEventListener('click',e=>{
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product}}));b.disabled=true;b.textContent='Demande en cours…';});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go-matches]');if(!b)return;window.dealhunterShowTab('matches',document.querySelector('[data-tab="matches"]'));});
 window.addEventListener('dealhunter-generated-matches',e=>{
  const el=$('scheduledMatchList');
  if(!el)return;
@@ -945,7 +946,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
         : '<div class="muted">'+(r.status==='pending'?'En attente de réponse':'Demande refusée')+'</div>';
     }
     return '<article class="item"><span class="pill">'+status+'</span><h3>'+escapeHtml(r.requesterCompany||'Entreprise')+' → '+escapeHtml(r.recipientCompany||'Entreprise')+'</h3><div>'+escapeHtml(r.product||'Produit')+'</div>'+details+'</article>';
-  }).join(''):'<div class="empty">Aucune demande pour le moment.</div>';
+  }).join(''):'<div class="empty">Aucune demande envoyée ou reçue pour le moment. Pour en créer une, ouvre <button type="button" class="secondary" data-go-matches>Correspondances</button>, puis sélectionne « Demander la mise en relation » sur une suggestion.';
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));b.disabled=true;});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
