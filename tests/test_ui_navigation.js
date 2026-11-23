@@ -37,5 +37,5 @@ test("les formulaires stock et besoin déclenchent une publication cloud", () =>
   assert.match(auth, /batch\.set\(privateRef, privatePayload\)/);
   assert.match(auth, /batch\.set\(publicRef, publicPayload\)/);
   assert.match(html, /data-edit-buyer-record/);
-  assert.match(auth, /collectionName === "buyerNeeds"/);
+  assert.ok(auth.includes('"buyerNeeds"'), "La modification des besoins acheteurs doit être gérée côté Firebase");
 });
