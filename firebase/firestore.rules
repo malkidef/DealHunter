@@ -24,7 +24,7 @@ service cloud.firestore {
       function validOffer() {
         return request.resource.data.keys().hasOnly([
           "ownerUid", "company", "product", "category", "quantity",
-          "unitPrice", "location", "status", "createdAt"
+          "unitPrice", "unit", "currency", "countryCode", "location", "status", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
           "ownerUid", "company", "product", "category", "quantity",
@@ -38,6 +38,9 @@ service cloud.firestore {
         && request.resource.data.unitPrice is number
         && request.resource.data.location is string
         && request.resource.data.status == "active"
+        && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
+        && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
+        && (!("countryCode" in request.resource.data) || (request.resource.data.countryCode is string && request.resource.data.countryCode.matches("^[A-Z]{2}$")))
         && request.resource.data.createdAt is timestamp;
       }
       allow read: if request.auth != null;
@@ -56,7 +59,7 @@ service cloud.firestore {
       function validNeed() {
         return request.resource.data.keys().hasOnly([
           "ownerUid", "company", "product", "category", "quantity",
-          "maxUnitBudget", "location", "status", "createdAt"
+          "maxUnitBudget", "unit", "currency", "countryCode", "location", "status", "createdAt"
         ])
         && request.resource.data.keys().hasAll([
           "ownerUid", "company", "product", "category", "quantity",
@@ -70,6 +73,9 @@ service cloud.firestore {
         && request.resource.data.maxUnitBudget is number
         && request.resource.data.location is string
         && request.resource.data.status == "active"
+        && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
+        && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
+        && (!("countryCode" in request.resource.data) || (request.resource.data.countryCode is string && request.resource.data.countryCode.matches("^[A-Z]{2}$")))
         && request.resource.data.createdAt is timestamp;
       }
       allow read: if request.auth != null;
