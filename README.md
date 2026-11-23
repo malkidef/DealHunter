@@ -122,3 +122,11 @@ Les règles Firestore et les tests couvrent l'identité des propriétaires, la c
 Le formulaire de vérification est disponible dans le marché des compétences. Les utilisateurs soumettent uniquement un lien HTTPS vers une preuve publique ; aucun document privé ni pièce d'identité n'est collecté. Les demandes sont privées, en attente par défaut et visibles globalement uniquement aux comptes portant le claim Firebase `dealhunterAdmin: true`. Seul un réviseur autorisé peut les valider ou les refuser ; le propriétaire peut retirer sa demande en attente. Voir [docs/VERIFICATION_REVIEW.md](docs/VERIFICATION_REVIEW.md) pour le modèle de revue et l'attribution sécurisée du rôle.
 
 Cette revue est manuelle et n'est pas encore une certification automatisée. L'identité, la validité temporelle des qualifications et la conformité locale doivent être vérifiées humainement. Les règles et le parcours doivent encore passer les derniers tests CI de cette branche.
+
+
+## Avis et signalements de confiance
+
+- Un participant peut déposer un seul avis par transaction, uniquement après que les deux parties ont confirmé la réalisation. Les avis sont immuables et visibles aux utilisateurs connectés.
+- Les signalements de fraude, contrefaçon, annonce trompeuse, doublon, risque de sécurité ou spam sont privés : le déclarant et les comptes de modération autorisés peuvent les consulter.
+- Seul un compte portant le claim Firebase `dealhunterAdmin: true` peut traiter un signalement. Les actions de modération sont journalisées dans le statut et l'horodatage ; aucune sanction automatique n'est appliquée.
+- Les avis et signalements ne prouvent pas à eux seuls une fraude ou une bonne qualité. Une revue humaine est nécessaire et les décisions doivent pouvoir être contestées.
