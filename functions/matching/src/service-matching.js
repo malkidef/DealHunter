@@ -45,10 +45,9 @@ function scoreServicePair(provider, request) {
   if (provider.ownerUid === request.ownerUid) return null;
 
   const remote = provider.remote === true && request.remoteAccepted === true;
-  const sameCountry = normalize(provider.countryCode) === normalize(request.countryCode);
   const sameArea = normalize(provider.location) === normalize(request.location);
-  const coverage = Number(provider.coverageRadiusKm);
-  const locationCompatible = remote || sameArea || (sameCountry && Number.isFinite(coverage) && coverage > 0);
+  // No geocoding is configured yet: never infer a real radius from city/country strings.
+  const locationCompatible = remote || sameArea;
   if (!locationCompatible) return null;
 
   const categoryMatch = normalize(provider.category) === normalize(request.category);
@@ -61,7 +60,7 @@ function scoreServicePair(provider, request) {
   if (missingQualifications.length) return null;
 
   const categoryScore = categoryMatch ? 45 : Math.round(categorySimilarity * 35);
-  const locationScore = remote ? 20 : sameArea ? 20 : sameCountry ? 12 : 0;
+  const locationScore = remote ? 20 : sameArea ? 20 : 0;
   const descriptionScore = Math.round(textSimilarity(
     [provider.title, provider.description].filter(Boolean).join(" "),
     [request.title, request.description].filter(Boolean).join(" ")
@@ -79,7 +78,7 @@ function scoreServicePair(provider, request) {
     category: provider.category,
     service: provider.title || request.title || provider.category,
     compatibilityScore: score,
-    locationMode: remote ? "remote" : sameArea ? "same_area" : "same_country",
+    locationMode: remote ? "remote" : "same_area",
     missingQualifications: [],
     status: "suggested"
   };
