@@ -79,6 +79,14 @@ if (!ready) {
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
+    const [givenReviews, receivedReviews] = await Promise.all([
+      getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
+      getDocs(query(collection(db,"dealReviews"),where("subjectUid","==",user.uid)))
+    ]);
+    window.dispatchEvent(new CustomEvent("dealhunter-deal-reviews",{detail:{
+      given:givenReviews.docs.map(item=>({id:item.id,...item.data()})),
+      received:receivedReviews.docs.map(item=>({id:item.id,...item.data()}))
+    }}));
     window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
     const dealsByRequest = new Map();
     deals.forEach(deal => {
@@ -229,6 +237,25 @@ if (!ready) {
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
     }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
   });
+  window.addEventListener("dealhunter-create-deal-review",async e=>{
+    const user=auth.currentUser,d=e.detail||{};
+    if(!user||!d.dealId){status.textContent="Connecte-toi pour déposer un avis.";return;}
+    const rating=Number(d.rating),comment=String(d.comment||"").trim();
+    if(!Number.isInteger(rating)||rating<1||rating>5||comment.length>800){status.textContent="Note de 1 à 5 et commentaire de 800 caractères maximum.";return;}
+    try{
+      const dealSnap=await getDoc(doc(db,"deals",d.dealId));
+      if(!dealSnap.exists())throw new Error("Transaction introuvable.");
+      const deal=dealSnap.data();
+      if(deal.status!=="completed"||!(deal.participantUids||[]).includes(user.uid))throw new Error("Un avis est possible uniquement après confirmation de la transaction par les deux parties.");
+      const subjectUid=deal.sellerUid===user.uid?deal.buyerUid:deal.sellerUid;
+      await setDoc(doc(db,"dealReviews",d.dealId+"_"+user.uid),{
+        dealId:d.dealId,reviewerUid:user.uid,subjectUid,rating,comment,createdAt:serverTimestamp()
+      });
+      await loadMatchRequests(user);
+      status.textContent="Avis publié. Merci pour ton retour.";
+    }catch(err){console.error("Publication avis impossible :",err);status.textContent="Avis non publié : "+(err.message||err.code);}
+  });
+
   window.addEventListener("dealhunter-propose-deal",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
