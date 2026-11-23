@@ -256,13 +256,36 @@ if (!ready) {
 
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
-    if(!user){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
-    if(![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){status.textContent="Cette demande n’est pas autorisée pour ce compte.";return;}
+    const result=(success,message)=>window.dispatchEvent(new CustomEvent("dealhunter-match-request-result",{
+      detail:{success,message,sellerId:d.sellerId||"",buyerId:d.buyerId||""}
+    }));
+    if(!user){const message="Connecte-toi pour demander une mise en relation.";status.textContent=message;result(false,message);return;}
+    if(!d.sellerUid||!d.buyerUid||![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){
+      const message="Cette correspondance n’est pas rattachée à deux comptes participants valides.";
+      status.textContent=message;result(false,message);return;
+    }
     try{
       const isSeller=user.uid===d.sellerUid;
-      await addDoc(collection(db,"matchRequests"),{sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,recipientUid:isSeller?d.buyerUid:d.sellerUid,requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,product:d.product||"",status:"pending",createdAt:serverTimestamp()});
-      await loadMatchRequests(user);status.textContent="Demande de mise en relation envoyée.";
-    }catch(err){console.error(err);status.textContent="Envoi impossible : "+(err.message||err.code);}
+      await addDoc(collection(db,"matchRequests"),{
+        sellerId:d.sellerId,buyerId:d.buyerId,sellerUid:d.sellerUid,buyerUid:d.buyerUid,
+        participantUids:[d.sellerUid,d.buyerUid],requesterUid:user.uid,
+        recipientUid:isSeller?d.buyerUid:d.sellerUid,
+        requesterCompany:isSeller?d.sellerCompany:d.buyerCompany,
+        recipientCompany:isSeller?d.buyerCompany:d.sellerCompany,
+        product:d.product||"",status:"pending",createdAt:serverTimestamp()
+      });
+      const message="Demande de mise en relation envoyée. Elle apparaît dans « Demandes ».";
+      status.textContent=message;result(true,message);
+      try { await loadMatchRequests(user); }
+      catch(refreshError) {
+        console.error("Demande créée, mais actualisation de la boîte de réception impossible :",refreshError);
+        status.textContent=message+" Actualise la page pour recharger la boîte de réception.";
+      }
+    }catch(err){
+      console.error("Envoi de la demande impossible :",err);
+      const message="Envoi impossible : "+(err.message||err.code||"erreur inconnue");
+      status.textContent=message;result(false,message);
+    }
   });
   window.addEventListener("dealhunter-update-match-request",async e=>{
     const user=auth.currentUser,{requestId,status:decision}=e.detail||{};
