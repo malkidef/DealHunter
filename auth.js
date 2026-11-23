@@ -24,6 +24,8 @@ const ready = Object.values(firebaseConfig).every(value =>
 
 if (!ready) {
   status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js.";
+  const matchingStatus = document.getElementById("matchingDataStatus");
+  if (matchingStatus) matchingStatus.textContent = "Firebase n’est pas configuré : renseigne firebase-web-config.js pour charger les annonces partagées.";
   [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
 } else {
   const app = initializeApp(firebaseConfig);
@@ -902,6 +904,16 @@ if (!ready) {
         return [startupLabels[index] + " : " + (result.reason?.code || result.reason?.message || "erreur inconnue")];
       });
       status.dataset.firestore = startupErrors.length ? "partial" : "saved";
+      if (startupTasks[1].status === "rejected") {
+        const matchingStatus = document.getElementById("matchingDataStatus");
+        if (matchingStatus) matchingStatus.textContent = "Synchronisation du catalogue impossible : " +
+          (startupTasks[1].reason?.code || startupTasks[1].reason?.message || "erreur inconnue");
+      }
+      if (startupTasks[2].status === "rejected") {
+        const requestList = document.getElementById("matchRequestList");
+        if (requestList) requestList.textContent = "Impossible de charger les demandes : " +
+          (startupTasks[2].reason?.code || startupTasks[2].reason?.message || "erreur inconnue");
+      }
       if (startupErrors.length) {
         status.append(document.createTextNode(" · Chargement partiel — " + startupErrors.join(" · ")));
       }
