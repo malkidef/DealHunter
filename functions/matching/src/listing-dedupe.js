@@ -1,6 +1,7 @@
 (function(root){
   function normalize(value){
     return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+      .replace(/([a-z])([0-9])/g,"$1 $2").replace(/([0-9])([a-z])/g,"$1 $2")
       .replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
   }
   function similarity(a,b){
@@ -24,7 +25,7 @@
         const titleA=a.product||a.title||a.name||"",titleB=b.product||b.title||b.name||"";
         const score=similarity(titleA,titleB);
         if(score>=threshold){
-          pairs.push({firstId:a.id,secondId:b.id,firstOwnerUid:a.ownerUid||null,secondOwnerUid:b.ownerUid||null,score:Number(score.toFixed(3)),reason:"Titre très proche, même catégorie et même pays"});
+          pairs.push({firstId:a.id,secondId:b.id,firstOwnerUid:a.ownerUid||null,secondOwnerUid:b.ownerUid||null,score:Number(score.toFixed(3)),reason:"Titre très proche, même catégorie et même zone déclarée"});
         }
       }
     }
