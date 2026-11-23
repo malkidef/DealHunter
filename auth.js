@@ -429,7 +429,7 @@ if (!ready) {
     const duplicatePairs = window.DealHunterListingDedupe
       ? window.DealHunterListingDedupe.findPotentialDuplicates(sellers)
       : [];
-    window.dispatchEvent(new CustomEvent("dealhunter-duplicate-signals", { detail: { pairs: duplicatePairs } }));
+    window.dispatchEvent(new CustomEvent("dealhunter-duplicate-signals", { detail: { pairs: duplicatePairs, truncated: sellers.length >= 500 } }));
     const buyers = publicBuyerSnapshot.docs.filter(item => !staleNeedIds.has(item.id)).map(item => {
       const data = item.data();
       return {
