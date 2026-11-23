@@ -797,7 +797,7 @@ window.addEventListener('dealhunter-service-match-requests',e=>{
   const state=r.status==='pending'?'En attente':r.status==='accepted'?'Acceptée':'Refusée';
   const action=r.status==='pending'&&r.recipientUid===(window.dealhunterUserUid||'')
    ?'<button type="button" data-service-decision="'+escapeHtml(r.id)+'" data-decision="accepted">Accepter</button> <button type="button" class="secondary" data-service-decision="'+escapeHtml(r.id)+'" data-decision="rejected">Refuser</button>':'';
-  const accepted=r.status==='accepted'?'<div class="status-note">Accord bilatéral obtenu. La prochaine étape est l'ouverture de la messagerie dédiée aux prestations.</div>':'';
+  const accepted=r.status==='accepted'?'<div class="status-note">Accord bilatéral obtenu. La prochaine étape est l’accès à la messagerie dédiée aux prestations.</div>':'';
   return '<article class="item"><span class="pill">'+state+'</span><h3>'+escapeHtml(r.serviceTitle||'Service')+'</h3><div>'+escapeHtml(r.requesterCompany||'')+' → '+escapeHtml(r.recipientCompany||'')+'</div><p>Besoin : '+escapeHtml(r.needTitle||'')+'</p>'+action+accepted+'</article>';
  }).join(''):'<div class="empty">Aucune demande de service pour le moment.</div>';
 });
