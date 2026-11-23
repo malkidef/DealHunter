@@ -929,29 +929,35 @@ if (!ready) {
   window.addEventListener("dealhunter-remove-business-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId } = event.detail || {};
+    const result = (success, message) => window.dispatchEvent(new CustomEvent("dealhunter-business-remove-result", {
+      detail: { success, message, collectionName, recordId }
+    }));
     if (!user || !["sellerOffers", "buyerNeeds"].includes(collectionName) || typeof recordId !== "string" || !recordId) {
-      status.textContent = "Retrait impossible : annonce ou compte non valide.";
-      return;
+      const message = "Retrait impossible : annonce ou compte non valide.";
+      status.textContent = message; result(false, message); return;
     }
     const privateRef = doc(db, "users", user.uid, collectionName, recordId);
     const isSeller = collectionName === "sellerOffers";
     const publicRef = doc(db, isSeller ? "publicOffers" : "publicNeeds", recordId);
     try {
       const [privateSnap, publicSnap] = await Promise.all([getDoc(privateRef), getDoc(publicRef)]);
+      if (!privateSnap.exists()) throw new Error("Cette annonce n’existe plus dans ton compte.");
       if (publicSnap.exists() && publicSnap.data().ownerUid !== user.uid) {
-        throw new Error("La copie du catalogue n'appartient pas à ce compte ; aucune annonce n'a été supprimée.");
+        throw new Error("La copie du catalogue n’appartient pas à ce compte ; aucune annonce n’a été supprimée.");
       }
       const batch = writeBatch(db);
-      if (privateSnap.exists()) batch.delete(privateRef);
+      batch.delete(privateRef);
       if (publicSnap.exists()) batch.delete(publicRef);
       await batch.commit();
       await loadCloudRecords(user);
-      status.textContent = isSeller
+      const message = isSeller
         ? "Stock retiré de tes annonces et du catalogue partagé."
         : "Besoin retiré de tes annonces et du catalogue partagé.";
+      status.textContent = message; result(true, message);
     } catch (error) {
-      console.error("Retrait de l'annonce impossible :", error);
-      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+      console.error("Retrait de l’annonce impossible :", error);
+      const message = "Retrait impossible : " + (error.code || error.message || "erreur inconnue");
+      status.textContent = message; result(false, message);
     }
   });
 
