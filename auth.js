@@ -917,7 +917,7 @@ if (!ready) {
         ? "Stock modifié et catalogue partagé synchronisé."
         : "Besoin acheteur modifié et catalogue partagé synchronisé.";
       status.textContent = message;
-      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated"));
+      window.dispatchEvent(new CustomEvent("dealhunter-business-record-updated", { detail: { collectionName } }));
       result(true, message);
     } catch (error) {
       console.error("Modification de l’annonce impossible :", error);
