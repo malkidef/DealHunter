@@ -37,6 +37,10 @@ test("exclut une zone incompatible hors pays et sans distanciel", () => {
   assert.equal(scoreServicePair(provider, { ...request, location: "Berlin", countryCode: "DE" }), null);
 });
 
+test("ne suppose pas une distance compatible à partir du seul pays", () => {
+  assert.equal(scoreServicePair(provider, { ...request, location: "Paris" }), null);
+});
+
 test("accepte le distanciel uniquement si les deux côtés le permettent", () => {
   const remoteProvider = { ...provider, location: "Lille", remote: true };
   const remoteRequest = { ...request, location: "Berlin", countryCode: "DE", remoteAccepted: true };
