@@ -973,7 +973,7 @@ window.addEventListener('dealhunter-match-requests',e=>{
     return '<article class="item"><span class="pill">'+status+'</span><h3>'+escapeHtml(r.requesterCompany||'Entreprise')+' → '+escapeHtml(r.recipientCompany||'Entreprise')+'</h3><div>'+escapeHtml(r.product||'Produit')+'</div>'+details+'</article>';
   }).join(''):(requestReadFailed
     ? '<div class="empty">Les demandes n’ont pas pu être lues dans Firestore. Vérifie la connexion et le déploiement des règles de sécurité, puis actualise la page.</div>'
-    : '<div class="empty">Aucune demande envoyée ou reçue pour le moment. Pour en créer une, ouvre <button type="button" class="secondary" data-go-matches>Correspondances</button>, puis sélectionne « Demander la mise en relation » sur une suggestion.</div>');
+    : '<div class="empty">Aucune demande envoyée ou reçue pour le moment. Pour en créer une, ouvre <button type="button" class="secondary" data-go-matches>Correspondances</button>, puis sélectionne « Demander la mise en relation » sur une suggestion.</div>'));
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent; b.disabled=true;b.textContent='Traitement…';window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));});
 window.addEventListener('dealhunter-match-decision-result',e=>{
