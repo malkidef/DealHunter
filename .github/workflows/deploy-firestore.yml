@@ -17,7 +17,6 @@ concurrency:
 
 jobs:
   deploy-firestore:
-    if: ${{ inputs.confirm_project == 'dealhunter-3747b' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,10 +26,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Vérifier le secret de déploiement
+      - name: Vérifier la confirmation du projet et le secret
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CONFIRM_PROJECT: ${{ inputs.confirm_project }}
         run: |
+          if [ "$CONFIRM_PROJECT" != "dealhunter-3747b" ]; then
+            echo "::error::Confirmation du projet incorrecte ; aucun déploiement effectué."
+            exit 1
+          fi
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
             echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent."
             exit 1
