@@ -1233,6 +1233,14 @@ $('workCatalog').addEventListener('click',e=>{
  window.dispatchEvent(new CustomEvent('dealhunter-delete-work-record',{detail:{collectionName:button.dataset.workCollection,recordId:button.dataset.workDelete}}));
 });
 
+window.addEventListener('dealhunter-work-delete-result',e=>{
+ const d=e.detail||{};
+ if(d.success)return;
+ document.querySelectorAll('[data-work-delete]').forEach(button=>{
+  if(button.dataset.workDelete!==d.recordId)return;
+  button.disabled=false;button.textContent='Retirer ma fiche';
+ });
+});
 window.addEventListener('dealhunter-work-data',e=>{
  const profiles=Array.isArray(e.detail?.profiles)?e.detail.profiles:[];
  const openings=Array.isArray(e.detail?.openings)?e.detail.openings:[];
