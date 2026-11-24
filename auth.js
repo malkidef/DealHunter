@@ -369,6 +369,7 @@ if (!ready) {
     if(!user||!dealId)return;
     try{
       const ref=doc(db,"deals",dealId);
+      let otherConfirmed = false;
       await runTransaction(db,async transaction=>{
         const snap=await transaction.get(ref);
         if(!snap.exists())throw new Error("Vente introuvable.");
@@ -377,7 +378,7 @@ if (!ready) {
         const isSeller=user.uid===deal.sellerUid;
         const field=isSeller?"sellerConfirmed":"buyerConfirmed";
         if(deal[field])throw new Error("Ta confirmation est déjà enregistrée.");
-        const otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
+        otherConfirmed=isSeller?deal.buyerConfirmed:deal.sellerConfirmed;
         transaction.update(ref,{
           [field]:true,
           [isSeller?"sellerConfirmedAt":"buyerConfirmedAt"]:serverTimestamp(),
