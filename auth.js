@@ -156,7 +156,7 @@ if (!ready) {
         r.messages = [];
       }
     }
-    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests}}));
+    window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests,failedCollections:failedReads}}));
     const reviewReads = await Promise.allSettled([
       getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
       getDocs(query(collection(db,"dealReviews"),where("subjectUid","==",user.uid)))
