@@ -41,8 +41,8 @@ Dernière revue : 24 novembre 2026. Branche principale : `main`.
 
 ## Bloqueurs avant ouverture publique
 
-- **Firebase** : activation et déploiement des règles/index non vérifiés ; présence et validité du secret `FIREBASE_SERVICE_ACCOUNT` non vérifiées ; tests de bout en bout non réalisés.
-- **Matching planifié** : le workflow est présent et les tests CI passent, mais une exécution manuelle avec le vrai secret et une vérification de ses résultats Firestore restent nécessaires.
+- **Firebase** : le compte de service Admin a réussi une exécution réelle du matching le 24 novembre ; l'activation et le déploiement des règles/index côté client restent non vérifiés ; tests de bout en bout non réalisés.
+- **Matching planifié** : au moins une exécution réelle a réussi. Il reste à vérifier les volumes de suggestions produits, leur affichage côté comptes utilisateurs et la régularité du déclenchement planifié.
 - **Modération** : attribuer le custom claim `dealhunterAdmin: true` à un réviseur de confiance via Firebase Admin SDK.
 - **Préproduction** : tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait et effacement.
 - **Protection des données** : finaliser bases légales, durées, accès/export/rectification/effacement, incidents et contrats sous-traitants. Voir `docs/PRIVACY_OPERATIONS.md`.
@@ -58,4 +58,4 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 
 ## Décision de lancement
 
-**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié et les workflows CI sont verts sur le commit audité ; Firebase reste à configurer et tester. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
+**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, les workflows CI sont verts et le matching serveur a réussi au moins une exécution réelle ; le parcours client Firebase, les règles/index déployés et les tests de bout en bout restent à vérifier. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
