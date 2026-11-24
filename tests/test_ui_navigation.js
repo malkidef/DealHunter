@@ -49,3 +49,30 @@ test("la confirmation de vente conserve le second accord hors de la transaction"
   assert.match(handler, /otherConfirmed=isSeller\?deal\.buyerConfirmed:deal\.sellerConfirmed;/);
   assert.match(handler, /status\.textContent=otherConfirmed\?/);
 });
+
+test("les résultats des actions Firebase sont visibles depuis tous les onglets", () => {
+  assert.match(html, /id="actionFeedback"[^>]*aria-live="polite"/);
+  assert.match(auth, /new MutationObserver/);
+  assert.match(auth, /actionFeedback\.classList\.remove\("hidden"\)/);
+});
+
+test("les formulaires services et professionnels récupèrent leur état après résultat", () => {
+  assert.match(auth, /addEventListener\("dealhunter-save-service-record"/);
+  assert.match(auth, /addEventListener\("dealhunter-save-work-record"/);
+  assert.match(auth, /dealhunter-service-record-result/);
+  assert.match(auth, /dealhunter-work-record-result/);
+  assert.match(html, /dealhunter-service-record-result/);
+  assert.match(html, /dealhunter-work-record-result/);
+});
+
+test("les demandes de mise en relation services et emploi peuvent être réessayées en cas d'échec", () => {
+  assert.match(auth, /dealhunter-service-match-request-result/);
+  assert.match(auth, /dealhunter-work-match-request-result/);
+  assert.match(html, /dealhunter-service-match-request-result/);
+  assert.match(html, /dealhunter-work-match-request-result/);
+});
+
+test("le retrait d'un profil professionnel restaure le bouton si Firebase échoue", () => {
+  assert.match(auth, /dealhunter-work-delete-result/);
+  assert.match(html, /dealhunter-work-delete-result/);
+});
