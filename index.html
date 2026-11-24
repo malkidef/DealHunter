@@ -911,11 +911,16 @@ window.addEventListener('dealhunter-service-match-requests',e=>{
 $('serviceMatchRequestList').addEventListener('submit',e=>{
  const form=e.target.closest('[data-service-message-form]');if(!form)return;
  e.preventDefault();
+ const button=form.querySelector('button[type="submit"]');button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Envoi…';
  const value=new FormData(form).get('message');
  window.dispatchEvent(new CustomEvent('dealhunter-send-service-match-message',{detail:{
   requestId:form.dataset.serviceMessageForm,text:value
  }}));
- form.reset();
+});
+window.addEventListener('dealhunter-service-message-result',e=>{
+ const d=e.detail||{},form=document.querySelector('[data-service-message-form="'+d.requestId+'"]');if(!form)return;
+ const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=button.dataset.originalLabel||'Envoyer';
+ if(d.success)form.reset();
 });
 $('serviceMatchRequestList').addEventListener('click',e=>{
  const button=e.target.closest('[data-service-decision]');if(!button)return;
@@ -1284,9 +1289,15 @@ window.addEventListener('dealhunter-work-data',e=>{
 
 $('trustReportForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Envoi…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-trust-report',{detail:{
   targetType:$('trType').value,targetId:$('trTarget').value,reason:$('trReason').value,description:$('trDescription').value
  }}));
+});
+window.addEventListener('dealhunter-trust-report-result',e=>{
+ const d=e.detail||{},form=$('trustReportForm'),button=form.querySelector('button[type="submit"]');
+ button.disabled=false;button.textContent=button.dataset.originalLabel||'Envoyer le signalement';
+ if(d.success)form.reset();
 });
 window.addEventListener('dealhunter-trust-reports',e=>{
  const reports=Array.isArray(e.detail?.reports)?e.detail.reports:[],isAdmin=e.detail?.isAdmin===true,el=$('trustReportList');
@@ -1299,17 +1310,29 @@ window.addEventListener('dealhunter-trust-reports',e=>{
  }).join(''):'Aucun signalement.';
 });
 $('trustReportList').addEventListener('click',e=>{
- const b=e.target.closest('[data-report-action]');if(!b)return;b.disabled=true;
+ const b=e.target.closest('[data-report-action]');if(!b||b.disabled)return;
+ b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Traitement…';
  window.dispatchEvent(new CustomEvent('dealhunter-review-trust-report',{detail:{reportId:b.dataset.reportId,decision:b.dataset.reportAction,note:'Examiné par la modération.'}}));
+});
+window.addEventListener('dealhunter-trust-review-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-report-action]').forEach(button=>{
+  if(button.dataset.reportId!==d.reportId)return;
+  button.disabled=!!d.success;button.textContent=d.success?'Enregistré':(button.dataset.originalLabel||'Réessayer');
+ });
 });
 $('verificationRequestForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Envoi…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-verification-request',{detail:{
   subjectType:$('vrType').value,subjectName:$('vrName').value,countryCode:$('vrCountry').value,
   evidenceLabel:$('vrEvidenceLabel').value,publicEvidenceUrl:$('vrEvidenceUrl').value
  }}));
- e.target.querySelector('button[type="submit"]').disabled=true;
- setTimeout(()=>{e.target.querySelector('button[type="submit"]').disabled=false;},1500);
+});
+window.addEventListener('dealhunter-verification-create-result',e=>{
+ const d=e.detail||{},form=$('verificationRequestForm'),button=form.querySelector('button[type="submit"]');
+ button.disabled=false;button.textContent=button.dataset.originalLabel||'Soumettre pour vérification humaine';
+ if(d.success)form.reset();
 });
 window.addEventListener('dealhunter-verification-data',e=>{
  const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],isAdmin=e.detail?.isAdmin===true,el=$('verificationRequestList');
@@ -1323,9 +1346,16 @@ window.addEventListener('dealhunter-verification-data',e=>{
  }).join(''):'<div class="empty">Aucune demande de vérification.</div>';
 });
 $('verificationRequestList').addEventListener('click',e=>{
- const b=e.target.closest('[data-verification-decision]');if(!b)return;
- b.disabled=true;
+ const b=e.target.closest('[data-verification-decision]');if(!b||b.disabled)return;
+ b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Traitement…';
  window.dispatchEvent(new CustomEvent('dealhunter-review-verification-request',{detail:{requestId:b.dataset.verificationId,decision:b.dataset.verificationDecision}}));
+});
+window.addEventListener('dealhunter-verification-review-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-verification-decision]').forEach(button=>{
+  if(button.dataset.verificationId!==d.requestId)return;
+  button.disabled=!!d.success;button.textContent=d.success?'Enregistré':(button.dataset.originalLabel||'Réessayer');
+ });
 });
 const workRequestList=$('workMatchRequests');
 if(workRequestList)workRequestList.addEventListener('click',e=>{
@@ -1334,8 +1364,14 @@ if(workRequestList)workRequestList.addEventListener('click',e=>{
 });
 document.addEventListener('submit',e=>{
  const form=e.target.closest('[data-work-message-form]');if(!form)return;
- e.preventDefault();const input=form.querySelector('textarea');
- window.dispatchEvent(new CustomEvent('dealhunter-send-work-match-message',{detail:{requestId:form.dataset.requestId,text:input.value}}));input.value='';
+ e.preventDefault();const input=form.querySelector('textarea'),button=form.querySelector('button[type="submit"]');
+ button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Envoi…';
+ window.dispatchEvent(new CustomEvent('dealhunter-send-work-match-message',{detail:{requestId:form.dataset.requestId,text:input.value}}));
+});
+window.addEventListener('dealhunter-work-message-result',e=>{
+ const d=e.detail||{},form=document.querySelector('[data-work-message-form][data-request-id="'+d.requestId+'"]');if(!form)return;
+ const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=button.dataset.originalLabel||'Envoyer';
+ if(d.success)form.reset();
 });
 document.addEventListener('click',e=>{
  const b=e.target.closest('[data-work-match-request]');if(!b||b.disabled)return;
