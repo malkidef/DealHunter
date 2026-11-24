@@ -40,6 +40,11 @@ jobs:
             exit 1
           fi
           node -e 'const x=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); if(!x.project_id || !x.client_email || !x.private_key) process.exit(1); if(x.project_id !== "dealhunter-3747b") { console.error("Le compte de service ne correspond pas au projet cible."); process.exit(1); }'
+      - name: Identifier le compte de service utilisé (adresse uniquement)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node -e 'const x=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); console.log("Compte de service utilisé :", x.client_email)'
       - name: Préparer l'identité Firebase temporaire
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
