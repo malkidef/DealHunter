@@ -39,3 +39,54 @@ test("les formulaires stock et besoin déclenchent une publication cloud", () =>
   assert.match(html, /data-edit-buyer-record/);
   assert.ok(auth.includes('"buyerNeeds"'), "La modification des besoins acheteurs doit être gérée côté Firebase");
 });
+
+test("la confirmation de vente conserve le second accord hors de la transaction", () => {
+  const start = auth.indexOf('window.addEventListener("dealhunter-confirm-deal"');
+  const end = auth.indexOf('window.addEventListener("dealhunter-send-message"', start);
+  assert.ok(start >= 0 && end > start, "Gestionnaire de confirmation introuvable");
+  const handler = auth.slice(start, end);
+  assert.match(handler, /let otherConfirmed = false;/);
+  assert.match(handler, /otherConfirmed=isSeller\?deal\.buyerConfirmed:deal\.sellerConfirmed;/);
+  assert.match(handler, /finish\(true,otherConfirmed/);
+});
+
+test("les résultats des actions Firebase sont visibles depuis tous les onglets", () => {
+  assert.match(html, /id="actionFeedback"[^>]*aria-live="polite"/);
+  assert.match(auth, /new MutationObserver/);
+  assert.match(auth, /actionFeedback\.classList\.remove\("hidden"\)/);
+});
+
+test("les formulaires services et professionnels récupèrent leur état après résultat", () => {
+  assert.match(auth, /addEventListener\("dealhunter-save-service-record"/);
+  assert.match(auth, /addEventListener\("dealhunter-save-work-record"/);
+  assert.match(auth, /dealhunter-service-record-result/);
+  assert.match(auth, /dealhunter-work-record-result/);
+  assert.match(html, /dealhunter-service-record-result/);
+  assert.match(html, /dealhunter-work-record-result/);
+});
+
+test("les demandes de mise en relation services et emploi peuvent être réessayées en cas d'échec", () => {
+  assert.match(auth, /dealhunter-service-match-request-result/);
+  assert.match(auth, /dealhunter-work-match-request-result/);
+  assert.match(html, /dealhunter-service-match-request-result/);
+  assert.match(html, /dealhunter-work-match-request-result/);
+});
+
+test("le retrait d'un profil professionnel restaure le bouton si Firebase échoue", () => {
+  assert.match(auth, /dealhunter-work-delete-result/);
+  assert.match(html, /dealhunter-work-delete-result/);
+});
+
+test("les actions de vente acceptation et confirmation retournent un résultat à l'interface", () => {
+  assert.match(auth, /dealhunter-deal-action-result/);
+  assert.match(html, /dealhunter-deal-action-result/);
+  assert.match(html, /data-deal-accept/);
+  assert.match(html, /data-deal-confirm/);
+});
+
+test("les réponses aux demandes et le partage de coordonnées peuvent être réessayés", () => {
+  assert.match(auth, /dealhunter-match-decision-result/);
+  assert.match(auth, /dealhunter-contact-share-result/);
+  assert.match(html, /dealhunter-match-decision-result/);
+  assert.match(html, /dealhunter-contact-share-result/);
+});

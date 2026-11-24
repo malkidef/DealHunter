@@ -49,6 +49,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <h1>Les bonnes affaires trouvent leur acheteur.</h1>
 <p class="intro">DealHunter rapproche les entreprises qui ont des stocks excédentaires de celles qui recherchent ces produits. Le moteur compare automatiquement les catégories, quantités, budgets et zones.</p>
 <div class="notice"><strong>Prototype en cours de validation :</strong> les offres et besoins publiés sont partagés dans les catalogues DealHunter entre utilisateurs connectés. Ne saisis aucune donnée confidentielle ni coordonnée personnelle dans les annonces. Les correspondances sont indicatives : aucune entreprise n'est contactée et aucun paiement n'est déclenché.</div>
+<div id="actionFeedback" class="status-note hidden" role="status" aria-live="polite"></div>
 
 <section class="stats">
 <div class="stat"><strong id="sellerCount">0</strong><span>Offres vendeurs</span></div>
@@ -882,10 +883,19 @@ window.addEventListener('dealhunter-generated-matches',e=>{
 });
 $('serviceMatches').addEventListener('click',e=>{
  const button=e.target.closest('[data-service-match-request]');
- if(!button)return;
+ if(!button||button.disabled)return;
+ button.dataset.originalLabel=button.textContent;button.disabled=true;button.textContent='Envoi en cours…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-service-match-request',{detail:{
   offerId:button.dataset.offerId,serviceRequestId:button.dataset.serviceRequestId
  }}));
+});
+window.addEventListener('dealhunter-service-match-request-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-service-match-request]').forEach(button=>{
+  if(button.dataset.offerId!==d.offerId||button.dataset.serviceRequestId!==d.serviceRequestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Demande envoyée':(button.dataset.originalLabel||'Demander la mise en relation');
+ });
 });
 window.addEventListener('dealhunter-service-match-requests',e=>{
  const el=$('serviceMatchRequestList');if(!el)return;
@@ -953,8 +963,24 @@ window.addEventListener('dealhunter-match-requests',e=>{
     return '<article class="item"><span class="pill">'+status+'</span><h3>'+escapeHtml(r.requesterCompany||'Entreprise')+' → '+escapeHtml(r.recipientCompany||'Entreprise')+'</h3><div>'+escapeHtml(r.product||'Produit')+'</div>'+details+'</article>';
   }).join(''):'<div class="empty">Aucune demande envoyée ou reçue pour le moment. Pour en créer une, ouvre <button type="button" class="secondary" data-go-matches>Correspondances</button>, puis sélectionne « Demander la mise en relation » sur une suggestion.';
 });
-document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));b.disabled=true;});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent; b.disabled=true;b.textContent='Traitement…';window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));});
+window.addEventListener('dealhunter-match-decision-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-match-decision]').forEach(button=>{
+  if(button.dataset.requestId!==d.requestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?(button.dataset.matchDecision==='accepted'?'Acceptée':'Refusée'):(button.dataset.originalLabel||'Réessayer');
+ });
+});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
+window.addEventListener('dealhunter-contact-share-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-share-contact]').forEach(button=>{
+  if(button.dataset.shareContact!==d.requestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Coordonnées partagées':(button.dataset.originalLabel||'Partager mes coordonnées professionnelles');
+ });
+});
 document.addEventListener('submit',e=>{
  const form=e.target.closest('form[data-deal-proposal]');if(!form)return;
  e.preventDefault();
@@ -964,9 +990,19 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('click',e=>{
  const accept=e.target.closest('[data-deal-accept]');
- if(accept){accept.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
+ if(accept&&!accept.disabled){accept.dataset.originalLabel=accept.textContent;accept.disabled=true;accept.textContent='Traitement…';window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
  const confirm=e.target.closest('[data-deal-confirm]');
- if(confirm){confirm.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+ if(confirm&&!confirm.disabled){confirm.dataset.originalLabel=confirm.textContent;confirm.disabled=true;confirm.textContent='Confirmation…';window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+});
+window.addEventListener('dealhunter-deal-action-result',e=>{
+ const d=e.detail||{};
+ const selector=d.action==='accept'?'[data-deal-accept]':'[data-deal-confirm]';
+ document.querySelectorAll(selector).forEach(button=>{
+  const id=d.action==='accept'?button.dataset.dealAccept:button.dataset.dealConfirm;
+  if(id!==d.dealId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?(d.action==='accept'?'Conditions acceptées':'Confirmation enregistrée'):(button.dataset.originalLabel||'Réessayer');
+ });
 });
 window.addEventListener('dealhunter-duplicate-signals',e=>{
  const pairs=Array.isArray(e.detail?.pairs)?e.detail.pairs:[],el=$('duplicateSignalsList');
@@ -1052,8 +1088,21 @@ window.addEventListener('dealhunter-deals',e=>{
  });
 document.getElementById('mainTabs').addEventListener('click',e=>{const btn=e.target.closest('button[data-tab]');if(!btn)return;const target=btn.dataset.tab;if(!['matches','matchRequests','dashboard','account','sellers','buyers','services','imports','gsa','bodacc','agrasc','sources'].includes(target))return;document.querySelectorAll('#mainTabs button[data-tab]').forEach(x=>{x.classList.toggle('active',x===btn);x.classList.toggle('secondary',x!==btn)});['matches','matchRequests','dashboard','account','sellers','buyers','services','imports','gsa','bodacc','agrasc','sources'].forEach(id=>$(id).classList.toggle('hidden',id!==target));});
 const splitQualifications=value=>value.split(',').map(x=>x.trim()).filter(Boolean);
+window.addEventListener('dealhunter-service-record-result',e=>{
+ const d=e.detail||{},form=d.collectionName==='publicServiceOffers'?$('serviceOfferForm'):d.collectionName==='publicServiceRequests'?$('serviceRequestForm'):null;
+ if(!form)return;
+ const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=button.dataset.originalLabel||'Publier';
+ if(d.success)form.reset();
+});
+window.addEventListener('dealhunter-work-record-result',e=>{
+ const d=e.detail||{},form=d.collectionName==='publicWorkerProfiles'?$('workerProfileForm'):d.collectionName==='publicWorkOpenings'?$('workOpeningForm'):null;
+ if(!form)return;
+ const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=d.success?'Publié':'Publier';
+ if(d.success)form.reset();
+});
 $('serviceOfferForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Publication…';
  window.dispatchEvent(new CustomEvent('dealhunter-save-service-record',{detail:{collectionName:'publicServiceOffers',record:{
   company:$('soCompany').value,title:$('soTitle').value,description:$('soDescription').value,category:$('soCategory').value,
   location:$('soLocation').value,countryCode:$('soCountry').value.toUpperCase(),qualifications:splitQualifications($('soQualifications').value),
@@ -1062,6 +1111,7 @@ $('serviceOfferForm').addEventListener('submit',e=>{
 });
 $('serviceRequestForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
  window.dispatchEvent(new CustomEvent('dealhunter-save-service-record',{detail:{collectionName:'publicServiceRequests',record:{
   company:$('srCompany').value,title:$('srTitle').value,description:$('srDescription').value,category:$('srCategory').value,
   location:$('srLocation').value,countryCode:$('srCountry').value.toUpperCase(),qualifications:splitQualifications($('srQualifications').value),
@@ -1179,6 +1229,7 @@ $('buyerForm').addEventListener('submit',e=>{
 
 $('workerProfileForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
  const engagementTypes=[];
  if($('wpEmployment').checked)engagementTypes.push('employment');
  if($('wpIndependent').checked)engagementTypes.push('independent');
@@ -1191,6 +1242,7 @@ $('workerProfileForm').addEventListener('submit',e=>{
 });
 $('workOpeningForm').addEventListener('submit',e=>{
  e.preventDefault();
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
  window.dispatchEvent(new CustomEvent('dealhunter-save-work-record',{detail:{collectionName:'publicWorkOpenings',record:{
   company:$('woCompany').value,title:$('woTitle').value,category:$('woCategory').value,description:$('woDescription').value,
   requiredSkills:splitQualifications($('woSkills').value),requiredQualifications:splitQualifications($('woQualifications').value),
@@ -1207,6 +1259,14 @@ $('workCatalog').addEventListener('click',e=>{
  window.dispatchEvent(new CustomEvent('dealhunter-delete-work-record',{detail:{collectionName:button.dataset.workCollection,recordId:button.dataset.workDelete}}));
 });
 
+window.addEventListener('dealhunter-work-delete-result',e=>{
+ const d=e.detail||{};
+ if(d.success)return;
+ document.querySelectorAll('[data-work-delete]').forEach(button=>{
+  if(button.dataset.workDelete!==d.recordId)return;
+  button.disabled=false;button.textContent='Retirer ma fiche';
+ });
+});
 window.addEventListener('dealhunter-work-data',e=>{
  const profiles=Array.isArray(e.detail?.profiles)?e.detail.profiles:[];
  const openings=Array.isArray(e.detail?.openings)?e.detail.openings:[];
@@ -1234,7 +1294,7 @@ window.addEventListener('dealhunter-trust-reports',e=>{
  const labels={pending:'En attente',reviewed:'Examiné',actioned:'Action prise',false_positive:'Non confirmé'};
  el.className=reports.length?'cards':'empty';
  el.innerHTML=reports.length?reports.map(r=>{
-  const actions=isAdmin&&r.status==='pending'?'<button data-report-action="actioned" data-report-id="'+escapeHtml(r.id)+'">Action prise</button><button class="secondary" data-report-action="reviewed" data-report-id="'+escapeHtml(r.id)+'">Examiner</button><button class="secondary" data-report-action="false_positive" data-report-id="'+escapeHtml(r.id)+'">Non confirmé</button>':'';
+  const actions=isAdmin&&r.status==='pending'?'<button type="button" data-report-action="actioned" data-report-id="'+escapeHtml(r.id)+'">Action prise</button><button type="button" class="secondary" data-report-action="reviewed" data-report-id="'+escapeHtml(r.id)+'">Examiner</button><button type="button" class="secondary" data-report-action="false_positive" data-report-id="'+escapeHtml(r.id)+'">Non confirmé</button>':'';
   return '<article class="item"><strong>'+escapeHtml(r.targetType)+' · '+escapeHtml(r.targetId)+'</strong><div>'+escapeHtml(r.reason)+' — '+escapeHtml(labels[r.status]||r.status)+'</div><div>'+escapeHtml(r.description||'')+'</div>'+actions+'</article>';
  }).join(''):'Aucun signalement.';
 });
@@ -1257,8 +1317,8 @@ window.addEventListener('dealhunter-verification-data',e=>{
  const statusLabel={pending:'En attente de contrôle humain',verified:'Vérifié après revue',rejected:'Refusé',withdrawn:'Retiré'};
  el.innerHTML=list.length?list.map(r=>{
   const actions=isAdmin&&r.status==='pending'
-   ?'<button data-verification-decision="verified" data-verification-id="'+escapeHtml(r.id)+'">Valider après contrôle</button><button class="secondary" data-verification-decision="rejected" data-verification-id="'+escapeHtml(r.id)+'">Refuser</button>'
-   :(!isAdmin&&r.status==='pending'?'<button class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':'');
+   ?'<button type="button" data-verification-decision="verified" data-verification-id="'+escapeHtml(r.id)+'">Valider après contrôle</button><button type="button" class="secondary" data-verification-decision="rejected" data-verification-id="'+escapeHtml(r.id)+'">Refuser</button>'
+   :(!isAdmin&&r.status==='pending'?'<button type="button" class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':'');
   return '<article class="item"><span class="pill">'+escapeHtml(statusLabel[r.status]||'Statut inconnu')+'</span><strong>'+escapeHtml(r.subjectType==='company'?'Entreprise':'Qualification')+' : '+escapeHtml(r.subjectName)+'</strong><div>'+escapeHtml(r.countryCode)+' · '+escapeHtml(r.evidenceLabel)+'</div>'+actions+'</article>';
  }).join(''):'<div class="empty">Aucune demande de vérification.</div>';
 });
@@ -1278,14 +1338,23 @@ document.addEventListener('submit',e=>{
  window.dispatchEvent(new CustomEvent('dealhunter-send-work-match-message',{detail:{requestId:form.dataset.requestId,text:input.value}}));input.value='';
 });
 document.addEventListener('click',e=>{
- const b=e.target.closest('[data-work-match-request]');if(!b)return;b.disabled=true;
+ const b=e.target.closest('[data-work-match-request]');if(!b||b.disabled)return;
+ b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Envoi en cours…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-work-match-request',{detail:{candidateProfileId:b.dataset.profileId,openingId:b.dataset.openingId,engagementType:b.dataset.engagement}}));
+});
+window.addEventListener('dealhunter-work-match-request-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-work-match-request]').forEach(button=>{
+  if(button.dataset.profileId!==d.profileId||button.dataset.openingId!==d.openingId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Demande envoyée':(button.dataset.originalLabel||'Demander la mise en relation');
+ });
 });
 window.addEventListener('dealhunter-work-match-requests',e=>{
  const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],uid=window.dealhunterUserUid||'',el=$('workMatchRequests');if(!el)return;
  el.innerHTML=list.length?list.map(r=>{
   const recipient=r.recipientUid===uid,mine=r.requesterUid===uid,state=r.status==='accepted'?'Acceptée':r.status==='rejected'?'Refusée':'En attente';
-  const actions=r.status==='pending'&&recipient?'<button data-work-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button><button class="secondary" data-work-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button>':'';
+  const actions=r.status==='pending'&&recipient?'<button type="button" data-work-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button><button type="button" class="secondary" data-work-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button>':'';
   const thread=r.status==='accepted'?((r.messages||[]).map(m=>'<p><strong>'+(m.senderUid===uid?'Moi':'Autre participant')+'</strong> : '+escapeHtml(m.text)+'</p>').join('')||'<p>Aucun message.</p>')+'<form data-work-message-form data-request-id="'+escapeHtml(r.id)+'"><textarea maxlength="2000" required placeholder="Écrire un message professionnel"></textarea><button type="submit">Envoyer</button></form>':'';
   return '<article class="item"><strong>'+escapeHtml(r.candidateTitle)+' ↔ '+escapeHtml(r.openingTitle)+'</strong><div class="muted">'+(r.engagementType==='employment'?'Emploi salarié':'Mission indépendante')+' · '+state+(mine?' · Demande envoyée':'')+'</div>'+actions+thread+'</article>';
  }).join(''):'<div class="empty">Aucune demande professionnelle pour le moment.</div>';
