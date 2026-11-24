@@ -990,9 +990,19 @@ document.addEventListener('submit',e=>{
 });
 document.addEventListener('click',e=>{
  const accept=e.target.closest('[data-deal-accept]');
- if(accept){accept.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
+ if(accept&&!accept.disabled){accept.dataset.originalLabel=accept.textContent;accept.disabled=true;accept.textContent='Traitement…';window.dispatchEvent(new CustomEvent('dealhunter-accept-deal',{detail:{dealId:accept.dataset.dealAccept}}));}
  const confirm=e.target.closest('[data-deal-confirm]');
- if(confirm){confirm.disabled=true;window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+ if(confirm&&!confirm.disabled){confirm.dataset.originalLabel=confirm.textContent;confirm.disabled=true;confirm.textContent='Confirmation…';window.dispatchEvent(new CustomEvent('dealhunter-confirm-deal',{detail:{dealId:confirm.dataset.dealConfirm}}));}
+});
+window.addEventListener('dealhunter-deal-action-result',e=>{
+ const d=e.detail||{};
+ const selector=d.action==='accept'?'[data-deal-accept]':'[data-deal-confirm]';
+ document.querySelectorAll(selector).forEach(button=>{
+  const id=d.action==='accept'?button.dataset.dealAccept:button.dataset.dealConfirm;
+  if(id!==d.dealId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?(d.action==='accept'?'Conditions acceptées':'Confirmation enregistrée'):(button.dataset.originalLabel||'Réessayer');
+ });
 });
 window.addEventListener('dealhunter-duplicate-signals',e=>{
  const pairs=Array.isArray(e.detail?.pairs)?e.detail.pairs:[],el=$('duplicateSignalsList');
