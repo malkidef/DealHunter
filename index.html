@@ -963,8 +963,24 @@ window.addEventListener('dealhunter-match-requests',e=>{
     return '<article class="item"><span class="pill">'+status+'</span><h3>'+escapeHtml(r.requesterCompany||'Entreprise')+' → '+escapeHtml(r.recipientCompany||'Entreprise')+'</h3><div>'+escapeHtml(r.product||'Produit')+'</div>'+details+'</article>';
   }).join(''):'<div class="empty">Aucune demande envoyée ou reçue pour le moment. Pour en créer une, ouvre <button type="button" class="secondary" data-go-matches>Correspondances</button>, puis sélectionne « Demander la mise en relation » sur une suggestion.';
 });
-document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));b.disabled=true;});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b)return;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-match-decision]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent; b.disabled=true;b.textContent='Traitement…';window.dispatchEvent(new CustomEvent('dealhunter-update-match-request',{detail:{requestId:b.dataset.requestId,status:b.dataset.matchDecision}}));});
+window.addEventListener('dealhunter-match-decision-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-match-decision]').forEach(button=>{
+  if(button.dataset.requestId!==d.requestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?(button.dataset.matchDecision==='accepted'?'Acceptée':'Refusée'):(button.dataset.originalLabel||'Réessayer');
+ });
+});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-share-contact]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent;window.dispatchEvent(new CustomEvent('dealhunter-share-contact',{detail:{requestId:b.dataset.shareContact}}));b.disabled=true;b.textContent='Partage en cours…';});
+window.addEventListener('dealhunter-contact-share-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-share-contact]').forEach(button=>{
+  if(button.dataset.shareContact!==d.requestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Coordonnées partagées':(button.dataset.originalLabel||'Partager mes coordonnées professionnelles');
+ });
+});
 document.addEventListener('submit',e=>{
  const form=e.target.closest('form[data-deal-proposal]');if(!form)return;
  e.preventDefault();
