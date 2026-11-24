@@ -47,7 +47,7 @@ test("la confirmation de vente conserve le second accord hors de la transaction"
   const handler = auth.slice(start, end);
   assert.match(handler, /let otherConfirmed = false;/);
   assert.match(handler, /otherConfirmed=isSeller\?deal\.buyerConfirmed:deal\.sellerConfirmed;/);
-  assert.match(handler, /status\.textContent=otherConfirmed\?/);
+  assert.match(handler, /finish\(true,otherConfirmed/);
 });
 
 test("les résultats des actions Firebase sont visibles depuis tous les onglets", () => {
