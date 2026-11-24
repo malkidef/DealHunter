@@ -114,3 +114,10 @@ test("les boutons dynamiques de modération et de vérification ne soumettent pa
   assert.match(html, /<button type="button" data-verification-decision=/);
   assert.match(html, /<button type="button" data-work-decision=/);
 });
+
+test("la boîte de réception contient la destination des demandes emploi et missions", () => {
+  assert.match(html, /id="workMatchRequests"/);
+  assert.match(html, /get\('workMatchRequests'\)/);
+  assert.match(html, /dealhunter-work-match-requests/);
+  assert.match(html, /data-work-message-form/);
+});
