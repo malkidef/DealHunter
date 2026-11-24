@@ -1294,7 +1294,7 @@ window.addEventListener('dealhunter-trust-reports',e=>{
  const labels={pending:'En attente',reviewed:'Examiné',actioned:'Action prise',false_positive:'Non confirmé'};
  el.className=reports.length?'cards':'empty';
  el.innerHTML=reports.length?reports.map(r=>{
-  const actions=isAdmin&&r.status==='pending'?'<button data-report-action="actioned" data-report-id="'+escapeHtml(r.id)+'">Action prise</button><button class="secondary" data-report-action="reviewed" data-report-id="'+escapeHtml(r.id)+'">Examiner</button><button class="secondary" data-report-action="false_positive" data-report-id="'+escapeHtml(r.id)+'">Non confirmé</button>':'';
+  const actions=isAdmin&&r.status==='pending'?'<button type="button" data-report-action="actioned" data-report-id="'+escapeHtml(r.id)+'">Action prise</button><button type="button" class="secondary" data-report-action="reviewed" data-report-id="'+escapeHtml(r.id)+'">Examiner</button><button type="button" class="secondary" data-report-action="false_positive" data-report-id="'+escapeHtml(r.id)+'">Non confirmé</button>':'';
   return '<article class="item"><strong>'+escapeHtml(r.targetType)+' · '+escapeHtml(r.targetId)+'</strong><div>'+escapeHtml(r.reason)+' — '+escapeHtml(labels[r.status]||r.status)+'</div><div>'+escapeHtml(r.description||'')+'</div>'+actions+'</article>';
  }).join(''):'Aucun signalement.';
 });
@@ -1317,8 +1317,8 @@ window.addEventListener('dealhunter-verification-data',e=>{
  const statusLabel={pending:'En attente de contrôle humain',verified:'Vérifié après revue',rejected:'Refusé',withdrawn:'Retiré'};
  el.innerHTML=list.length?list.map(r=>{
   const actions=isAdmin&&r.status==='pending'
-   ?'<button data-verification-decision="verified" data-verification-id="'+escapeHtml(r.id)+'">Valider après contrôle</button><button class="secondary" data-verification-decision="rejected" data-verification-id="'+escapeHtml(r.id)+'">Refuser</button>'
-   :(!isAdmin&&r.status==='pending'?'<button class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':'');
+   ?'<button type="button" data-verification-decision="verified" data-verification-id="'+escapeHtml(r.id)+'">Valider après contrôle</button><button type="button" class="secondary" data-verification-decision="rejected" data-verification-id="'+escapeHtml(r.id)+'">Refuser</button>'
+   :(!isAdmin&&r.status==='pending'?'<button type="button" class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':'');
   return '<article class="item"><span class="pill">'+escapeHtml(statusLabel[r.status]||'Statut inconnu')+'</span><strong>'+escapeHtml(r.subjectType==='company'?'Entreprise':'Qualification')+' : '+escapeHtml(r.subjectName)+'</strong><div>'+escapeHtml(r.countryCode)+' · '+escapeHtml(r.evidenceLabel)+'</div>'+actions+'</article>';
  }).join(''):'<div class="empty">Aucune demande de vérification.</div>';
 });
@@ -1354,7 +1354,7 @@ window.addEventListener('dealhunter-work-match-requests',e=>{
  const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],uid=window.dealhunterUserUid||'',el=$('workMatchRequests');if(!el)return;
  el.innerHTML=list.length?list.map(r=>{
   const recipient=r.recipientUid===uid,mine=r.requesterUid===uid,state=r.status==='accepted'?'Acceptée':r.status==='rejected'?'Refusée':'En attente';
-  const actions=r.status==='pending'&&recipient?'<button data-work-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button><button class="secondary" data-work-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button>':'';
+  const actions=r.status==='pending'&&recipient?'<button type="button" data-work-decision="accepted" data-request-id="'+escapeHtml(r.id)+'">Accepter</button><button type="button" class="secondary" data-work-decision="rejected" data-request-id="'+escapeHtml(r.id)+'">Refuser</button>':'';
   const thread=r.status==='accepted'?((r.messages||[]).map(m=>'<p><strong>'+(m.senderUid===uid?'Moi':'Autre participant')+'</strong> : '+escapeHtml(m.text)+'</p>').join('')||'<p>Aucun message.</p>')+'<form data-work-message-form data-request-id="'+escapeHtml(r.id)+'"><textarea maxlength="2000" required placeholder="Écrire un message professionnel"></textarea><button type="submit">Envoyer</button></form>':'';
   return '<article class="item"><strong>'+escapeHtml(r.candidateTitle)+' ↔ '+escapeHtml(r.openingTitle)+'</strong><div class="muted">'+(r.engagementType==='employment'?'Emploi salarié':'Mission indépendante')+' · '+state+(mine?' · Demande envoyée':'')+'</div>'+actions+thread+'</article>';
  }).join(''):'<div class="empty">Aucune demande professionnelle pour le moment.</div>';
