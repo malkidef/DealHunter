@@ -873,9 +873,15 @@ if (!ready) {
   window.addEventListener("dealhunter-delete-work-record", async event => {
     const user = auth.currentUser;
     const { collectionName, recordId } = event.detail || {};
+    const finish = (success, message) => {
+      status.textContent = message;
+      window.dispatchEvent(new CustomEvent("dealhunter-work-delete-result", {
+        detail: { success, message, collectionName, recordId }
+      }));
+    };
     if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName) ||
         typeof recordId !== "string" || !recordId) {
-      status.textContent = "Retrait impossible : profil, offre ou compte invalide.";
+      finish(false, "Retrait impossible : profil, offre ou compte invalide.");
       return;
     }
     try {
@@ -886,14 +892,15 @@ if (!ready) {
       }
       await deleteDoc(target);
       await loadCloudRecords(user);
-      status.textContent = collectionName === "publicWorkerProfiles"
+      finish(true, collectionName === "publicWorkerProfiles"
         ? "Ton profil professionnel a été retiré du catalogue."
-        : "Ton offre professionnelle a été retirée du catalogue.";
+        : "Ton offre professionnelle a été retirée du catalogue.");
     } catch (error) {
       console.error("Retrait de la fiche professionnelle impossible :", error);
-      status.textContent = "Retrait impossible : " + (error.message || error.code || "erreur inconnue");
+      finish(false, "Retrait impossible : " + (error.message || error.code || "erreur inconnue"));
     }
   });
+
 
   window.addEventListener("dealhunter-update-business-record", async event => {
     const user = auth.currentUser;
