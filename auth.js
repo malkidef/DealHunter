@@ -323,12 +323,20 @@ if (!ready) {
   });
   window.addEventListener("dealhunter-update-match-request",async e=>{
     const user=auth.currentUser,{requestId,status:decision}=e.detail||{};
-    if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
-    try{const ref=doc(db,"matchRequests",requestId),snap=await getDoc(ref);
-      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending"){status.textContent="Cette demande ne peut plus être modifiée.";return;}
-      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);status.textContent=decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.";
-    }catch(err){console.error(err);status.textContent="Action impossible : "+(err.message||err.code);}
+    const finish=(success,message)=>{statusElement(message);window.dispatchEvent(new CustomEvent("dealhunter-match-decision-result",{detail:{success,message,requestId}}));};
+    const statusElement=message=>{status.textContent=message;};
+    if(!user||!requestId||!["accepted","rejected"].includes(decision)){finish(false,"Connecte-toi pour répondre à cette demande.");return;}
+    try{
+      const ref=doc(db,"matchRequests",requestId),snap=await getDoc(ref);
+      if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")
+        throw new Error("Cette demande ne peut plus être modifiée.");
+      await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});
+      finish(true,decision==="accepted"?"Mise en relation acceptée.":"Demande refusée.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Réponse enregistrée, actualisation impossible :",refreshError);status.textContent+=" Actualise la page pour recharger les demandes.";}
+    }catch(err){console.error(err);finish(false,"Action impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-create-deal-review",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.dealId){status.textContent="Connecte-toi pour déposer un avis.";return;}
@@ -435,24 +443,27 @@ if (!ready) {
 
   window.addEventListener("dealhunter-share-contact",async e=>{
     const user=auth.currentUser,{requestId}=e.detail||{};
-    if(!user||!requestId||!user.email){status.textContent="Connecte-toi avec une adresse e-mail pour la partager.";return;}
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-contact-share-result",{detail:{success,message,requestId}}));};
+    if(!user||!requestId||!user.email){finish(false,"Connecte-toi avec une adresse e-mail pour la partager.");return;}
     try{
       const requestRef=doc(db,"matchRequests",requestId),requestSnap=await getDoc(requestRef);
-      if(!requestSnap.exists()){status.textContent="Demande introuvable.";return;}
+      if(!requestSnap.exists())throw new Error("Demande introuvable.");
       const requestData=requestSnap.data();
-      if(requestData.status!=="accepted"||!(requestData.participantUids||[]).includes(user.uid)){status.textContent="Le partage est disponible uniquement après acceptation.";return;}
+      if(requestData.status!=="accepted"||!(requestData.participantUids||[]).includes(user.uid))
+        throw new Error("Le partage est disponible uniquement après acceptation.");
       const profileSnap=await getDoc(doc(db,"users",user.uid));
       const profile=profileSnap.exists()?profileSnap.data().company||{}:{};
       const company=profile.name||"Entreprise";
       const phone=String(profile.phone||"").trim();
-      if(!phone){status.textContent="Ajoute d’abord ton téléphone professionnel dans Connexion / Compte, puis réessaie.";return;}
+      if(!phone)throw new Error("Ajoute d’abord ton téléphone professionnel dans Connexion / Compte, puis réessaie.");
       await setDoc(doc(db,"matchContacts",requestId+"_"+user.uid),{
         requestId,ownerUid:user.uid,email:user.email,phone,company,sharedAt:serverTimestamp()
       });
-      await loadMatchRequests(user);
-      status.textContent="Ton e-mail et ton téléphone professionnels sont partagés uniquement avec l’autre entreprise de cette mise en relation.";
-    }catch(err){console.error(err);status.textContent="Partage impossible : "+(err.message||err.code);}
+      finish(true,"Ton e-mail et ton téléphone professionnels sont partagés uniquement avec l’autre entreprise de cette mise en relation.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Coordonnées partagées, actualisation impossible :",refreshError);}
+    }catch(err){console.error(err);finish(false,"Partage impossible : "+(err.message||err.code));}
   });
+
 
   const loadCloudRecords = async user => {
     const [sellerSnapshot, buyerSnapshot] = await Promise.all([
