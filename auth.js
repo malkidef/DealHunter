@@ -173,7 +173,8 @@ if (!ready) {
   };
   window.addEventListener("dealhunter-create-service-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
-    if(!user||!d.offerId||!d.serviceRequestId){status.textContent="Connecte-toi pour demander une mise en relation.";return;}
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-service-match-request-result",{detail:{success,message,offerId:d.offerId||"",serviceRequestId:d.serviceRequestId||""}}));};
+    if(!user||!d.offerId||!d.serviceRequestId){finish(false,"Connecte-toi pour demander une mise en relation de services.");return;}
     try{
       const [offerSnap,needSnap]=await Promise.all([
         getDoc(doc(db,"publicServiceOffers",d.offerId)),
@@ -199,9 +200,11 @@ if (!ready) {
         status:"pending",createdAt:serverTimestamp()
       });
       await loadMatchRequests(user);
-      status.textContent="Proposition envoyée. L'autre entreprise doit accepter avant l'ouverture de la conversation.";
-    }catch(err){console.error(err);status.textContent="Demande impossible : "+(err.message||err.code);}
+      finish(true,"Proposition envoyée. L'autre entreprise doit accepter avant l'ouverture de la conversation.");
+    }catch(err){console.error(err);finish(false,"Demande impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-send-service-match-message",async e=>{
     const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
     const message=String(messageText||"").trim();
@@ -236,7 +239,8 @@ if (!ready) {
 
   window.addEventListener("dealhunter-create-work-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
-    if(!user||!d.candidateProfileId||!d.openingId){status.textContent="Connecte-toi pour demander cette mise en relation.";return;}
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-work-match-request-result",{detail:{success,message,profileId:d.candidateProfileId||"",openingId:d.openingId||""}}));};
+    if(!user||!d.candidateProfileId||!d.openingId){finish(false,"Connecte-toi pour demander cette mise en relation.");return;}
     try{
       const [ps,os]=await Promise.all([getDoc(doc(db,"publicWorkerProfiles",d.candidateProfileId)),getDoc(doc(db,"publicWorkOpenings",d.openingId))]);
       if(!ps.exists()||!os.exists())throw new Error("Le profil ou l'offre n'existe plus.");
@@ -248,9 +252,12 @@ if (!ready) {
       if(existing.docs.some(x=>x.data().openingId===d.openingId&&x.data().status!=="rejected"))throw new Error("Une demande existe déjà pour cette correspondance.");
       const candidate=user.uid===p.ownerUid;
       await addDoc(collection(db,"workMatchRequests"),{candidateProfileId:d.candidateProfileId,openingId:d.openingId,candidateUid:p.ownerUid,employerUid:o.ownerUid,participantUids:[p.ownerUid,o.ownerUid],requesterUid:user.uid,recipientUid:candidate?o.ownerUid:p.ownerUid,engagementType:o.engagementType,candidateTitle:p.title,openingTitle:o.title,status:"pending",createdAt:serverTimestamp()});
-      await loadMatchRequests(user);status.textContent="Demande envoyée. L'autre partie doit accepter avant l'ouverture de la conversation.";
-    }catch(err){console.error(err);status.textContent="Mise en relation impossible : "+(err.message||err.code);}
+      await loadMatchRequests(user);
+      finish(true,"Demande envoyée. L'autre partie doit accepter avant l'ouverture de la conversation.");
+    }catch(err){console.error(err);finish(false,"Mise en relation impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-update-work-match-request",async e=>{
     const user=auth.currentUser,{requestId,decision}=e.detail||{};
     if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
