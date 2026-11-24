@@ -383,18 +383,23 @@ if (!ready) {
   });
   window.addEventListener("dealhunter-accept-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
-    if(!user||!dealId)return;
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-deal-action-result",{detail:{success,message,dealId,action:"accept"}}));};
+    if(!user||!dealId){finish(false,"Connecte-toi pour accepter cette proposition.");return;}
     try{
       const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
-      if(!snap.exists()||snap.data().status!=="proposed"||snap.data().accepterUid!==user.uid)throw new Error("Cette proposition ne peut pas être acceptée par ce compte.");
+      if(!snap.exists()||snap.data().status!=="proposed"||snap.data().accepterUid!==user.uid)
+        throw new Error("Cette proposition ne peut pas être acceptée par ce compte.");
       await updateDoc(ref,{status:"agreed",agreedAt:serverTimestamp(),updatedAt:serverTimestamp()});
-      await loadMatchRequests(user);
-      status.textContent="Accord enregistré : les deux entreprises ont validé les conditions.";
-    }catch(err){console.error(err);status.textContent="Acceptation impossible : "+(err.message||err.code);}
+      finish(true,"Accord enregistré : les deux entreprises ont validé les conditions.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Accord enregistré, actualisation impossible :",refreshError);status.textContent+=" Actualise la page pour recharger l’accord.";}
+    }catch(err){console.error(err);finish(false,"Acceptation impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-confirm-deal",async e=>{
     const user=auth.currentUser,{dealId}=e.detail||{};
-    if(!user||!dealId)return;
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-deal-action-result",{detail:{success,message,dealId,action:"confirm"}}));};
+    if(!user||!dealId){finish(false,"Connecte-toi pour confirmer cette vente.");return;}
     try{
       const ref=doc(db,"deals",dealId);
       let otherConfirmed = false;
@@ -414,10 +419,14 @@ if (!ready) {
           updatedAt:serverTimestamp()
         });
       });
-      await loadMatchRequests(user);
-      status.textContent=otherConfirmed?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative.":"Confirmation enregistrée. En attente de l’autre entreprise.";
-    }catch(err){console.error(err);status.textContent="Confirmation impossible : "+(err.message||err.code);}
+      finish(true,otherConfirmed
+        ?"Les deux confirmations sont enregistrées. Vente marquée comme terminée ; commission de 5 % indicative."
+        :"Confirmation enregistrée. En attente de l’autre entreprise.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Confirmation enregistrée, actualisation impossible :",refreshError);status.textContent+=" Actualise la page pour recharger la vente.";}
+    }catch(err){console.error(err);finish(false,"Confirmation impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-send-message",async e=>{
     const user=auth.currentUser,{requestId,text:messageText,onResult}=e.detail||{};
     const message=String(messageText||"").trim();
