@@ -107,7 +107,7 @@ if (!ready) {
         console.warn("Messages de service indisponibles :", messageError);
       }
     }
-    window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests}}));
+    window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests,failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))}}));
     const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
     for(const request of workRequests){
       if(request.status!=="accepted")continue;
@@ -120,7 +120,7 @@ if (!ready) {
         console.warn("Messages de travail indisponibles :", messageError);
       }
     }
-    window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests}}));
+    window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests,failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))}}));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
     // Publier d'abord les demandes : les avis sont secondaires et ne doivent
     // jamais empêcher l'affichage de la boîte de réception.
