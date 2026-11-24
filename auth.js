@@ -663,11 +663,17 @@ if (!ready) {
   window.addEventListener("dealhunter-save-service-record", async event => {
     const user = auth.currentUser;
     const data = event.detail || {};
-    if (!user || !["publicServiceOffers", "publicServiceRequests"].includes(data.collectionName)) {
-      status.textContent = "Connecte-toi pour publier une offre ou une demande de service.";
+    const collectionName = data.collectionName;
+    const finish = (success, message) => {
+      status.textContent = message;
+      window.dispatchEvent(new CustomEvent("dealhunter-service-record-result", {
+        detail: { success, message, collectionName }
+      }));
+    };
+    if (!user || !["publicServiceOffers", "publicServiceRequests"].includes(collectionName)) {
+      finish(false, "Connecte-toi pour publier une offre ou une demande de service.");
       return;
     }
-    const collectionName = data.collectionName;
     const record = data.record || {};
     const company = String(record.company || "").trim();
     const title = String(record.title || "").trim();
@@ -681,7 +687,7 @@ if (!ready) {
     const coverageRadiusKm = Number(record.coverageRadiusKm || 0);
     if (!company || !title || !description || !category || !location || !/^[A-Z]{2}$/.test(countryCode)
       || !Number.isFinite(coverageRadiusKm) || coverageRadiusKm < 0 || coverageRadiusKm > 5000) {
-      status.textContent = "Vérifie les champs obligatoires, le code pays ISO à 2 lettres et le rayon (0 à 5 000 km).";
+      finish(false, "Vérifie les champs obligatoires, le code pays ISO à 2 lettres et le rayon (0 à 5 000 km).");
       return;
     }
     try {
@@ -697,23 +703,28 @@ if (!ready) {
       if (!recordId) payload.createdAt = serverTimestamp();
       await setDoc(target, payload, { merge: true });
       await loadCloudRecords(user);
-      status.textContent = collectionName === "publicServiceOffers"
+      finish(true, collectionName === "publicServiceOffers"
         ? "Offre de service publiée dans le catalogue professionnel."
-        : "Demande de service publiée dans le catalogue professionnel.";
+        : "Demande de service publiée dans le catalogue professionnel.");
     } catch (error) {
       console.error("Publication du service impossible :", error);
-      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+      finish(false, "Publication impossible : " + (error.message || error.code || "erreur inconnue"));
     }
   });
-
 
   window.addEventListener("dealhunter-save-work-record", async event => {
     const user = auth.currentUser;
     const data = event.detail || {};
     const record = data.record || {};
     const collectionName = data.collectionName;
+    const finish = (success, message) => {
+      status.textContent = message;
+      window.dispatchEvent(new CustomEvent("dealhunter-work-record-result", {
+        detail: { success, message, collectionName }
+      }));
+    };
     if (!user || !["publicWorkerProfiles", "publicWorkOpenings"].includes(collectionName)) {
-      status.textContent = "Connecte-toi pour publier un profil ou une offre professionnelle.";
+      finish(false, "Connecte-toi pour publier un profil ou une offre professionnelle.");
       return;
     }
     const textValue = key => String(record[key] || "").trim();
@@ -721,7 +732,7 @@ if (!ready) {
     const countryCode = textValue("countryCode").toUpperCase();
     if (!textValue("title") || !textValue("category") || !textValue("description") ||
         !textValue("location") || !/^[A-Z]{2}$/.test(countryCode)) {
-      status.textContent = "Complète le titre, métier, description, ville et code pays ISO à deux lettres.";
+      finish(false, "Complète le titre, métier, description, ville et code pays ISO à deux lettres.");
       return;
     }
     let payload;
@@ -729,7 +740,7 @@ if (!ready) {
       const engagementTypes = listValue("engagementTypes");
       if (!record.publicProfileConsent || !engagementTypes.length ||
           engagementTypes.some(x => !["employment", "independent"].includes(x))) {
-        status.textContent = "Confirme la publication publique et sélectionne au moins un type d'engagement.";
+        finish(false, "Confirme la publication publique et sélectionne au moins un type d'engagement.");
         return;
       }
       payload = {
@@ -743,7 +754,7 @@ if (!ready) {
     } else {
       const engagementType = textValue("engagementType");
       if (!textValue("company") || !["employment", "independent"].includes(engagementType)) {
-        status.textContent = "Indique l'entreprise et choisis salarié ou mission indépendante.";
+        finish(false, "Indique l'entreprise et choisis salarié ou mission indépendante.");
         return;
       }
       payload = {
@@ -761,15 +772,14 @@ if (!ready) {
       if (!recordId) payload.createdAt = serverTimestamp();
       await setDoc(target, payload, { merge: true });
       await loadCloudRecords(user);
-      status.textContent = collectionName === "publicWorkerProfiles"
-        ? "Profil professionnel publié. Tu peux le retirer en le fermant ou en le supprimant."
-        : "Offre professionnelle publiée dans le catalogue DealHunter.";
+      finish(true, collectionName === "publicWorkerProfiles"
+        ? "Profil professionnel publié dans le catalogue DealHunter."
+        : "Offre professionnelle publiée dans le catalogue DealHunter.");
     } catch (error) {
       console.error("Publication professionnelle impossible :", error);
-      status.textContent = "Publication impossible : " + (error.message || error.code || "erreur inconnue");
+      finish(false, "Publication impossible : " + (error.message || error.code || "erreur inconnue"));
     }
   });
-
 
   window.addEventListener("dealhunter-create-trust-report", async event => {
     const user=auth.currentUser,data=event.detail||{};
