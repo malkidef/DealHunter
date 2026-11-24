@@ -1,15 +1,22 @@
 # État de préparation au lancement — DealHunter
 
-Dernière revue : 23 novembre 2026. Branche principale : `main`.
+Dernière revue : 24 novembre 2026. Branche principale : `main`.
+
+## Vérifications GitHub du 24 novembre 2026
+
+- Commit principal audité : `7d1366ded3867752b6a2c3d2417c2aa11b4267d8` — « Make moderation and private messaging actions retryable ».
+- Workflow « Tests DealHunter » : réussi sur ce commit (exécution [45471018287](https://github.com/malkidef/DealHunter/actions/runs/45471018287)).
+- Workflow « Tests des règles Firestore » : réussi sur ce commit (exécution [45471018133](https://github.com/malkidef/DealHunter/actions/runs/45471018133)).
+- Workflow « pages build and deployment » : réussi sur ce commit (exécution [45471016943](https://github.com/malkidef/DealHunter/actions/runs/45471016943)).
+- Les étapes du workflow applicatif ont réussi : tests Python, tests du moteur de matching, vérification des fonctions Firebase et vérification JavaScript de l'application.
+- Ces réussites valident les tests automatisés et la publication GitHub Pages. Elles ne prouvent pas que Firebase est configuré en production, que le secret de service account existe, ni que les parcours réels fonctionnent avec deux comptes.
 
 ## État du dépôt et publication
 
-- PR #4 fusionnée : pont Firestore, matching produits, sécurité, services, travail et vérification.
-- PR #6 fusionnée : documentation des opérations de protection des données.
-- PR #7 fusionnée : documentation Firebase.
-- GitHub Pages a été construit et publié avec succès sur le dernier commit principal vérifié.
-- Le propriétaire a confirmé que le projet Firebase `dealhunter-3747b` est bien le sien.
-- Cette confirmation ne prouve pas que Authentication, Firestore, règles ou index sont activés/déployés. Aucun déploiement Firebase n'est confirmé.
+- Les dernières corrections intégrées à `main` couvrent la publication et l'édition des offres/besoins, le chargement des demandes de mise en relation, le retour d'état des actions Firebase, la confirmation des transactions, ainsi que la reprise après échec des actions de modération et de messagerie privée.
+- GitHub Pages a été construit et publié avec succès sur le commit audité.
+- Le projet Firebase `dealhunter-3747b` a été confirmé par son propriétaire comme étant le bon projet.
+- Cette confirmation ne prouve pas que Authentication, Firestore, les règles ou les index sont activés/déployés. Aucun déploiement Firebase n'est confirmé.
 
 ## Fonctionnalités présentes dans le code
 
@@ -19,6 +26,7 @@ Dernière revue : 23 novembre 2026. Branche principale : `main`.
 - Proposition commerciale et confirmations bilatérales.
 - Vérification humaine, avis, signalements et détection indicative de doublons.
 - Configuration Web Firebase publique pour le projet confirmé.
+- Actions applicatives conçues pour afficher un résultat et permettre une nouvelle tentative après échec ; la réussite réelle reste à vérifier dans Firebase.
 
 ## Première mise en service recommandée
 
@@ -33,7 +41,8 @@ Dernière revue : 23 novembre 2026. Branche principale : `main`.
 
 ## Bloqueurs avant ouverture publique
 
-- **Firebase** : activation et déploiement des règles/index non vérifiés ; secret de service account absent ou non confirmé ; tests de bout en bout non réalisés.
+- **Firebase** : activation et déploiement des règles/index non vérifiés ; présence et validité du secret `FIREBASE_SERVICE_ACCOUNT` non vérifiées ; tests de bout en bout non réalisés.
+- **Matching planifié** : le workflow est présent et les tests CI passent, mais une exécution manuelle avec le vrai secret et une vérification de ses résultats Firestore restent nécessaires.
 - **Modération** : attribuer le custom claim `dealhunterAdmin: true` à un réviseur de confiance via Firebase Admin SDK.
 - **Préproduction** : tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait et effacement.
 - **Protection des données** : finaliser bases légales, durées, accès/export/rectification/effacement, incidents et contrats sous-traitants. Voir `docs/PRIVACY_OPERATIONS.md`.
@@ -49,4 +58,4 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 
 ## Décision de lancement
 
-**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié ; Firebase reste à configurer et tester. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
+**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié et les workflows CI sont verts sur le commit audité ; Firebase reste à configurer et tester. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
