@@ -39,3 +39,13 @@ test("les formulaires stock et besoin déclenchent une publication cloud", () =>
   assert.match(html, /data-edit-buyer-record/);
   assert.ok(auth.includes('"buyerNeeds"'), "La modification des besoins acheteurs doit être gérée côté Firebase");
 });
+
+test("la confirmation de vente conserve le second accord hors de la transaction", () => {
+  const start = auth.indexOf('window.addEventListener("dealhunter-confirm-deal"');
+  const end = auth.indexOf('window.addEventListener("dealhunter-send-message"', start);
+  assert.ok(start >= 0 && end > start, "Gestionnaire de confirmation introuvable");
+  const handler = auth.slice(start, end);
+  assert.match(handler, /let otherConfirmed = false;/);
+  assert.match(handler, /otherConfirmed=isSeller\?deal\.buyerConfirmed:deal\.sellerConfirmed;/);
+  assert.match(handler, /status\.textContent=otherConfirmed\?/);
+});
