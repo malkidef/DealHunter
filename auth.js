@@ -10,6 +10,19 @@ import {
 import { firebaseConfig } from "./firebase-web-config.js";
 
 const status = document.getElementById("authStatus");
+const actionFeedback = document.getElementById("actionFeedback");
+if (status && actionFeedback && typeof MutationObserver !== "undefined") {
+  let feedbackTimer;
+  const statusObserver = new MutationObserver(() => {
+    const message = status.textContent.trim();
+    if (!message) return;
+    actionFeedback.textContent = message;
+    actionFeedback.classList.remove("hidden");
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(() => actionFeedback.classList.add("hidden"), 7000);
+  });
+  statusObserver.observe(status, { childList: true, characterData: true, subtree: true });
+}
 const accountStatus = document.getElementById("authAccount");
 const emailForm = document.getElementById("emailAuthForm");
 const emailButton = document.getElementById("emailSignIn");
