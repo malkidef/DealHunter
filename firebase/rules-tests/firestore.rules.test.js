@@ -368,6 +368,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     });
     const req={candidateProfileId:"candidate-1",openingId:"opening-1",candidateUid:"alice",employerUid:"bob",participantUids:["alice","bob"],requesterUid:"alice",recipientUid:"bob",engagementType:"employment",candidateTitle:"Électricien câbleur",openingTitle:"Monteur câbleur",status:"pending",createdAt:new Date()};
     await assertSucceeds(setDoc(doc(alice,"workMatchRequests","work-1"),req));
+    await assertFails(setDoc(doc(alice,"workMatchRequests","self-recipient"),{...req,recipientUid:"alice"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","extra"),{...req,privateEmail:"alice@example.test"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","wrong-type"),{...req,openingId:"opening-2"}));
     await assertFails(setDoc(doc(outsider,"workMatchRequests","outsider"),{...req,requesterUid:"charlie"}));
