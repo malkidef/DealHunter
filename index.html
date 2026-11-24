@@ -883,10 +883,19 @@ window.addEventListener('dealhunter-generated-matches',e=>{
 });
 $('serviceMatches').addEventListener('click',e=>{
  const button=e.target.closest('[data-service-match-request]');
- if(!button)return;
+ if(!button||button.disabled)return;
+ button.dataset.originalLabel=button.textContent;button.disabled=true;button.textContent='Envoi en cours…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-service-match-request',{detail:{
   offerId:button.dataset.offerId,serviceRequestId:button.dataset.serviceRequestId
  }}));
+});
+window.addEventListener('dealhunter-service-match-request-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-service-match-request]').forEach(button=>{
+  if(button.dataset.offerId!==d.offerId||button.dataset.serviceRequestId!==d.serviceRequestId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Demande envoyée':(button.dataset.originalLabel||'Demander la mise en relation');
+ });
 });
 window.addEventListener('dealhunter-service-match-requests',e=>{
  const el=$('serviceMatchRequestList');if(!el)return;
@@ -1295,8 +1304,17 @@ document.addEventListener('submit',e=>{
  window.dispatchEvent(new CustomEvent('dealhunter-send-work-match-message',{detail:{requestId:form.dataset.requestId,text:input.value}}));input.value='';
 });
 document.addEventListener('click',e=>{
- const b=e.target.closest('[data-work-match-request]');if(!b)return;b.disabled=true;
+ const b=e.target.closest('[data-work-match-request]');if(!b||b.disabled)return;
+ b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Envoi en cours…';
  window.dispatchEvent(new CustomEvent('dealhunter-create-work-match-request',{detail:{candidateProfileId:b.dataset.profileId,openingId:b.dataset.openingId,engagementType:b.dataset.engagement}}));
+});
+window.addEventListener('dealhunter-work-match-request-result',e=>{
+ const d=e.detail||{};
+ document.querySelectorAll('[data-work-match-request]').forEach(button=>{
+  if(button.dataset.profileId!==d.profileId||button.dataset.openingId!==d.openingId)return;
+  button.disabled=!!d.success;
+  button.textContent=d.success?'Demande envoyée':(button.dataset.originalLabel||'Demander la mise en relation');
+ });
 });
 window.addEventListener('dealhunter-work-match-requests',e=>{
  const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],uid=window.dealhunterUserUid||'',el=$('workMatchRequests');if(!el)return;
