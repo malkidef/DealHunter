@@ -21,6 +21,19 @@ Pour la première phase, procéder dans cet ordre :
 
 La configuration Web présente dans le dépôt contient des identifiants publics destinés au navigateur. Leur présence ne prouve pas que les services sont activés ou que les règles sont déployées. Ne jamais placer de clé Admin SDK, secret de compte de service, secret Stripe, clé privée Apple ou mot de passe dans ce fichier ou dans Git.
 
+## Déploiement Firestore contrôlé via GitHub Actions
+
+Un workflow manuel est disponible : `.github/workflows/deploy-firestore.yml`.
+Il déploie exclusivement les règles et index Firestore vers `dealhunter-3747b`, jamais les Cloud Functions ni Stripe.
+
+Pour l'utiliser :
+1. Ouvrir GitHub > Actions > « DealHunter — déployer uniquement Firestore ».
+2. Cliquer sur « Run workflow ».
+3. Saisir exactement `dealhunter-3747b` dans le champ de confirmation.
+4. Lancer et vérifier que chaque étape termine en succès.
+
+Le workflow utilise le secret existant `FIREBASE_SERVICE_ACCOUNT`, vérifie que le compte cible le bon projet, garde le fichier d'identité dans le répertoire temporaire du runner puis le supprime. Si les droits Firebase du compte de service ne permettent pas de publier les règles ou index, le workflow échoue sans activer de service payant. Le déploiement modifie les règles de production : le lancer uniquement après vérification du projet et des tests Firestore verts.
+
 ## Matching produits via GitHub Actions
 
 Le workflow `.github/workflows/matching-batch.yml` lit `publicOffers` et `publicNeeds`, puis écrit des suggestions dans `matches`. Il est distinct du déploiement Cloud Functions.
