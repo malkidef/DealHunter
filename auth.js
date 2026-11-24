@@ -709,10 +709,15 @@ if (!ready) {
       };
       if (!recordId) payload.createdAt = serverTimestamp();
       await setDoc(target, payload, { merge: true });
-      await loadCloudRecords(user);
-      finish(true, collectionName === "publicServiceOffers"
+      const message = collectionName === "publicServiceOffers"
         ? "Offre de service publiée dans le catalogue professionnel."
-        : "Demande de service publiée dans le catalogue professionnel.");
+        : "Demande de service publiée dans le catalogue professionnel.";
+      finish(true, message);
+      try { await loadCloudRecords(user); }
+      catch (refreshError) {
+        console.error("Service enregistré, mais actualisation du catalogue impossible :", refreshError);
+        status.textContent = message + " Actualise la page pour recharger le catalogue.";
+      }
     } catch (error) {
       console.error("Publication du service impossible :", error);
       finish(false, "Publication impossible : " + (error.message || error.code || "erreur inconnue"));
@@ -778,10 +783,15 @@ if (!ready) {
       const target = recordId ? doc(db, collectionName, recordId) : doc(collection(db, collectionName));
       if (!recordId) payload.createdAt = serverTimestamp();
       await setDoc(target, payload, { merge: true });
-      await loadCloudRecords(user);
-      finish(true, collectionName === "publicWorkerProfiles"
+      const message = collectionName === "publicWorkerProfiles"
         ? "Profil professionnel publié dans le catalogue DealHunter."
-        : "Offre professionnelle publiée dans le catalogue DealHunter.");
+        : "Offre professionnelle publiée dans le catalogue DealHunter.";
+      finish(true, message);
+      try { await loadCloudRecords(user); }
+      catch (refreshError) {
+        console.error("Fiche professionnelle enregistrée, mais actualisation du catalogue impossible :", refreshError);
+        status.textContent = message + " Actualise la page pour recharger le catalogue.";
+      }
     } catch (error) {
       console.error("Publication professionnelle impossible :", error);
       finish(false, "Publication impossible : " + (error.message || error.code || "erreur inconnue"));
@@ -891,10 +901,15 @@ if (!ready) {
         throw new Error("Cette fiche n’existe plus ou ne t’appartient pas.");
       }
       await deleteDoc(target);
-      await loadCloudRecords(user);
-      finish(true, collectionName === "publicWorkerProfiles"
+      const message = collectionName === "publicWorkerProfiles"
         ? "Ton profil professionnel a été retiré du catalogue."
-        : "Ton offre professionnelle a été retirée du catalogue.");
+        : "Ton offre professionnelle a été retirée du catalogue.";
+      finish(true, message);
+      try { await loadCloudRecords(user); }
+      catch (refreshError) {
+        console.error("Fiche retirée, mais actualisation du catalogue impossible :", refreshError);
+        status.textContent = message + " Actualise la page pour recharger le catalogue.";
+      }
     } catch (error) {
       console.error("Retrait de la fiche professionnelle impossible :", error);
       finish(false, "Retrait impossible : " + (error.message || error.code || "erreur inconnue"));
