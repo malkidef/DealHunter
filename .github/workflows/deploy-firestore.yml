@@ -1,0 +1,50 @@
+name: DealHunter — déployer uniquement Firestore
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Saisir exactement dealhunter-3747b pour autoriser le déploiement"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealhunter-firestore-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-firestore:
+    if: ${{ inputs.confirm_project == 'dealhunter-3747b' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Vérifier le secret de déploiement
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent."
+            exit 1
+          fi
+          node -e 'const x=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); if(!x.project_id || !x.client_email || !x.private_key) process.exit(1); if(x.project_id !== "dealhunter-3747b") { console.error("Le compte de service ne correspond pas au projet cible."); process.exit(1); }'
+      - name: Préparer l'identité Firebase temporaire
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/dealhunter-firebase-service-account.json"
+          chmod 600 "$RUNNER_TEMP/dealhunter-firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/dealhunter-firebase-service-account.json" >> "$GITHUB_ENV"
+      - name: Déployer uniquement les règles et index Firestore
+        run: npx --yes firebase-tools@14 deploy --only firestore:rules,firestore:indexes --project dealhunter-3747b --non-interactive
+      - name: Nettoyer le fichier d'identité temporaire
+        if: always()
+        run: rm -f "$RUNNER_TEMP/dealhunter-firebase-service-account.json"
