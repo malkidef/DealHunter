@@ -1065,7 +1065,7 @@ const splitQualifications=value=>value.split(',').map(x=>x.trim()).filter(Boolea
 window.addEventListener('dealhunter-service-record-result',e=>{
  const d=e.detail||{},form=d.collectionName==='publicServiceOffers'?$('serviceOfferForm'):d.collectionName==='publicServiceRequests'?$('serviceRequestForm'):null;
  if(!form)return;
- const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=d.success?'Publié':'Publier';
+ const button=form.querySelector('button[type="submit"]');button.disabled=false;button.textContent=button.dataset.originalLabel||'Publier';
  if(d.success)form.reset();
 });
 window.addEventListener('dealhunter-work-record-result',e=>{
@@ -1076,7 +1076,7 @@ window.addEventListener('dealhunter-work-record-result',e=>{
 });
 $('serviceOfferForm').addEventListener('submit',e=>{
  e.preventDefault();
- const button=e.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Publication…';
+ const button=e.currentTarget.querySelector('button[type="submit"]');button.dataset.originalLabel ||= button.textContent;button.disabled=true;button.textContent='Publication…';
  window.dispatchEvent(new CustomEvent('dealhunter-save-service-record',{detail:{collectionName:'publicServiceOffers',record:{
   company:$('soCompany').value,title:$('soTitle').value,description:$('soDescription').value,category:$('soCategory').value,
   location:$('soLocation').value,countryCode:$('soCountry').value.toUpperCase(),qualifications:splitQualifications($('soQualifications').value),
