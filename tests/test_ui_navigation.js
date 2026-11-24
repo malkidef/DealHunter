@@ -76,3 +76,17 @@ test("le retrait d'un profil professionnel restaure le bouton si Firebase échou
   assert.match(auth, /dealhunter-work-delete-result/);
   assert.match(html, /dealhunter-work-delete-result/);
 });
+
+test("les actions de vente acceptation et confirmation retournent un résultat à l'interface", () => {
+  assert.match(auth, /dealhunter-deal-action-result/);
+  assert.match(html, /dealhunter-deal-action-result/);
+  assert.match(html, /data-deal-accept/);
+  assert.match(html, /data-deal-confirm/);
+});
+
+test("les réponses aux demandes et le partage de coordonnées peuvent être réessayés", () => {
+  assert.match(auth, /dealhunter-match-decision-result/);
+  assert.match(auth, /dealhunter-contact-share-result/);
+  assert.match(html, /dealhunter-match-decision-result/);
+  assert.match(html, /dealhunter-contact-share-result/);
+});
