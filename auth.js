@@ -208,7 +208,8 @@ if (!ready) {
   window.addEventListener("dealhunter-send-service-match-message",async e=>{
     const user=auth.currentUser,{requestId,text:messageText}=e.detail||{};
     const message=String(messageText||"").trim();
-    if(!user||!requestId||!message||message.length>2000)return;
+    const finish=(success,label)=>{status.textContent=label;window.dispatchEvent(new CustomEvent("dealhunter-service-message-result",{detail:{success,label,requestId}}));};
+    if(!user||!requestId||!message||message.length>2000){finish(false,"Compte, demande ou message invalide (2 000 caractères maximum).");return;}
     try{
       const requestSnap=await getDoc(doc(db,"serviceMatchRequests",requestId));
       if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
@@ -218,10 +219,11 @@ if (!ready) {
       await addDoc(collection(db,"serviceMatchMessages"),{
         requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()
       });
-      await loadMatchRequests(user);
-      status.textContent="Message envoyé aux participants de la mise en relation.";
-    }catch(err){console.error(err);status.textContent="Envoi du message impossible : "+(err.message||err.code);}
+      finish(true,"Message envoyé aux participants de la mise en relation.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Message envoyé, actualisation impossible :",refreshError);}
+    }catch(err){console.error(err);finish(false,"Envoi du message impossible : "+(err.message||err.code));}
   });
+
 
   window.addEventListener("dealhunter-update-service-match-request",async e=>{
     const user=auth.currentUser,{requestId,decision}=e.detail||{};
@@ -269,12 +271,18 @@ if (!ready) {
   });
   window.addEventListener("dealhunter-send-work-match-message",async e=>{
     const user=auth.currentUser,{requestId,text:messageText}=e.detail||{},message=String(messageText||"").trim();
-    if(!user||!requestId||!message||message.length>2000)return;
-    try{const snap=await getDoc(doc(db,"workMatchRequests",requestId));
-      if(!snap.exists()||snap.data().status!=="accepted"||!snap.data().participantUids?.includes(user.uid))throw new Error("Conversation accessible uniquement aux participants après acceptation.");
-      await addDoc(collection(db,"workMatchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});await loadMatchRequests(user);status.textContent="Message professionnel envoyé.";
-    }catch(err){console.error(err);status.textContent="Message non envoyé : "+(err.message||err.code);}
+    const finish=(success,label)=>{status.textContent=label;window.dispatchEvent(new CustomEvent("dealhunter-work-message-result",{detail:{success,label,requestId}}));};
+    if(!user||!requestId||!message||message.length>2000){finish(false,"Compte, demande ou message invalide (2 000 caractères maximum).");return;}
+    try{
+      const snap=await getDoc(doc(db,"workMatchRequests",requestId));
+      if(!snap.exists()||snap.data().status!=="accepted"||!snap.data().participantUids?.includes(user.uid))
+        throw new Error("Conversation accessible uniquement aux participants après acceptation.");
+      await addDoc(collection(db,"workMatchMessages"),{requestId,senderUid:user.uid,text:message,createdAt:serverTimestamp()});
+      finish(true,"Message professionnel envoyé.");
+      try{await loadMatchRequests(user);}catch(refreshError){console.error("Message envoyé, actualisation impossible :",refreshError);}
+    }catch(err){console.error(err);finish(false,"Message non envoyé : "+(err.message||err.code));}
   });
+
 
   window.addEventListener("dealhunter-create-match-request",async e=>{
     const user=auth.currentUser,d=e.detail||{};
