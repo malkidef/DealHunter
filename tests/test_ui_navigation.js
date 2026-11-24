@@ -120,4 +120,14 @@ test("la boîte de réception contient la destination des demandes emploi et mis
   assert.match(html, /\$\('workMatchRequests'\)/);
   assert.match(html, /dealhunter-work-match-requests/);
   assert.match(html, /data-work-message-form/);
+  assert.match(html, /Impossible de charger les demandes professionnelles/);
+  assert.match(html, /La liste des demandes professionnelles est indisponible/);
+});
+
+test("les boîtes de réception services et emploi distinguent une erreur Firestore d'une liste vide", () => {
+  assert.match(html, /failedCollections/);
+  assert.match(html, /Impossible de charger les demandes de services/);
+  assert.match(html, /La liste des demandes de services est indisponible/);
+  assert.match(html, /Impossible de charger les demandes professionnelles/);
+  assert.match(html, /La liste des demandes professionnelles est indisponible/);
 });
