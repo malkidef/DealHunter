@@ -131,3 +131,8 @@ test("les boîtes de réception services et emploi distinguent une erreur Firest
   assert.match(html, /Impossible de charger les demandes professionnelles/);
   assert.match(html, /La liste des demandes professionnelles est indisponible/);
 });
+
+test("auth transmet les erreurs de lecture aux boîtes de réception services et emploi", () => {
+  assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))'));
+  assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))'));
+});
