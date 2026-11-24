@@ -2,15 +2,16 @@
 
 DealHunter vise à rapprocher des entreprises qui disposent de stocks excédentaires et des acheteurs qui recherchent des produits, avec une commission envisagée uniquement après une vente réellement conclue.
 
-## État réel du dépôt — 18 novembre 2026
+## État réel du dépôt — 24 novembre 2026
 
-- `index.html` : interface responsive pour mobile et ordinateur, offres vendeurs, besoins acheteurs, matching indicatif, import CSV et registre local des sources.
-- **Firebase Authentication et Firestore** : le code d'authentification et de synchronisation des profils, offres, besoins et demandes de mise en relation est présent dans `auth.js`, `firebase-web-config.js` et `firebase/firestore.rules`. Le déploiement effectif des règles et le parcours complet doivent encore être vérifiés dans le projet Firebase.
-- **BODACC** : connecteur officiel ajouté pour les avis de ventes et cessions, publié séparément dans `data/bodacc-business-sales.json` et l’onglet « Signaux BODACC ». Ces avis ne sont pas des offres de stocks ; ils restent des signaux à vérifier et les données personnelles non nécessaires sont exclues.
-- **GSA Auctions** : première collecte API opérationnelle. Le flux public `data/gsa-auctions.json` est chargé par l'onglet « Annonces GSA » ; les annonces restent séparées des stocks vendeurs.
-- Certaines données de démonstration, le registre local des sources, les imports en attente et le cache des annonces GSA restent stockés dans le navigateur via `localStorage`.
+- `index.html` : interface responsive avec catalogues, formulaires de publication/édition, matching, demandes de mise en relation, conversations, propositions commerciales et actions de confiance.
+- **Firebase Authentication et Firestore** : le code client, les règles et les index sont présents. Les tests automatisés des règles réussissent dans CI, mais cela ne prouve pas que les règles/index sont déployés dans le projet Firebase réel.
+- **Flux de données** : des instantanés BOAMP, BODACC, TED, SAM.gov et GSA Auctions sont présents dans `data/`. Leur présence dans Git ne garantit ni leur fraîcheur, ni leur disponibilité continue, ni les droits de republication commerciale. Les annonces restent des pistes à vérifier, pas des stocks confirmés.
+- **GitHub Actions** : les tests applicatifs et les tests des règles Firestore ont réussi sur le commit `7d1366ded3867752b6a2c3d2417c2aa11b4267d8` le 24 novembre 2026 ; GitHub Pages a également été publié sur ce commit. La revue de lancement est suivie dans [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
+- **Matching produits planifié** : le workflow `.github/workflows/matching-batch.yml` existe et s'exécute toutes les 15 minutes lorsqu'il dispose du secret `FIREBASE_SERVICE_ACCOUNT`. La présence/validité de ce secret et une exécution réelle réussie ne sont pas confirmées ici.
+- Certaines données de démonstration, le registre local des sources, les imports en attente et certains caches restent stockés dans le navigateur via `localStorage`.
 
-Le dépôt contient aussi du code de lecture des flux TED et SAM.gov, mais au moment de cette vérification le fichier SAM attendu est vide et le fichier TED attendu n'est pas présent sur la branche principale. Ces deux flux ne sont donc **pas comptés comme opérationnels** ici.
+**Statut de lancement :** GitHub Pages et les tests CI sont opérationnels ; la mise en service Firebase, les tests de bout en bout avec deux comptes, les droits des sources, la revue légale et la procédure RGPD restent à valider. DealHunter ne doit pas encore être présenté comme prêt pour une ouverture publique.
 
 ## Backend actuel : Firebase
 
