@@ -820,34 +820,40 @@ if (!ready) {
 
   window.addEventListener("dealhunter-create-trust-report", async event => {
     const user=auth.currentUser,data=event.detail||{};
-    if(!user){status.textContent="Connecte-toi pour signaler une annonce.";return;}
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-trust-report-result",{detail:{success,message}}));};
+    if(!user){finish(false,"Connecte-toi pour signaler une annonce.");return;}
     const targetType=String(data.targetType||""),targetId=String(data.targetId||"").trim();
     const reason=String(data.reason||""),description=String(data.description||"").trim();
     if(!["company","product_listing","service_listing","work_profile","work_opening","deal"].includes(targetType)||
       !targetId||targetId.length>160||!["fraud","counterfeit","misleading","duplicate","unsafe","spam","other"].includes(reason)||description.length>1000){
-      status.textContent="Vérifie le type, la référence, le motif et le commentaire.";return;
+      finish(false,"Vérifie le type, la référence, le motif et le commentaire.");return;
     }
     try{
       await addDoc(collection(db,"trustReports"),{reporterUid:user.uid,targetType,targetId,reason,description,status:"pending",createdAt:serverTimestamp()});
-      await loadCloudRecords(user);
-      status.textContent="Signalement transmis. Il sera examiné par l'équipe de modération.";
-    }catch(err){console.error("Signalement impossible :",err);status.textContent="Signalement impossible : "+(err.message||err.code);}
+      finish(true,"Signalement transmis. Il sera examiné par l'équipe de modération.");
+      try{await loadCloudRecords(user);}catch(refreshError){console.error("Signalement enregistré, actualisation impossible :",refreshError);}
+    }catch(err){console.error("Signalement impossible :",err);finish(false,"Signalement impossible : "+(err.message||err.code));}
   });
+
+
   window.addEventListener("dealhunter-review-trust-report",async event=>{
     const user=auth.currentUser,{reportId,decision,note}=event.detail||{};
-    if(!user||!reportId||!["reviewed","actioned","false_positive"].includes(decision))return;
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-trust-review-result",{detail:{success,message,reportId}}));};
+    if(!user||!reportId||!["reviewed","actioned","false_positive"].includes(decision)){finish(false,"Action de modération invalide.");return;}
     try{
       const token=await user.getIdTokenResult();
       if(token.claims.dealhunterAdmin!==true)throw new Error("Action réservée à un modérateur autorisé.");
       await updateDoc(doc(db,"trustReports",reportId),{status:decision,reviewerNote:String(note||"").slice(0,500),reviewedAt:serverTimestamp()});
-      await loadCloudRecords(user);
-      status.textContent="Traitement du signalement enregistré.";
-    }catch(err){console.error("Traitement du signalement impossible :",err);status.textContent="Action impossible : "+(err.message||err.code);}
+      finish(true,"Traitement du signalement enregistré.");
+      try{await loadCloudRecords(user);}catch(refreshError){console.error("Signalement traité, actualisation impossible :",refreshError);}
+    }catch(err){console.error("Traitement du signalement impossible :",err);finish(false,"Action impossible : "+(err.message||err.code));}
   });
+
 
   window.addEventListener("dealhunter-create-verification-request", async event => {
     const user = auth.currentUser, data = event.detail || {};
-    if (!user) { status.textContent = "Connecte-toi pour demander une vérification."; return; }
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-verification-create-result",{detail:{success,message}}));};
+    if (!user) { finish(false,"Connecte-toi pour demander une vérification."); return; }
     const subjectType = String(data.subjectType || "");
     const subjectName = String(data.subjectName || "").trim();
     const countryCode = String(data.countryCode || "").trim().toUpperCase();
@@ -857,7 +863,7 @@ if (!ready) {
         subjectName.length > 120 || !/^[A-Z]{2}$/.test(countryCode) ||
         evidenceLabel.length < 2 || evidenceLabel.length > 160 ||
         !/^https:\/\//i.test(publicEvidenceUrl) || publicEvidenceUrl.length > 500) {
-      status.textContent = "Vérifie le type, le nom, le pays, le libellé et l'URL HTTPS publique.";
+      finish(false,"Vérifie le type, le nom, le pays, le libellé et l'URL HTTPS publique.");
       return;
     }
     try {
@@ -865,17 +871,19 @@ if (!ready) {
         ownerUid: user.uid, subjectType, subjectName, countryCode, evidenceLabel,
         publicEvidenceUrl, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
-      await loadCloudRecords(user);
-      status.textContent = "Demande enregistrée. Elle restera en attente jusqu'à une vérification humaine.";
+      finish(true,"Demande enregistrée. Elle restera en attente jusqu'à une vérification humaine.");
+      try{await loadCloudRecords(user);}catch(refreshError){console.error("Demande enregistrée, actualisation impossible :",refreshError);}
     } catch (error) {
       console.error("Demande de vérification impossible :", error);
-      status.textContent = "Demande impossible : " + (error.message || error.code || "erreur inconnue");
+      finish(false,"Demande impossible : " + (error.message || error.code || "erreur inconnue"));
     }
   });
 
+
   window.addEventListener("dealhunter-review-verification-request", async event => {
     const user = auth.currentUser, { requestId, decision } = event.detail || {};
-    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) return;
+    const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-verification-review-result",{detail:{success,message,requestId,decision}}));};
+    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) { finish(false,"Action de vérification invalide."); return; }
     try {
       const token = await user.getIdTokenResult();
       const ref = doc(db, "verificationRequests", requestId);
@@ -892,13 +900,14 @@ if (!ready) {
           reviewedAt: serverTimestamp()
         });
       }
-      await loadCloudRecords(user);
-      status.textContent = decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.";
+      finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
+      try{await loadCloudRecords(user);}catch(refreshError){console.error("Décision enregistrée, actualisation impossible :",refreshError);}
     } catch (error) {
       console.error("Décision de vérification impossible :", error);
-      status.textContent = "Action impossible : " + (error.message || error.code || "erreur inconnue");
+      finish(false,"Action impossible : " + (error.message || error.code || "erreur inconnue"));
     }
   });
+
 
   window.addEventListener("dealhunter-delete-work-record", async event => {
     const user = auth.currentUser;
