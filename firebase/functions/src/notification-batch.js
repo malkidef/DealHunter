@@ -109,6 +109,55 @@ async function main() {
     })) created += 1;
   }));
 
+  const processRequestCollection = async (collectionName, label, title) => {
+    await count(collectionName + "Created", () => eachSince(collectionName, "createdAt", sinceMillis, async (id, data) => {
+      if (data.status !== "pending") return;
+      if (await notify({
+        eventKey: collectionName + "-created:" + id + ":" + (timestampMillis(data.createdAt) || "unknown"),
+        recipientUid: data.recipientUid,
+        type: collectionName === "serviceMatchRequests" ? "service_match_request" : "work_match_request",
+        title,
+        body: String(data.requesterCompany || "Un utilisateur").slice(0, 100) + " vous propose une mise en relation : " + String(data.serviceTitle || data.needTitle || data.candidateTitle || data.openingTitle || label).slice(0, 140) + ".",
+        relatedId: id
+      })) created += 1;
+    }));
+    await count(collectionName + "Decisions", () => eachSince(collectionName, "respondedAt", sinceMillis, async (id, data) => {
+      if (!["accepted", "rejected"].includes(data.status) || !data.requesterUid) return;
+      if (await notify({
+        eventKey: collectionName + "-decision:" + id + ":" + (timestampMillis(data.respondedAt) || "unknown") + ":" + data.status,
+        recipientUid: data.requesterUid,
+        type: data.status === "accepted" ? "match_accepted" : "match_rejected",
+        title: data.status === "accepted" ? "Mise en relation acceptée" : "Mise en relation refusée",
+        body: data.status === "accepted" ? "Votre demande a été acceptée. Vous pouvez poursuivre l’échange dans DealHunter." : "Votre demande de mise en relation a été refusée.",
+        relatedId: id
+      })) created += 1;
+    }));
+  };
+
+  await processRequestCollection("serviceMatchRequests", "un service", "Nouvelle demande de service");
+  await processRequestCollection("workMatchRequests", "une opportunité professionnelle", "Nouvelle demande professionnelle");
+
+  const processMessageCollection = async (collectionName, requestCollection) => {
+    await count(collectionName, () => eachSince(collectionName, "createdAt", sinceMillis, async (id, data) => {
+      if (typeof data.requestId !== "string" || typeof data.senderUid !== "string") return;
+      const requestSnap = await db.collection(requestCollection).doc(data.requestId).get();
+      if (!requestSnap.exists) return;
+      const request = requestSnap.data();
+      if (request.status !== "accepted" || !Array.isArray(request.participantUids) || !request.participantUids.includes(data.senderUid)) return;
+      const recipientUid = request.participantUids.find(uid => uid !== data.senderUid);
+      if (await notify({
+        eventKey: collectionName + "-created:" + id + ":" + (timestampMillis(data.createdAt) || "unknown"),
+        recipientUid,
+        type: "match_message",
+        title: "Nouveau message DealHunter",
+        body: "Vous avez reçu un nouveau message dans une conversation acceptée.",
+        relatedId: data.requestId
+      })) created += 1;
+    }));
+  };
+
+  await processMessageCollection("serviceMatchMessages", "serviceMatchRequests");
+  await processMessageCollection("workMatchMessages", "workMatchRequests");
   await count("newMessages", () => eachSince("matchMessages", "createdAt", sinceMillis, async (id, data) => {
     if (typeof data.requestId !== "string" || typeof data.senderUid !== "string") return;
     const requestSnap = await db.collection("matchRequests").doc(data.requestId).get();
