@@ -45,6 +45,11 @@ if (!ready) {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const requireVerifiedEmail = user => {
+    if (user?.emailVerified === true) return true;
+    status.textContent = "Vérifie ton adresse e-mail pour publier, contacter une entreprise ou conclure une vente. Les comptes Google/Apple reconnus comme vérifiés par Firebase sont acceptés automatiquement.";
+    return false;
+  };
   const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const signInWithProvider = async provider => {
     if (isMobileBrowser) return signInWithRedirect(auth, provider);
@@ -291,6 +296,7 @@ if (!ready) {
       detail:{success,message,sellerId:d.sellerId||"",buyerId:d.buyerId||""}
     }));
     if(!user){const message="Connecte-toi pour demander une mise en relation.";status.textContent=message;result(false,message);return;}
+    if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     if(!d.sellerUid||!d.buyerUid||![d.sellerUid,d.buyerUid].includes(user.uid)||d.sellerUid===d.buyerUid){
       const message="Cette correspondance n’est pas rattachée à deux comptes participants valides.";
       status.textContent=message;result(false,message);return;
@@ -335,6 +341,7 @@ if (!ready) {
     const finish=(success,message)=>{statusElement(message);window.dispatchEvent(new CustomEvent("dealhunter-match-decision-result",{detail:{success,message,requestId}}));};
     const statusElement=message=>{status.textContent=message;};
     if(!user||!requestId||!["accepted","rejected"].includes(decision)){finish(false,"Connecte-toi pour répondre à cette demande.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const ref=doc(db,"matchRequests",requestId),snap=await getDoc(ref);
       if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")
@@ -349,6 +356,7 @@ if (!ready) {
   window.addEventListener("dealhunter-create-deal-review",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.dealId){status.textContent="Connecte-toi pour déposer un avis.";return;}
+    if (!requireVerifiedEmail(user)) return;
     const rating=Number(d.rating),comment=String(d.comment||"").trim();
     if(!Number.isInteger(rating)||rating<1||rating>5||comment.length>800){status.textContent="Note de 1 à 5 et commentaire de 800 caractères maximum.";return;}
     try{
@@ -368,6 +376,7 @@ if (!ready) {
   window.addEventListener("dealhunter-propose-deal",async e=>{
     const user=auth.currentUser,d=e.detail||{};
     if(!user||!d.requestId){status.textContent="Connecte-toi et sélectionne une mise en relation.";return;}
+    if (!requireVerifiedEmail(user)) return;
     const quantity=Number(d.quantity),unitPrice=Number(d.unitPrice);
     if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<=0){status.textContent="Saisis une quantité entière et un prix unitaire positif.";return;}
     try{
@@ -409,6 +418,7 @@ if (!ready) {
     const user=auth.currentUser,{dealId}=e.detail||{};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-deal-action-result",{detail:{success,message,dealId,action:"confirm"}}));};
     if(!user||!dealId){finish(false,"Connecte-toi pour confirmer cette vente.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const ref=doc(db,"deals",dealId);
       let otherConfirmed = false;
@@ -441,6 +451,7 @@ if (!ready) {
     const message=String(messageText||"").trim();
     const finish=(ok,label)=>{if(typeof onResult==="function")onResult(ok,label);};
     if(!user||!requestId||!message){finish(false,"Compte, demande ou message manquant.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     if(message.length>2000){finish(false,"Message limité à 2 000 caractères.");return;}
     try{
       const requestSnap=await getDoc(doc(db,"matchRequests",requestId));
@@ -463,6 +474,7 @@ if (!ready) {
     const user=auth.currentUser,{requestId}=e.detail||{};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-contact-share-result",{detail:{success,message,requestId}}));};
     if(!user||!requestId||!user.email){finish(false,"Connecte-toi avec une adresse e-mail pour la partager.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const requestRef=doc(db,"matchRequests",requestId),requestSnap=await getDoc(requestRef);
       if(!requestSnap.exists())throw new Error("Demande introuvable.");
@@ -489,8 +501,8 @@ if (!ready) {
       getDocs(collection(db, "users", user.uid, "buyerNeeds"))
     ]);
 
-    // Publie les annonces existantes dans les catalogues partagés, sans coordonnées personnelles.
-    await Promise.all([
+    // La synchronisation publique est réservée aux comptes vérifiés ; les autres peuvent toujours consulter le catalogue.
+    if (user.emailVerified === true) await Promise.all([
       ...sellerSnapshot.docs.map(item => {
         const data = item.data();
         return setDoc(doc(db, "publicOffers", item.id), {
@@ -526,10 +538,10 @@ if (!ready) {
     // Nettoie uniquement les copies publiques orphelines appartenant à ce compte.
     const activeOfferIds = new Set(sellerSnapshot.docs.map(item => item.id));
     const activeNeedIds = new Set(buyerSnapshot.docs.map(item => item.id));
-    const staleOfferIds = new Set(publicSellerSnapshot.docs
-      .filter(item => item.data().ownerUid === user.uid && !activeOfferIds.has(item.id)).map(item => item.id));
-    const staleNeedIds = new Set(publicBuyerSnapshot.docs
-      .filter(item => item.data().ownerUid === user.uid && !activeNeedIds.has(item.id)).map(item => item.id));
+    const staleOfferIds = new Set(user.emailVerified === true ? publicSellerSnapshot.docs
+      .filter(item => item.data().ownerUid === user.uid && !activeOfferIds.has(item.id)).map(item => item.id) : []);
+    const staleNeedIds = new Set(user.emailVerified === true ? publicBuyerSnapshot.docs
+      .filter(item => item.data().ownerUid === user.uid && !activeNeedIds.has(item.id)).map(item => item.id) : []);
     const stalePublicDocs = [
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
@@ -646,7 +658,9 @@ if (!ready) {
       const message = "Connecte-toi pour publier un stock ou un besoin acheteur.";
       status.textContent = message; result(false, message); return;
     }
+    if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     const record = data.record || {};
+    if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     const company = String(record.company || "").trim();
     const product = String(record.product || "").trim();
     const category = String(record.category || "Autre / à classer").trim();
