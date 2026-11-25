@@ -59,3 +59,16 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 ## Décision de lancement
 
 **DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, les workflows CI sont verts et le matching serveur a réussi au moins une exécution réelle ; le parcours client Firebase, les règles/index déployés et les tests de bout en bout restent à vérifier. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
+
+## Mise à jour de l'audit — 25 novembre 2026
+
+- Le commit `0e048310d6028238e6fcbf2ff0d1cc2813ccbe34` a ajouté l'envoi d'un e-mail de vérification à la création d'un compte e-mail/mot de passe. Les tests applicatifs, le workflow des règles et GitHub Pages ont réussi sur ce commit. L'envoi réel dépend encore de la configuration Firebase Authentication et doit être testé avec une adresse de test.
+- Le workflow de déploiement Firestore a été exécuté avec succès le 25 novembre (36 secondes), d'après la confirmation visuelle du propriétaire du projet. Le déploiement vise les règles et index définis dans `firebase.json`.
+- L'audit a détecté que `firestore.rules`, lu directement par les tests unitaires, différait de `firebase/firestore.rules`, le fichier réellement référencé par `firebase.json`. Les deux fichiers ont été synchronisés et le workflow CI vérifie désormais leur égalité avant les tests.
+- Le commit de synchronisation des règles est `1fe4281815c65eb4e731e4ec8f0b8855e01d0a88`; le contrôle de parité et les tests applicatifs ont été lancés. Ne considérer les tests de règles comme validés qu'après la fin du workflow correspondant.
+- L'interface actuelle ne contient pas de centre de notifications ni de collection Firestore `notifications` identifiée dans les règles. Les notifications push/e-mail ne sont donc pas une fonctionnalité livrée.
+- L'inscription envoie un e-mail de vérification, mais l'accès aux actions commerciales n'est pas encore bloqué côté règles pour les comptes dont l'e-mail n'est pas vérifié. L'envoi et l'obligation de vérification sont deux contrôles distincts.
+- Le test bout en bout avec deux comptes indépendants, les messages en conditions réelles, les acceptations/refus, les confirmations bilatérales de vente et le parcours d'avis restent à effectuer.
+- Le code de paiement Stripe existe dans `firebase/functions/src/payments.js`, mais les Cloud Functions ne sont pas déployées et le paiement reste hors service. Ne pas présenter la commission indicative de 5 % comme encaissée automatiquement.
+
+**Décision inchangée :** ces avancées améliorent la préparation technique, mais ne lèvent pas les blocages de préproduction, de protection des données et de validation juridique. Ne pas ouvrir au public ni accepter de paiements à ce stade.
