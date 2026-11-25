@@ -783,7 +783,11 @@ service cloud.firestore {
       allow read: if request.auth != null
         && (resource.data.status == "verified" || ownerUid == request.auth.uid || isDealHunterAdmin());
       allow create, update: if isDealHunterAdmin() && validCompanyVerification();
-      allow delete: if isDealHunterAdmin();
+      allow delete: if isDealHunterAdmin()
+        && existsAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId))
+        && getAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId)).data.status == "revoked"
+        && getAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId)).data.ownerUid == ownerUid
+        && !existsAfter(/databases/$(database)/documents/companyVerifications/$(ownerUid));
     }
 
     // Vérification manuelle des entreprises et qualifications, sans dépôt de pièces privées.
@@ -830,6 +834,15 @@ service cloud.firestore {
           && (request.resource.data.status != "verified" || resource.data.subjectType != "company"
             || (existsAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid))
               && getAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid)).data.verificationRequestId == verificationId)))
+        ||
+        (isDealHunterAdmin()
+          && resource.data.status == "verified"
+          && resource.data.subjectType == "company"
+          && request.resource.data.status == "revoked"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","revokedAt"])
+          && request.resource.data.revokedAt is timestamp
+          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500))
+          && !existsAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid)))
         ||
         (resource.data.ownerUid == request.auth.uid
           && resource.data.status == "pending"
