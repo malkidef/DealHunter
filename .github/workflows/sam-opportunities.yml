@@ -19,9 +19,13 @@ on:
     - cron: "0 12 */2 * *"
 permissions:
   contents: write
+concurrency:
+  group: dealhunter-feed-publication
+  cancel-in-progress: false
 jobs:
   collect:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -1,0 +1,132 @@
+name: DealHunter — surveillance des automatisations
+
+on:
+  workflow_run:
+    workflows:
+      - "DealHunter — matching périodique"
+      - "DealHunter — notifications périodiques sans Cloud Functions"
+      - "Collecte quotidienne BOAMP"
+      - "Collecte quotidienne BODACC"
+      - "Collecte quotidienne TED Europe"
+      - "SAM.gov — opportunités acheteurs US (automatique + manuel)"
+      - "GSA Auctions (automatique + manuel)"
+    types: [completed]
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: dealhunter-automation-watchdog
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Détecter les échecs et les automatisations silencieuses
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const monitored = [
+              { name: "DealHunter — matching périodique", maxAgeMinutes: 90 },
+              { name: "DealHunter — notifications périodiques sans Cloud Functions", maxAgeMinutes: 35 },
+              { name: "Collecte quotidienne BOAMP", maxAgeMinutes: 48 * 60 },
+              { name: "Collecte quotidienne BODACC", maxAgeMinutes: 48 * 60 },
+              { name: "Collecte quotidienne TED Europe", maxAgeMinutes: 48 * 60 },
+              { name: "SAM.gov — opportunités acheteurs US (automatique + manuel)", maxAgeMinutes: 96 * 60 },
+              { name: "GSA Auctions (automatique + manuel)", maxAgeMinutes: 96 * 60 }
+            ];
+            const { owner, repo } = context.repo;
+            const incidentTitle = name => "[DealHunter] Automatisation à vérifier : " + name;
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: "open", per_page: 100
+            });
+            async function report(name, body) {
+              const title = incidentTitle(name);
+              const existing = openIssues.find(item => !item.pull_request && item.title === title);
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number, body
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner, repo, title, body
+                });
+              }
+            }
+            async function resolve(name, body) {
+              const title = incidentTitle(name);
+              const existing = openIssues.find(item => !item.pull_request && item.title === title);
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number, body
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: existing.number, state: "closed"
+                });
+              }
+            }
+            if (context.eventName === "workflow_run") {
+              const run = context.payload.workflow_run;
+              const name = run.name;
+              if (run.head_branch !== context.payload.repository.default_branch) {
+                core.info("Exécution hors branche par défaut ignorée : " + run.head_branch);
+                return;
+              }
+              if (!monitored.some(item => item.name === name)) {
+                core.info("Workflow non suivi : " + name);
+                return;
+              }
+              const body = [
+                "Le workflow **" + name + "** s'est terminé avec le résultat **" + run.conclusion + "**.",
+                "",
+                "- Branche : `" + run.head_branch + "`",
+                "- Commit : `" + run.head_sha + "`",
+                "- Exécution : " + run.html_url,
+                "- Détection : " + new Date().toISOString(),
+                "",
+                "Vérifier les journaux GitHub Actions et relancer uniquement après identification de la cause."
+              ].join("\n");
+              if (run.conclusion === "success") {
+                await resolve(name, "Nouvelle exécution réussie : " + run.html_url + ". Incident clos automatiquement.");
+              } else {
+                await report(name, body);
+              }
+              return;
+            }
+            const workflows = await github.paginate(github.rest.actions.listRepoWorkflows, {
+              owner, repo, per_page: 100
+            });
+            for (const item of monitored) {
+              const workflow = workflows.find(candidate => candidate.name === item.name && candidate.state === "active");
+              if (!workflow) {
+                await report(item.name, "Le workflow attendu est absent ou désactivé dans GitHub Actions. Vérifier son nom, son activation et sa présence sur la branche par défaut.");
+                continue;
+              }
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner, repo, workflow_id: workflow.id, per_page: 20
+              });
+              const successful = runs.find(run => run.conclusion === "success" && run.head_branch === context.payload.repository.default_branch);
+              const ageMinutes = successful
+                ? (Date.now() - new Date(successful.updated_at).getTime()) / 60000
+                : Infinity;
+              if (!successful || ageMinutes > item.maxAgeMinutes) {
+                const ageText = successful
+                  ? Math.round(ageMinutes) + " minutes depuis le dernier succès"
+                  : "aucune exécution réussie trouvée";
+                await report(item.name, [
+                  "Surveillance quotidienne : **" + ageText + "**.",
+                  "Seuil de contrôle : " + item.maxAgeMinutes + " minutes.",
+                  successful ? "Dernier succès : " + successful.html_url : "Aucun succès disponible.",
+                  "Vérifier si la planification GitHub Actions est retardée, désactivée ou en échec avant toute relance."
+                ].join("\n"));
+              } else {
+                await resolve(item.name, "Contrôle quotidien OK : dernier succès il y a " + Math.round(ageMinutes) + " minutes (" + successful.html_url + ").");
+              }
+            }
