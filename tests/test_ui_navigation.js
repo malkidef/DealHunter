@@ -37,6 +37,16 @@ test("les liens issus des imports et des sources sont limités à HTTPS", () => 
   assert.match(html, /safeHttpsUrl\(x\.url\)/);
 });
 
+test("les onglets sont accessibles au clavier et exposent leurs rôles ARIA", () => {
+  assert.match(html, /id="mainTabs" role="tablist"/);
+  assert.match(html, /tab\.setAttribute\("role", "tab"\)/);
+  assert.match(html, /panel\.setAttribute\("role", "tabpanel"\)/);
+  assert.match(html, /event\.key === "ArrowRight"/);
+  assert.match(html, /event\.key === "ArrowLeft"/);
+  assert.match(html, /event\.key === "Home"/);
+  assert.match(html, /event\.key === "End"/);
+});
+
 test("les événements d’action de l’interface sont traités par Firebase", () => {
   const actions = [...new Set([...html.matchAll(/new CustomEvent\(['"](dealhunter-[a-z0-9-]+)['"]/g)]
     .map(match => match[1]))]
