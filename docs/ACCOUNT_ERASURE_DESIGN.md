@@ -1,6 +1,6 @@
 # Conception rectification, retrait et effacement — DealHunter
 
-État : spécification opérationnelle préparatoire, non implémentée. Revue technique : 25 novembre 2026.
+État : retrait et effacement non implémentés ; rectification du profil entreprise initialement disponible en branche de développement. Revue technique : 25 novembre 2026.
 
 ## 1. Principe
 
@@ -88,3 +88,15 @@ Cette procédure ne constitue pas un avis juridique. Le responsable du traitemen
 - La restauration de sauvegarde n'annule pas silencieusement les effacements déjà exécutés.
 
 Statut : **non opérationnel**. Cette spécification n'exécute aucune demande, ne modifie aucune donnée et n'active aucun service payant.
+
+
+## 8. Rectification du profil entreprise — première étape
+
+Une première interface de rectification est maintenant présente sur la branche de développement :
+- le profil existant est relu depuis `users/{uid}` et `companyProfiles/{uid}` après connexion ;
+- le nom, le pays et le téléphone sont préremplis ;
+- l'enregistrement existant utilise le même parcours sécurisé que la création ;
+- si une preuve de vérification active existe, le nom et le pays sont verrouillés dans l'interface et restent protégés par les règles Firestore ; le téléphone professionnel reste modifiable dans le profil privé ;
+- les champs entreprise sont réinitialisés lors d'une déconnexion ou d'un changement de compte pour éviter l'affichage des informations du compte précédent.
+
+Cette étape ne traite pas encore les rectifications des annonces, messages, transactions, demandes partagées ni données conservées par les fournisseurs. Elle doit être validée par des essais réels sur plusieurs comptes avant intégration.
