@@ -571,6 +571,15 @@ if (!ready) {
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
     ];
+    const companyVerificationRead = await getDocs(
+      query(collection(db, "companyVerifications"), where("status", "==", "verified"), limit(500))
+    ).catch(error => {
+      console.warn("Statuts de vérification entreprise indisponibles :", error);
+      return null;
+    });
+    const verifiedCompanies = companyVerificationRead
+      ? companyVerificationRead.docs.map(item => ({ id: item.id, ...item.data() }))
+      : [];
     const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -598,7 +607,7 @@ if (!ready) {
     // Publie immédiatement le catalogue produits : les modules optionnels (services,
     // emploi, vérification) ne doivent jamais laisser l'écran produit sur « Chargement… ».
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { sellers, buyers, verifiedCompanies }
     }));
 
     // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
