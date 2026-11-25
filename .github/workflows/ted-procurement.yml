@@ -12,15 +12,18 @@ on:
         required: false
         default: "100"
         type: string
-  schedule:
-    - cron: "30 11 */2 * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: dealhunter-feed-publication
+  cancel-in-progress: false
+
 jobs:
   fetch-ted-notices:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
