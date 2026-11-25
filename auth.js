@@ -967,13 +967,30 @@ if (!ready) {
       const token = await user.getIdTokenResult();
       const ref = doc(db, "verificationRequests", requestId);
       const snapshot = await getDoc(ref);
-      if (!snapshot.exists() || snapshot.data().status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+      if (!snapshot.exists()) throw new Error("Demande introuvable.");
+      const requestData = snapshot.data();
       if (decision === "withdrawn") {
-        if (snapshot.data().ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
+        if (requestData.status !== "pending") throw new Error("Seule une demande en attente peut être retirée.");
+        if (requestData.ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
         await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
       } else {
         if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
-        if (decision === "verified" && snapshot.data().subjectType === "company") {
+        if (decision === "revoked") {
+          if (requestData.status !== "verified" || requestData.subjectType !== "company") throw new Error("Seule une entreprise vérifiée peut être révoquée.");
+          const verificationRef = doc(db, "companyVerifications", requestData.ownerUid);
+          const verificationSnapshot = await getDoc(verificationRef);
+          if (!verificationSnapshot.exists() || verificationSnapshot.data().verificationRequestId !== requestId) throw new Error("Preuve de vérification absente ou non liée à cette demande.");
+          const batch = writeBatch(db);
+          batch.delete(verificationRef);
+          batch.update(ref, {
+            status: "revoked",
+            reviewerNote: "Vérification révoquée par un réviseur autorisé.",
+            revokedAt: serverTimestamp()
+          });
+          await batch.commit();
+        } else {
+          if (requestData.status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+          if (decision === "verified" && requestData.subjectType === "company") {
           const requestData = snapshot.data();
           const profileSnapshot = await getDoc(doc(db, "companyProfiles", requestData.ownerUid));
           const companyProfile = profileSnapshot.exists() ? profileSnapshot.data() : null;
@@ -997,15 +1014,16 @@ if (!ready) {
             reviewedAt: serverTimestamp()
           });
           await batch.commit();
-        } else {
-          await updateDoc(ref, {
-            status: decision,
-            reviewerNote: "Décision enregistrée par un réviseur autorisé.",
-            reviewedAt: serverTimestamp()
-          });
+          } else {
+            await updateDoc(ref, {
+              status: decision,
+              reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+              reviewedAt: serverTimestamp()
+            });
+          }
         }
       }
-      finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
+      finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "revoked" ? "Vérification révoquée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
       try{await loadCloudRecords(user);}catch(refreshError){console.error("Décision enregistrée, actualisation impossible :",refreshError);}
     } catch (error) {
       console.error("Décision de vérification impossible :", error);
