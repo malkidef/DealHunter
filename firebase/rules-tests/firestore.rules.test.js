@@ -500,6 +500,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR",
       verificationRequestId: "company-approval", status: "verified", verifiedAt: new Date()
     };
+    await assertSucceeds(getDoc(doc(alice, "companyVerifications", "alice")));
     await assertFails(setDoc(doc(alice, "companyVerifications", "alice"), verification));
     await assertFails(setDoc(doc(admin, "companyVerifications", "alice"), verification));
     const batch = writeBatch(admin);
