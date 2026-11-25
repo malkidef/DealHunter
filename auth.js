@@ -1305,6 +1305,30 @@ if (!ready) {
     });
   }
 
+  const loadCompanyProfile = async user => {
+    const [privateSnapshot, publicSnapshot, verificationSnapshot] = await Promise.all([
+      getDoc(doc(db, "users", user.uid)),
+      getDoc(doc(db, "companyProfiles", user.uid)),
+      getDoc(doc(db, "companyVerifications", user.uid))
+    ]);
+    const privateCompany = privateSnapshot.exists() ? privateSnapshot.data().company || {} : {};
+    const publicCompany = publicSnapshot.exists() ? publicSnapshot.data() : {};
+    const nameInput = document.getElementById("companyName");
+    const phoneInput = document.getElementById("companyPhone");
+    const countryInput = document.getElementById("companyCountry");
+    if (nameInput) nameInput.value = publicCompany.companyName || privateCompany.name || "";
+    if (phoneInput) phoneInput.value = privateCompany.phone || "";
+    if (countryInput) countryInput.value = publicCompany.countryCode || privateCompany.country || "FR";
+    const locked = verificationSnapshot.exists();
+    if (nameInput) nameInput.readOnly = locked;
+    if (countryInput) countryInput.disabled = locked;
+    const hint = document.getElementById("companyProfileHint");
+    if (hint) hint.textContent = locked
+      ? "Profil entreprise vérifié : le nom et le pays sont verrouillés pendant la vérification active. Contacte l’équipe DealHunter pour demander une correction."
+      : "Tu peux modifier ces informations à tout moment. Les corrections sont enregistrées dans ton espace entreprise.";
+    const button = document.getElementById("createCompany");
+    if (button) button.textContent = publicCompany.companyName || privateCompany.name ? "Enregistrer les modifications" : "Créer mon espace entreprise";
+  };
   const saveUserProfile = async user => {
     const userRef = doc(db, "users", user.uid);
     const existing = await getDoc(userRef);
@@ -1351,9 +1375,10 @@ if (!ready) {
       const startupTasks = await Promise.allSettled([
         saveUserProfile(user),
         loadCloudRecords(user),
-        loadMatchRequests(user)
+        loadMatchRequests(user),
+        loadCompanyProfile(user)
       ]);
-      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions"];
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions", "profil entreprise"];
       const startupErrors = startupTasks.flatMap((result, index) => {
         if (result.status === "fulfilled") return [];
         console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
