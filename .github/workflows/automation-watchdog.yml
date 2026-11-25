@@ -75,6 +75,10 @@ jobs:
             if (context.eventName === "workflow_run") {
               const run = context.payload.workflow_run;
               const name = run.name;
+              if (run.head_branch !== context.payload.repository.default_branch) {
+                core.info("Exécution hors branche par défaut ignorée : " + run.head_branch);
+                return;
+              }
               if (!monitored.some(item => item.name === name)) {
                 core.info("Workflow non suivi : " + name);
                 return;
@@ -108,7 +112,7 @@ jobs:
               const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
                 owner, repo, workflow_id: workflow.id, per_page: 20
               });
-              const successful = runs.find(run => run.conclusion === "success");
+              const successful = runs.find(run => run.conclusion === "success" && run.head_branch === context.payload.repository.default_branch);
               const ageMinutes = successful
                 ? (Date.now() - new Date(successful.updated_at).getTime()) / 60000
                 : Infinity;
