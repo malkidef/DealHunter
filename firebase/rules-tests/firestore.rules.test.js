@@ -140,8 +140,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
         location: "Lille", status: "active", createdAt: new Date()
       });
     });
-    const alice = testEnv.authenticatedContext("alice").firestore();
-    const bob = testEnv.authenticatedContext("bob").firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
     await assertFails(deleteDoc(doc(bob, "users/alice/sellerOffers", "offer-delete")));
     await assertFails(deleteDoc(doc(bob, "users/alice/buyerNeeds", "need-delete")));
     await assertFails(deleteDoc(doc(bob, "publicOffers", "offer-delete")));
