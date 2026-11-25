@@ -526,7 +526,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       status: "revoked", reviewerNote: "Révocation justifiée", revokedAt: new Date()
     });
     await assertSucceeds(revokeBatch.commit());
-    await assertFails(getDoc(doc(alice, "companyVerifications", "alice")));
+    const revokedProof = await getDoc(doc(alice, "companyVerifications", "alice"));
+    assert.equal(revokedProof.exists(), false);
     await assertSucceeds(getDoc(doc(admin, "verificationRequests", "company-approval")));
   });
 
