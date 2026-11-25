@@ -75,3 +75,16 @@ Un export côté client ne remplace pas un export administratif complet, un back
 - La réauthentification peut varier selon le fournisseur de connexion et doit être testée pour e-mail/mot de passe, Google et Apple.
 
 Statut : **spécification préparatoire**. Pas de fonctionnalité d'export active, pas de modification des règles, pas de suppression de données.
+
+
+## Mise à jour — 25 novembre 2026 : portée des caches navigateur
+
+Une correction d'interface en cours dans la PR #27 isole désormais les caches locaux d'offres, de besoins, d'imports et de sources par UID Firebase (espace user_<uid>), avec un espace distinct pour les visiteurs non connectés. Les flux publics GSA restent un cache commun de données de source, et non des données de compte.
+
+Conséquences pour un futur export :
+- les caches locaux restent propres à un navigateur/appareil et ne sont pas automatiquement synchronisés entre appareils ;
+- ils ne sont pas inclus dans un export Firestore/Auth et ne doivent pas être présentés comme un export exhaustif du compte ;
+- les anciennes clés non cloisonnées (dh_sellers, dh_buyers, dh_pending_imports, dh_sources) ne sont pas importées automatiquement dans un compte, afin d'éviter de rattacher les données au mauvais utilisateur ; elles restent dans le stockage du navigateur tant qu'une procédure distincte ne les traite pas ;
+- l'espace invité et les caches partagés de flux ne doivent pas être inclus dans un export personnel sans qualification de leur provenance.
+
+Cette évolution est en branche de développement, non fusionnée. L'inventaire d'export devra être revérifié après intégration et testé sur deux comptes successifs dans le même navigateur.
