@@ -130,3 +130,12 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Les règles des transactions limitent désormais quantité et prix unitaire à 1 milliard d'unités, le montant total à 1 000 milliards et la commission à 50 milliards (bornes de sécurité techniques, pas des plafonds commerciaux recommandés).
 - Les tests couvrent les dépassements de quantité/prix/total et interdisent de rouvrir une transaction après son statut `completed`.
 - Les règles source et copie Firebase restent synchronisées ; validation CI à confirmer sur le dernier commit.
+
+
+### Complément — prévention des doubles vérifications entreprise (25 novembre 2026)
+
+- Le formulaire refuse une nouvelle demande du même type lorsqu'une demande est déjà en attente ou qu'une vérification est active.
+- Les règles Firestore refusent la création d'une demande entreprise si une preuve active existe.
+- Une preuve de vérification ne peut plus être remplacée par une décision provenant d'une autre demande ; une deuxième approbation concurrente ou obsolète est refusée.
+- La révocation doit intervenir avant de pouvoir soumettre une nouvelle demande entreprise.
+- Tests de règles ajoutés pour les demandes en doublon et la tentative d'approbation d'une deuxième demande ; CI à confirmer sur le dernier commit.
