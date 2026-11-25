@@ -38,11 +38,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice > 0
+        && request.resource.data.unitPrice <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -73,11 +85,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.maxUnitBudget is number
+        && request.resource.data.maxUnitBudget > 0
+        && request.resource.data.maxUnitBudget <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -185,7 +209,9 @@ service cloud.firestore {
       function acceptedDealRequest() {
         return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
-          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids;
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid;
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
       allow create: if hasVerifiedEmail()
