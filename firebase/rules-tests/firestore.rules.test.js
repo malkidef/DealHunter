@@ -516,6 +516,26 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(updateDoc(doc(alice, "companyProfiles", "alice"), { updatedAt: new Date() }));
     await assertFails(updateDoc(doc(alice, "companyVerifications", "alice"), { companyName: "Entreprise usurpée" }));
     await assertFails(setDoc(doc(bob, "companyVerifications", "bob"), { ...verification, ownerUid: "bob" }));
+    await assertFails(setDoc(doc(alice, "verificationRequests", "duplicate-active"), {
+      ownerUid: "alice", subjectType: "company", subjectName: "Entreprise A", countryCode: "FR",
+      evidenceLabel: "Registre officiel", publicEvidenceUrl: "https://annuaire-entreprises.data.gouv.fr/",
+      status: "pending", createdAt: new Date(), updatedAt: new Date()
+    }));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "verificationRequests", "second-company-request"), {
+        ownerUid: "alice", subjectType: "company", subjectName: "Entreprise A", countryCode: "FR",
+        evidenceLabel: "Registre officiel", publicEvidenceUrl: "https://annuaire-entreprises.data.gouv.fr/",
+        status: "pending", createdAt: new Date(), updatedAt: new Date()
+      });
+    });
+    const secondApproval = writeBatch(admin);
+    secondApproval.set(doc(admin, "companyVerifications", "alice"), {
+      ...verification, verificationRequestId: "second-company-request"
+    });
+    secondApproval.update(doc(admin, "verificationRequests", "second-company-request"), {
+      status: "verified", reviewerNote: "Deuxième demande", reviewedAt: new Date()
+    });
+    await assertFails(secondApproval.commit());
     await assertFails(deleteDoc(doc(admin, "companyVerifications", "alice")));
     await assertFails(updateDoc(doc(admin, "verificationRequests", "company-approval"), {
       status: "revoked", reviewerNote: "Révocation", revokedAt: new Date()
