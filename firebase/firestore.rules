@@ -9,8 +9,29 @@ service cloud.firestore {
 
     // Profil privé : chaque entreprise ne lit et ne modifie que son propre profil.
     match /users/{userId} {
-      allow read, create, update: if request.auth != null
-        && request.auth.uid == userId;
+      function validPrivateUserProfile() {
+        return request.resource.data.keys().hasOnly([
+          "uid", "email", "displayName", "photoURL", "createdAt", "updatedAt", "company"
+        ])
+        && (!("uid" in request.resource.data) || request.resource.data.uid == userId)
+        && (!("email" in request.resource.data) || request.resource.data.email == null || request.resource.data.email is string)
+        && (!("displayName" in request.resource.data) || request.resource.data.displayName == null || request.resource.data.displayName is string)
+        && (!("photoURL" in request.resource.data) || request.resource.data.photoURL == null || request.resource.data.photoURL is string)
+        && (!("createdAt" in request.resource.data) || request.resource.data.createdAt is timestamp)
+        && (!("updatedAt" in request.resource.data) || request.resource.data.updatedAt is timestamp)
+        && (!("company" in request.resource.data) || (
+          request.resource.data.company is map
+          && request.resource.data.company.keys().hasOnly(["name", "country", "phone", "updatedAt"])
+          && (!("name" in request.resource.data.company) || request.resource.data.company.name is string)
+          && (!("country" in request.resource.data.company) || request.resource.data.company.country is string)
+          && (!("phone" in request.resource.data.company) || request.resource.data.company.phone is string)
+          && (!("updatedAt" in request.resource.data.company) || request.resource.data.company.updatedAt is timestamp)
+        ));
+      }
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && validPrivateUserProfile();
       allow delete: if false;
 
       match /sellerOffers/{offerId} {
