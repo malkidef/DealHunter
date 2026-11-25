@@ -175,3 +175,9 @@ test("le profil entreprise existant est rechargé pour permettre sa rectificatio
   assert.match(auth, /loadCompanyProfile\(user\)/);
   assert.match(html, /id="companyProfileHint"/);
 });
+
+test("les champs entreprise sont réinitialisés lors d’un changement de compte", () => {
+  assert.match(auth, /if \(companyForm\) companyForm\.reset\(\)/);
+  assert.match(auth, /companyNameInput\.readOnly = false/);
+  assert.match(auth, /companyCountryInput\.disabled = false/);
+});
