@@ -1351,7 +1351,17 @@ if (!ready) {
       unsubscribeNotifications = null;
     }
     window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications: [] } }));
-    window.dealhunterUserUid = user?.uid || ''; 
+    window.dealhunterUserUid = user?.uid || '';
+    const companyForm = document.getElementById("companyForm");
+    if (companyForm) companyForm.reset();
+    const companyNameInput = document.getElementById("companyName");
+    const companyCountryInput = document.getElementById("companyCountry");
+    if (companyNameInput) companyNameInput.readOnly = false;
+    if (companyCountryInput) companyCountryInput.disabled = false;
+    const companyHint = document.getElementById("companyProfileHint");
+    if (companyHint) companyHint.textContent = "Après connexion, renseigne le nom et le pays de ton entreprise pour créer ou rectifier ton espace sécurisé.";
+    const companyButton = document.getElementById("createCompany");
+    if (companyButton) companyButton.textContent = "Créer mon espace entreprise";
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
