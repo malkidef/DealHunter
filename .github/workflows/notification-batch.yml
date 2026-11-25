@@ -1,0 +1,44 @@
+name: DealHunter — notifications périodiques sans Cloud Functions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealhunter-notification-worker
+  cancel-in-progress: false
+
+jobs:
+  notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Installer Firebase Admin
+        working-directory: firebase/functions
+        run: npm install --no-audit --no-fund
+      - name: Vérifier le secret et le projet ciblé
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent."
+            exit 1
+          fi
+          node -e 'const x=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); if(x.project_id !== "dealhunter-3747b" || !x.client_email || !x.private_key) process.exit(1); console.log("Compte de service vérifié :",x.client_email)'
+      - name: Vérifier la syntaxe du worker
+        run: node --check firebase/functions/src/notification-batch.js
+      - name: Traiter les notifications métier
+        working-directory: firebase/functions
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node src/notification-batch.js
