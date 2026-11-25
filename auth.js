@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import {
   getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
-  onAuthStateChanged, signOut
+  sendEmailVerification, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
@@ -1159,8 +1159,16 @@ if (!ready) {
       return;
     }
     status.textContent = "Création du compte…";
-    try { await createUserWithEmailAndPassword(auth, email, password); }
-    catch (error) { showError(error); }
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      try {
+        await sendEmailVerification(credential.user);
+        status.textContent = "Compte créé. Un e-mail de vérification vient de t’être envoyé. Vérifie ta boîte de réception et les courriers indésirables.";
+      } catch (verificationError) {
+        console.error("Envoi de l’e-mail de vérification impossible :", verificationError);
+        status.textContent = "Compte créé, mais l’e-mail de vérification n’a pas pu être envoyé. Tu peux demander un nouvel envoi depuis ton compte ou vérifier la configuration Firebase Authentication.";
+      }
+    } catch (error) { showError(error); }
   });
   const companyForm = document.getElementById("companyForm");
   companyForm.addEventListener("submit", async event => {
