@@ -134,3 +134,11 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Le workflow de déploiement Firestore est manuel (`workflow_dispatch`) et exige le champ `confirm_project` égal à `dealhunter-3747b`. Les dernières règles validées sur `c7d8f842` ne sont pas réputées déployées tant qu'une exécution de ce workflow sur le commit actuel n'est pas terminée avec succès.
 - Les tests OAuth Google/Apple utilisent des jetons simulés dans l'émulateur ; ils ne remplacent pas une validation des connexions réelles et des e-mails de vérification sur Firebase Authentication.
 - Les tests à deux comptes réels, la livraison effective des e-mails, la validation RGPD/juridique et les essais de bout en bout restent à faire.
+
+
+## Centre de notifications — première couche de sécurité (25 novembre 2026)
+
+- Ajout des règles Firestore `notifications/{notificationId}` : lecture réservée au champ `recipientUid` correspondant à l'utilisateur connecté ; création cliente interdite ; mise à jour limitée au seul champ `readAt` de type timestamp ; suppression autorisée uniquement au destinataire.
+- Ajout d'un test émulateur couvrant la lecture croisée, la création cliente forgée, le marquage comme lu, la modification de contenu et la suppression par un tiers.
+- Cette modification ne constitue pas encore un centre de notifications fonctionnel : aucun producteur serveur d'événements, compteur non-lu, préférences, interface ni canal e-mail/push n'est déployé. Les notifications ne doivent pas être considérées comme émises tant que ces composants ne sont pas développés et testés.
+- Les règles sont modifiées dans les deux fichiers source. Déploiement Firebase requis après validation CI.
