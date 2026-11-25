@@ -123,3 +123,10 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Le listener est désabonné à chaque changement d'état d'authentification ; l'interface est vidée avant le chargement du compte suivant pour éviter l'affichage des notifications d'un autre utilisateur.
 - Le marquage comme lu est répercuté par le listener, sans relecture manuelle supplémentaire.
 - La CI applicative valide la syntaxe JavaScript de cette version. Le test du parcours réel sur deux comptes et la latence du worker périodique restent à vérifier.
+
+
+### Complément — bornes transactionnelles (25 novembre 2026)
+
+- Les règles des transactions limitent désormais quantité et prix unitaire à 1 milliard d'unités, le montant total à 1 000 milliards et la commission à 50 milliards (bornes de sécurité techniques, pas des plafonds commerciaux recommandés).
+- Les tests couvrent les dépassements de quantité/prix/total et interdisent de rouvrir une transaction après son statut `completed`.
+- Les règles source et copie Firebase restent synchronisées ; validation CI à confirmer sur le dernier commit.
