@@ -170,3 +170,15 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Il ne déploie ni les anciens déclencheurs de matching, ni les fonctions de paiement/Stripe, ni les règles Firestore.
 - Workflow enregistré au commit `977e53fc8652890b1029e5cfd8af9426e96dc083`.
 - État : workflow disponible, mais aucun déploiement de production n'a été lancé depuis cette modification. Le lancement manuel et son résultat restent nécessaires ; les permissions IAM, APIs Firebase/Cloud Functions et éventuelle facturation doivent être confirmées par le résultat de ce déploiement.
+
+
+## Blocage de déploiement des notifications — 25 novembre 2026
+
+- Le workflow isolé `deploy-notification-functions.yml` a été lancé pour le projet `dealhunter-3747b`, mais Firebase a interrompu le déploiement avant la publication des fonctions.
+- Erreur exacte : `Permissions denied enabling cloudfunctions.googleapis.com`. Le compte de service du workflow possède `Service Usage Consumer`, mais ne dispose pas du droit d'activer les API du projet. Firebase a également signalé les API Cloud Build et Artifact Registry comme non activées.
+- Action requise par un propriétaire ou administrateur autorisé du projet : activer les API Cloud Functions, Cloud Build et Artifact Registry dans la console Google Cloud. Alternative IAM à examiner par l'administrateur : accorder temporairement au compte de service le rôle `Service Usage Admin` (`roles/serviceusage.serviceUsageAdmin`) pour l'activation, puis retirer ce rôle si non nécessaire. Ne pas accorder Owner ou Editor.
+- L'échec est un refus IAM pendant la vérification/activation des API ; il ne prouve ni un défaut du code ni une publication partielle. Aucune des cinq fonctions de notification n'est considérée comme déployée.
+- Revue du schéma applicatif : les demandes `matchRequests` contiennent bien `requesterUid`, `recipientUid`, `requesterCompany`, `product`, `participantUids` et `status`. Les messages `matchMessages` contiennent `requestId`, `senderUid`, `text`. Les transactions `deals` contiennent `participantUids`, `proposerUid`, `product` et les statuts `proposed`, `agreed`, `completed`. Les cinq déclencheurs ajoutés correspondent donc aux champs actuellement écrits par `auth.js` pour ces trois parcours.
+- Après activation des API par l'administrateur, relancer le workflow manuel de déploiement. Vérifier ensuite dans Firebase/Google Cloud que les cinq fonctions sont effectivement déployées, puis tester avec deux comptes distincts la création de demande, acceptation/refus, message et proposition/évolution de transaction.
+- Les avertissements npm concernant des dépendances dépréciées n'ont pas provoqué cet échec. Ils méritent un suivi de maintenance distinct, sans mise à niveau précipitée du CLI de déploiement.
+- Stripe reste désactivé ; ce workflow ne cible que les cinq fonctions de notification.
