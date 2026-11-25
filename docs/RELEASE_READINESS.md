@@ -1,6 +1,6 @@
 # État de préparation au lancement — DealHunter
 
-Dernière revue : 24 novembre 2026. Branche principale : `main`.
+Dernière revue : 25 novembre 2026. Branche principale auditée : `main` (`dd5c234e` avant les branches de finalisation). Les corrections complémentaires restent dans des PR brouillon non fusionnées.
 
 ## Vérifications GitHub du 24 novembre 2026
 
@@ -15,8 +15,9 @@ Dernière revue : 24 novembre 2026. Branche principale : `main`.
 
 - Les dernières corrections intégrées à `main` couvrent la publication et l'édition des offres/besoins, le chargement des demandes de mise en relation, le retour d'état des actions Firebase, la confirmation des transactions, ainsi que la reprise après échec des actions de modération et de messagerie privée.
 - GitHub Pages a été construit et publié avec succès sur le commit audité.
-- Le projet Firebase `dealhunter-3747b` a été confirmé par son propriétaire comme étant le bon projet.
-- Cette confirmation ne prouve pas que Authentication, Firestore, les règles ou les index sont activés/déployés. Aucun déploiement Firebase n'est confirmé.
+- Le projet Firebase `dealhunter-3747b` a été confirmé par son propriétaire.
+- Le déploiement Firestore (règles et index uniquement) a été confirmé par le workflow dédié, exécution [45650187934](https://github.com/malkidef/DealHunter/actions/runs/45650187934), avec `Deploy complete!`.
+- Ce déploiement ne déploie pas de Cloud Functions et ne prouve pas à lui seul tous les parcours réels côté client.
 
 ## Fonctionnalités présentes dans le code
 
@@ -41,10 +42,10 @@ Dernière revue : 24 novembre 2026. Branche principale : `main`.
 
 ## Bloqueurs avant ouverture publique
 
-- **Firebase** : le compte de service Admin a réussi une exécution réelle du matching le 24 novembre ; l'activation et le déploiement des règles/index côté client restent non vérifiés ; tests de bout en bout non réalisés.
+- **Firebase** : le matching serveur a réussi une exécution réelle (2 offres, 2 besoins, 1 correspondance) et le déploiement Firestore règles/index a été confirmé. Les essais de bout en bout restent à compléter sur plusieurs comptes et appareils.
 - **Matching planifié** : au moins une exécution réelle a réussi. Il reste à vérifier les volumes de suggestions produits, leur affichage côté comptes utilisateurs et la régularité du déclenchement planifié.
 - **Modération** : attribuer le custom claim `dealhunterAdmin: true` à un réviseur de confiance via Firebase Admin SDK.
-- **Préproduction** : tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait et effacement.
+- **Préproduction** : l'inscription e-mail/mot de passe, vérification e-mail, connexion Google/Apple, réinitialisation du mot de passe et déconnexion sont présentes dans le code ; elles ne sont pas toutes validées en conditions réelles. Tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait, export et effacement. Aucun parcours complet de suppression de compte n'est implémenté à ce jour.
 - **Protection des données** : finaliser bases légales, durées, accès/export/rectification/effacement, incidents et contrats sous-traitants. Voir `docs/PRIVACY_OPERATIONS.md`.
 - **Cadre légal** : examiner pays par pays le courtage, l'emploi, la sous-traitance, les qualifications, la consommation, les sanctions et les transferts internationaux.
 - **Sources** : vérifier licences et conditions de chaque source ; une annonce collectée n'est jamais un stock confirmé.
@@ -58,7 +59,7 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 
 ## Décision de lancement
 
-**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, les workflows CI sont verts et le matching serveur a réussi au moins une exécution réelle ; le parcours client Firebase, les règles/index déployés et les tests de bout en bout restent à vérifier. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
+**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, le matching serveur a réussi au moins une exécution réelle et le déploiement Firestore règles/index est confirmé. Les corrections de sécurité et d'interface en cours sont encore dans des PR non fusionnées ; les essais réels complets, la sauvegarde restaurable, les droits RGPD opérationnels, les documents juridiques et la validation du cadre commercial restent des bloqueurs. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant leur levée.
 
 ## Mise à jour de l'audit — 25 novembre 2026
 

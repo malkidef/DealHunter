@@ -86,6 +86,17 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(setDoc(doc(db, "users/alice/buyerNeeds", "need-1"), { product: "Palettes" }));
   });
 
+  it("interdit les champs privilégiés ou inattendus dans le profil privé", async () => {
+    const db = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, "users", "alice"), { displayName: "Alice" }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { displayName: "Alice", role: "admin" }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { isAdmin: true }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { company: { name: "Entreprise", verified: true } }, { merge: true }));
+    await assertSucceeds(setDoc(doc(db, "users", "alice"), {
+      company: { name: "Entreprise", country: "FR", phone: "0102030405", updatedAt: new Date() }
+    }, { merge: true }));
+  });
+
   it("interdit à un utilisateur de lire ou modifier le profil privé d'un autre", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "users", "bob"), { displayName: "Bob" });
@@ -127,6 +138,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
 
     await assertFails(setDoc(doc(bob, "publicOffers", "offer-1"), { ...offer, ownerUid: "bob" }));
     await assertFails(setDoc(doc(bob, "publicNeeds", "need-1"), { ...need, ownerUid: "bob" }));
+    await assertFails(updateDoc(doc(alice, "publicOffers", "offer-1"), { createdAt: new Date(Date.now() + 86400000) }));
+    await assertFails(updateDoc(doc(alice, "publicNeeds", "need-1"), { createdAt: new Date(Date.now() + 86400000) }));
+    await assertSucceeds(updateDoc(doc(alice, "publicOffers", "offer-1"), { quantity: 45 }));
+    await assertSucceeds(updateDoc(doc(alice, "publicNeeds", "need-1"), { quantity: 18 }));
     await assertFails(setDoc(doc(alice, "publicOffers", "offer-private"), {
       ...offer, privateEmail: "confidentiel@example.test"
     }));
@@ -135,6 +150,24 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     }));
     await assertFails(setDoc(doc(alice, "publicOffers", "offer-invalid"), {
       ...offer, quantity: "cinquante"
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-zero-quantity"), {
+      ...offer, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-negative-price"), {
+      ...offer, unitPrice: -1
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-long-product"), {
+      ...offer, product: "x".repeat(161)
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-quantity"), {
+      ...need, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-budget"), {
+      ...need, maxUnitBudget: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-long-location"), {
+      ...need, location: "x".repeat(121)
     }));
     await assertFails(setDoc(doc(alice, "publicNeeds", "need-invalid"), {
       ...need, status: "draft"
@@ -172,10 +205,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   it("autorise une demande valide uniquement pour les annonces actives des deux participants", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       const db = context.firestore();
-      await setDoc(doc(db, "publicOffers", "seller-record-1"), { ownerUid: "alice", status: "active" });
-      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), { ownerUid: "bob", status: "active" });
-      await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", status: "active" });
-      await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", status: "closed" });
+      await setDoc(doc(db, "publicOffers", "seller-record-1"), { ownerUid: "alice", company: "Entreprise A", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), { ownerUid: "bob", company: "Entreprise B", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", company: "Entreprise C", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", company: "Entreprise B", product: "Cartons", status: "closed" });
     });
     const alice = verifiedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
@@ -197,6 +230,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "matchRequests", "request-4"), wrongRecipient));
     const unexpectedField = { ...requestData("alice", "bob"), privateEmail: "intrus@example.test" };
     await assertFails(setDoc(doc(alice, "matchRequests", "request-5"), unexpectedField));
+    const forgedProduct = { ...requestData("alice", "bob"), product: "Produit inexistant" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-product"), forgedProduct));
+    const forgedRequesterCompany = { ...requestData("alice", "bob"), requesterCompany: "Entreprise usurpée" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-requester"), forgedRequesterCompany));
+    const forgedRecipientCompany = { ...requestData("alice", "bob"), recipientCompany: "Autre entreprise" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-recipient"), forgedRecipientCompany));
   });
 
   it("réserve la décision au destinataire et protège les participants", async () => {
@@ -277,6 +316,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-invalid-status"), {
       ...request, status: "draft"
     }));
+    await assertFails(setDoc(doc(alice, "publicServiceOffers", "service-long-description"), {
+      ...offer, description: "x".repeat(4001)
+    }));
+    await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-too-many-qualifications"), {
+      ...request, requiredQualifications: Array(31).fill("qualification")
+    }));
     await assertSucceeds(updateDoc(doc(alice, "publicServiceOffers", "service-1"), {
       description: "Maintenance et dépannage", updatedAt: new Date()
     }));
@@ -316,6 +361,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"rejected",participantUids:["bob"],respondedAt:new Date()}));
     await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-extra"),{...request,privateEmail:"secret@example.test"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-company"),{...request,requesterCompany:"Entreprise usurpée"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-title"),{...request,serviceTitle:"Autre prestation"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-recipient"),{...request,recipientUid:"alice"}));
   });
 
   it("ouvre la messagerie de services uniquement après acceptation bilatérale", async () => {
@@ -373,6 +421,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(bob,"publicWorkOpenings","opening-1"),{...opening,ownerUid:"bob"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-private"),{...opening,privatePhone:"0600000000"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-invalid"),{...opening,engagementType:"any"}));
+    await assertFails(setDoc(doc(alice,"publicWorkerProfiles","profile-long-description"),{...profile,description:"x".repeat(4001)}));
+    await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-too-many-skills"),{...opening,requiredSkills:Array(41).fill("skill")}));
     await assertSucceeds(deleteDoc(doc(alice,"publicWorkerProfiles","profile-1")));
   });
 
@@ -446,6 +496,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       sellerConfirmed:false,buyerConfirmed:false,createdAt:new Date(),updatedAt:new Date()
     };
     await assertSucceeds(setDoc(doc(alice,"deals","deal-1"),proposal));
+    await assertFails(setDoc(doc(alice,"deals","role-inversion"),{
+      ...proposal,sellerUid:"bob",buyerUid:"alice",proposerUid:"alice",accepterUid:"bob"
+    }));
     await assertSucceeds(getDoc(doc(bob,"deals","deal-1")));
     await assertFails(getDoc(doc(outsider,"deals","deal-1")));
     await assertFails(setDoc(doc(alice,"deals","fake"),{...proposal,commissionRate:99}));
