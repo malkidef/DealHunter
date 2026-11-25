@@ -99,12 +99,7 @@ if (!ready) {
     const reads = await Promise.allSettled([
       getDocs(query(collection(db,"matchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"deals"),where("participantUids","array-contains",user.uid))),
-      Promise.all([
-        getDocs(query(collection(db,"matches"),where("sellerUid","==",user.uid))),
-        getDocs(query(collection(db,"matches"),where("buyerUid","==",user.uid)))
-      ]).then(([sellerMatches,buyerMatches]) => ({
-        docs: [...sellerMatches.docs, ...buyerMatches.docs.filter(item => !sellerMatches.docs.some(sellerItem => sellerItem.id === item.id))]
-      })),
+      getDocs(query(collection(db,"matches"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"serviceMatchRequests"),where("participantUids","array-contains",user.uid))),
       getDocs(query(collection(db,"workMatchRequests"),where("participantUids","array-contains",user.uid)))
     ]);
