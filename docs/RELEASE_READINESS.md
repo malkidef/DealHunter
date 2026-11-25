@@ -194,3 +194,15 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
   - `https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project=dealhunter-3747b`
 - Après activation, relancer le workflow `deploy-notification-functions.yml`. Ne pas élargir les droits du compte de service au rôle Owner/Editor ; si l'activation doit être déléguée, l'administrateur peut examiner un droit temporaire limité à Service Usage Admin.
 - Les fonctions ne sont pas déclarées déployées tant que le workflow n'a pas terminé avec succès et que leur présence n'a pas été vérifiée dans le projet.
+
+
+## Notifications sans Cloud Build ni Cloud Functions — 25 novembre 2026
+
+- Pour éviter l'activation d'Artifact Registry et de Cloud Build ainsi que le déploiement Cloud Functions, un worker Node.js Admin SDK est ajouté dans `firebase/functions/src/notification-batch.js`.
+- Le workflow `.github/workflows/notification-batch.yml` l'exécute manuellement ou toutes les cinq minutes via GitHub Actions. Il utilise le secret existant `FIREBASE_SERVICE_ACCOUNT`, vérifie que le compte cible exactement `dealhunter-3747b` et n'exécute aucun déploiement Firebase.
+- Le worker traite les demandes de mise en relation, leurs décisions, les messages liés à une demande acceptée, les propositions commerciales et les changements de statut des transactions. Les notifications sont créées exclusivement par Admin SDK dans `notifications`; les IDs déterministes évitent les doublons lors des reprises.
+- Un checkpoint Admin SDK dans `systemJobs/notificationWorker` permet de reprendre les scans. Une fenêtre de recouvrement de dix minutes protège contre les retards de planification ; le premier passage ne remonte que quinze minutes afin d'éviter l'envoi massif de notifications historiques.
+- Cette solution ne nécessite pas les API Cloud Functions, Cloud Build ou Artifact Registry. Elle nécessite toujours l'accès Firestore du compte de service et consomme le quota GitHub Actions. La planification GitHub est indicative : l'exécution peut être retardée et n'est pas un service temps réel garanti.
+- La première exécution réelle doit être vérifiée dans Actions. Contrôler le résumé JSON `ok: true`, les compteurs scannés, la création de documents dans `notifications` et la lecture par deux comptes distincts. Le worker n'est pas déclaré opérationnel en production avant ces vérifications.
+- Le workflow de déploiement Cloud Functions des notifications n'est plus nécessaire pour ce parcours et a été retiré afin d'éviter un lancement accidentel qui réclamerait les API payantes. Le code historique des fonctions n'est pas supprimé, mais il n'est pas utilisé par le nouveau worker.
+- Stripe reste désactivé. Aucun paiement, aucune commission et aucun déploiement de fonction Cloud ne sont activés par cette modification.
