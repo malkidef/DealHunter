@@ -852,7 +852,7 @@ $('csvFile').addEventListener('change',async e=>{
    const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
    const sourceUrl=r.source_url||r.url||'';
    if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
-   if(sourceUrl&&!/^https:\/\//i.test(sourceUrl)){skipped++;continue}
+   if(sourceUrl&&!safeHttpsUrl(sourceUrl)){skipped++;continue}
    const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
    const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
    if(exists){skipped++;continue}
@@ -1161,7 +1161,7 @@ window.addEventListener('dealhunter-service-data',e=>{
  const matchEl=$('serviceMatches');
  if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><button type="button" data-service-match-request data-offer-id="'+escapeHtml(p.o.id)+'" data-service-request-id="'+escapeHtml(p.r.id)+'">Demander la mise en relation</button><div class="muted">Aucune coordonnée n’est partagée avant acceptation.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
 });
-$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
+$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=safeHttpsUrl($('srcUrl').value);if(!url)return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 window.addEventListener('dealhunter-business-record-result',e=>{
  const d=e.detail||{};
