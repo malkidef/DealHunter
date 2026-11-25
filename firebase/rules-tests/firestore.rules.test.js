@@ -574,6 +574,33 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(deleteDoc(doc(alice,"trustReports","report-1")));
   });
 
+  it("réserve les notifications à leur destinataire et interdit leur création cliente", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "notifications", "alice-note"), {
+        recipientUid: "alice", type: "match_request", title: "Nouvelle demande",
+        body: "Une entreprise souhaite vous contacter.", createdAt: new Date(), readAt: null
+      });
+    });
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
+    await assertSucceeds(getDoc(doc(alice, "notifications", "alice-note")));
+    await assertFails(getDoc(doc(bob, "notifications", "alice-note")));
+    await assertFails(setDoc(doc(alice, "notifications", "client-forged"), {
+      recipientUid: "alice", type: "payment_paid", title: "Payé",
+      body: "Paiement confirmé", createdAt: new Date(), readAt: null
+    }));
+    await assertSucceeds(updateDoc(doc(alice, "notifications", "alice-note"), {
+      readAt: new Date()
+    }));
+    await assertFails(updateDoc(doc(alice, "notifications", "alice-note"), {
+      recipientUid: "bob"
+    }));
+    await assertFails(updateDoc(doc(alice, "notifications", "alice-note"), {
+      title: "Fausse notification"
+    }));
+    await assertSucceeds(deleteDoc(doc(alice, "notifications", "alice-note")));
+  });
+
   it("autorise le partage des coordonnées seulement après acceptation", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
