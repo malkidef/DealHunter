@@ -252,6 +252,7 @@ if (!ready) {
     const user=auth.currentUser,d=e.detail||{};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-work-match-request-result",{detail:{success,message,profileId:d.candidateProfileId||"",openingId:d.openingId||""}}));};
     if(!user||!d.candidateProfileId||!d.openingId){finish(false,"Connecte-toi pour demander cette mise en relation.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const [ps,os]=await Promise.all([getDoc(doc(db,"publicWorkerProfiles",d.candidateProfileId)),getDoc(doc(db,"publicWorkOpenings",d.openingId))]);
       if(!ps.exists()||!os.exists())throw new Error("Le profil ou l'offre n'existe plus.");
@@ -272,6 +273,7 @@ if (!ready) {
   window.addEventListener("dealhunter-update-work-match-request",async e=>{
     const user=auth.currentUser,{requestId,decision}=e.detail||{};
     if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    if (!requireVerifiedEmail(user)) return;
     try{const ref=doc(db,"workMatchRequests",requestId),snap=await getDoc(ref);
       if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")throw new Error("Seul le destinataire peut répondre à cette demande.");
       await updateDoc(ref,{status:decision,respondedAt:serverTimestamp()});await loadMatchRequests(user);
@@ -282,6 +284,7 @@ if (!ready) {
     const user=auth.currentUser,{requestId,text:messageText}=e.detail||{},message=String(messageText||"").trim();
     const finish=(success,label)=>{status.textContent=label;window.dispatchEvent(new CustomEvent("dealhunter-work-message-result",{detail:{success,label,requestId}}));};
     if(!user||!requestId||!message||message.length>2000){finish(false,"Compte, demande ou message invalide (2 000 caractères maximum).");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const snap=await getDoc(doc(db,"workMatchRequests",requestId));
       if(!snap.exists()||snap.data().status!=="accepted"||!snap.data().participantUids?.includes(user.uid))
@@ -786,6 +789,7 @@ if (!ready) {
       finish(false, "Connecte-toi pour publier un profil ou une offre professionnelle.");
       return;
     }
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     const textValue = key => String(record[key] || "").trim();
     const listValue = key => Array.isArray(record[key]) ? record[key].map(x => String(x).trim()).filter(Boolean).slice(0, 40) : [];
     const countryCode = textValue("countryCode").toUpperCase();
@@ -950,6 +954,7 @@ if (!ready) {
       finish(false, "Retrait impossible : profil, offre ou compte invalide.");
       return;
     }
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try {
       const target = doc(db, collectionName, recordId);
       const snapshot = await getDoc(target);
