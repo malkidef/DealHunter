@@ -374,12 +374,22 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
         && request.resource.data.remote is bool
         && request.resource.data.coverageRadiusKm is number
         && request.resource.data.coverageRadiusKm >= 0
@@ -417,7 +427,9 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 30
         && request.resource.data.remote is bool
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.coverageRadiusKm is number
@@ -526,15 +538,25 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.skills is list
+        && request.resource.data.skills.size() <= 40
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 40
         && request.resource.data.engagementTypes is list
         && request.resource.data.engagementTypes.size() > 0
+        && request.resource.data.engagementTypes.size() <= 2
         && request.resource.data.engagementTypes.hasOnly(["employment","independent"])
         && request.resource.data.availableFrom is string
         && request.resource.data.remote is bool
@@ -564,16 +586,28 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.requiredSkills is list
+        && request.resource.data.requiredSkills.size() <= 40
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 40
         && request.resource.data.engagementType in ["employment","independent"]
         && request.resource.data.startDate is string
+        && request.resource.data.startDate.size() <= 40
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.status == "active"
         && request.resource.data.createdAt is timestamp
