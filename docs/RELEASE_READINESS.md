@@ -206,3 +206,8 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - La première exécution réelle doit être vérifiée dans Actions. Contrôler le résumé JSON `ok: true`, les compteurs scannés, la création de documents dans `notifications` et la lecture par deux comptes distincts. Le worker n'est pas déclaré opérationnel en production avant ces vérifications.
 - Le workflow de déploiement Cloud Functions des notifications n'est plus nécessaire pour ce parcours et a été retiré afin d'éviter un lancement accidentel qui réclamerait les API payantes. Le code historique des fonctions n'est pas supprimé, mais il n'est pas utilisé par le nouveau worker.
 - Stripe reste désactivé. Aucun paiement, aucune commission et aucun déploiement de fonction Cloud ne sont activés par cette modification.
+
+
+### Extension des notifications aux services et à l'emploi
+
+Le worker périodique couvre désormais aussi `serviceMatchRequests` et `workMatchRequests` : création d'une demande, acceptation ou refus. Il traite également les messages de `serviceMatchMessages` et `workMatchMessages`, en vérifiant que la demande associée est acceptée et que l'expéditeur appartient aux participants. Les notifications restent privées, dédupliquées par identifiant déterministe et créées côté serveur via Admin SDK. La validation CI de syntaxe et les tests existants doivent être vérifiés sur le commit qui porte cette extension ; un essai fonctionnel avec deux comptes reste requis.
