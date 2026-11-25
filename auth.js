@@ -975,10 +975,10 @@ if (!ready) {
         if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
         if (decision === "verified" && snapshot.data().subjectType === "company") {
           const requestData = snapshot.data();
-          const profileSnapshot = await getDoc(doc(db, "users", requestData.ownerUid));
-          const company = profileSnapshot.exists() ? profileSnapshot.data().company : null;
-          const companyName = String(company?.name || "").trim();
-          const companyCountry = String(company?.country || "").trim().toUpperCase();
+          const profileSnapshot = await getDoc(doc(db, "companyProfiles", requestData.ownerUid));
+          const companyProfile = profileSnapshot.exists() ? profileSnapshot.data() : null;
+          const companyName = String(companyProfile?.companyName || "").trim();
+          const companyCountry = String(companyProfile?.countryCode || "").trim().toUpperCase();
           if (!companyName || companyName !== requestData.subjectName || companyCountry !== requestData.countryCode) {
             throw new Error("Le nom et le pays du profil entreprise doivent correspondre exactement à la demande avant validation.");
           }
@@ -1301,7 +1301,8 @@ if (!ready) {
     submitButton.disabled = true;
     status.textContent = "Enregistrement de ton espace entreprise…";
     try {
-      await setDoc(doc(db, "users", user.uid), {
+      const profileBatch = writeBatch(db);
+      profileBatch.set(doc(db, "users", user.uid), {
         company: {
           name: companyName,
           country: companyCountry,
@@ -1310,6 +1311,13 @@ if (!ready) {
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
+      profileBatch.set(doc(db, "companyProfiles", user.uid), {
+        ownerUid: user.uid,
+        companyName,
+        countryCode: companyCountry,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await profileBatch.commit();
       status.textContent = "Espace entreprise enregistré avec succès.";
       companyForm.reset();
     } catch (error) {
