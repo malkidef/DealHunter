@@ -56,7 +56,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="stat"><strong id="buyerCount">0</strong><span>Besoins acheteurs</span></div>
 <div class="stat"><strong id="matchCount">0</strong><span>Correspondances</span></div>
 </section>
-<div class="tabs" id="mainTabs">
+<div class="tabs" id="mainTabs" role="tablist" aria-label="Navigation principale">
 <button type="button" class="active" data-tab="matches" onclick="window.dealhunterShowTab('matches',this)">Correspondances</button>
 <button type="button" class="secondary" data-tab="matchRequests" onclick="window.dealhunterShowTab('matchRequests',this)">Demandes</button>
 <button type="button" class="secondary" data-tab="dashboard" onclick="window.dealhunterShowTab('dashboard',this)">Tableau de bord</button>
@@ -79,17 +79,51 @@ window.dealhunterShowTab = function(target, button) {
     const active = tab.dataset.tab === target;
     tab.classList.toggle('active', active);
     tab.classList.toggle('secondary', !active);
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
   });
   allowedTabs.forEach(function(id) {
     const panel = document.getElementById(id);
     if (panel) panel.classList.toggle('hidden', id !== target);
   });
 };
+const tabList = document.getElementById("mainTabs");
+if (tabList) {
+  const tabButtons = [...tabList.querySelectorAll('button[data-tab]')];
+  tabButtons.forEach(tab => {
+    tab.id = "tab-" + tab.dataset.tab;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", tab.dataset.tab);
+    const selected = tab.classList.contains("active");
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    const panel = document.getElementById(tab.dataset.tab);
+    if (panel) {
+      panel.setAttribute("role", "tabpanel");
+      panel.setAttribute("aria-labelledby", tab.id);
+      panel.tabIndex = 0;
+    }
+  });
+  tabList.addEventListener("keydown", event => {
+    const current = tabButtons.indexOf(event.target.closest('button[data-tab]'));
+    if (current < 0) return;
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % tabButtons.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + tabButtons.length) % tabButtons.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabButtons.length - 1;
+    else return;
+    event.preventDefault();
+    const tab = tabButtons[next];
+    window.dealhunterShowTab(tab.dataset.tab, tab);
+    tab.focus();
+  });
+}
 </script>
 <section id="account" class="panel hidden">
 <h2>Compte entreprise</h2>
-<p class="muted">Crée un compte ou connecte-toi pour préparer ton espace DealHunter. L’authentification sera active après configuration du projet Firebase.</p>
-<div class="status-note" id="authStatus" role="status" aria-live="polite">Firebase n’est pas encore configuré. Aucun compte ne peut être créé pour le moment.</div>
+<p class="muted">Crée un compte ou connecte-toi pour accéder aux fonctions professionnelles de DealHunter. Une adresse e-mail vérifiée est nécessaire pour publier des offres, des besoins et utiliser les fonctions commerciales.</p>
+<div class="status-note" id="authStatus" role="status" aria-live="polite">Vérification de la configuration Firebase…</div>
 <div class="auth-layout">
 <section class="item">
 <h3>Connexion / création par e-mail</h3>
@@ -280,7 +314,7 @@ window.dealhunterShowTab = function(target, button) {
 <p class="muted">Les scores sont indicatifs. Les diplômes, habilitations et autorisations doivent être vérifiés par l'entreprise.</p>
 <div id="workMatches" class="cards"><div class="empty">Les correspondances apparaîtront après publication.</div></div>
 <h3>Demandes de mise en relation et conversations</h3>
-<div id="workMatchRequests" class="cards"><div class="empty">Aucune demande professionnelle pour le moment.</div></div>
+<div class="item"><p class="muted">Les demandes et conversations professionnelles sont regroupées dans l’onglet « Demandes ».</p><button type="button" class="secondary" data-go-work-requests>Voir mes demandes et conversations</button></div>
 <section class="panel" style="margin-top:18px">
   <h3>Vérification des entreprises et qualifications</h3>
   <p class="muted">Soumets un lien vers un registre officiel public ou une page publique de l'organisme émetteur. Aucun document privé ni pièce d'identité ne doit être envoyé. Une déclaration n'est jamais considérée comme vérifiée avant contrôle humain.</p>
@@ -390,10 +424,22 @@ window.dealhunterShowTab = function(target, button) {
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let localStorageScope='guest',localStorageReady=false;
+const scopedLocalKey=key=>key.replace(/^dh_/,'dh_'+localStorageScope+'_');
+let sellers=[],buyers=[],pendingImports=[],sources=[],gsaListings=load('dh_gsa_listings');
+window.addEventListener('dealhunter-auth-user-changed',event=>{
+ const uid=typeof event.detail?.uid==='string'?event.detail.uid:'';
+ localStorageScope=uid?'user_'+uid:'guest';
+ localStorageReady=true;
+ sellers=load(scopedLocalKey('dh_sellers'));
+ buyers=load(scopedLocalKey('dh_buyers'));
+ pendingImports=load(scopedLocalKey('dh_pending_imports'));
+ sources=load(scopedLocalKey('dh_sources'));
+ render();
+});
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
-const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
+const save=()=>{if(localStorageReady){localStorage.setItem(scopedLocalKey('dh_sellers'),JSON.stringify(sellers));localStorage.setItem(scopedLocalKey('dh_buyers'),JSON.stringify(buyers));localStorage.setItem(scopedLocalKey('dh_pending_imports'),JSON.stringify(pendingImports));localStorage.setItem(scopedLocalKey('dh_sources'),JSON.stringify(sources))}localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function canonicalCategory(value){
  const v=norm(value);
@@ -433,6 +479,7 @@ function score(s,b){
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function safeHttpsUrl(value){try{const url=new URL(String(value||"").trim());return url.protocol==="https:"&&url.hostname?url.href:""}catch{return ""}}
 function classifyGsaSector(x){
  const title=norm(x.title),t=norm([x.title,x.description].filter(Boolean).join(' '));
  const rules=[
@@ -470,8 +517,10 @@ function classifyGsaTech(x){
 }
 window.addEventListener('dealhunter-cloud-data',event=>{
  const data=event.detail||{};
- sellers=Array.isArray(data.sellers)?data.sellers:[];
- buyers=Array.isArray(data.buyers)?data.buyers:[];
+ if(window.dealhunterUserUid){
+  sellers=Array.isArray(data.sellers)?data.sellers:[];
+  buyers=Array.isArray(data.buyers)?data.buyers:[];
+ }
  const info=$('matchingDataStatus');
  if(info)info.textContent=window.dealhunterUserUid
   ?'Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.'
@@ -484,7 +533,7 @@ window.addEventListener('dealhunter-cloud-data',event=>{
 });
 function render(){
  const importList=$('importList');
- if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(safeHttpsUrl(x.sourceUrl)||'#')+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
  const gsaList=$('gsaList');
  if(gsaList){
   const query=norm($('gsaSearch')?.value||'');
@@ -703,10 +752,10 @@ function render(){
   const filtered=bodaccNotices.filter(n=>!query||norm([n.title,n.location,n.city,n.department,n.department_code,n.published_at].join(' ')).includes(query));
   const summary=$('bodaccSummary');
   if(summary)summary.textContent=filtered.length+' signal(aux) affiché(s) sur '+bodaccNotices.length+' · source : DILA / BODACC · Licence Ouverte 2.0.';
-  bodaccList.innerHTML=filtered.length?filtered.map(n=>'<article class="item"><span class="pill">Signal légal · à vérifier</span><h3>'+escapeHtml(n.title)+'</h3><div class="muted">'+escapeHtml(n.location||'Lieu non précisé')+' · Publication : '+escapeHtml(n.published_at||'date inconnue')+'</div><p class="muted">Une vente ou cession d’entreprise/fonds a été publiée. Cela ne confirme ni un surplus, ni une quantité, ni une marchandise disponible.</p><div class="muted"><a href="'+escapeHtml(n.source_url||'https://www.bodacc.fr/')+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel BODACC</a> · Identifiant '+escapeHtml(n.source_listing_id)+'</div></article>').join(''):'<div class="empty">Aucun signal BODACC ne correspond à cette recherche.</div>';
+  bodaccList.innerHTML=filtered.length?filtered.map(n=>'<article class="item"><span class="pill">Signal légal · à vérifier</span><h3>'+escapeHtml(n.title)+'</h3><div class="muted">'+escapeHtml(n.location||'Lieu non précisé')+' · Publication : '+escapeHtml(n.published_at||'date inconnue')+'</div><p class="muted">Une vente ou cession d’entreprise/fonds a été publiée. Cela ne confirme ni un surplus, ni une quantité, ni une marchandise disponible.</p><div class="muted"><a href="'+escapeHtml(safeHttpsUrl(n.source_url)||'https://www.bodacc.fr/')+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel BODACC</a> · Identifiant '+escapeHtml(n.source_listing_id)+'</div></article>').join(''):'<div class="empty">Aucun signal BODACC ne correspond à cette recherche.</div>';
  }
 
- const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
+ const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(safeHttpsUrl(x.url)||'#')+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();
  const ds=$('dashSellerCount');if(ds)ds.textContent=sellers.length;
  const db=$('dashBuyerCount');if(db)db.textContent=buyers.length;
@@ -851,7 +900,7 @@ $('csvFile').addEventListener('change',async e=>{
    const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
    const sourceUrl=r.source_url||r.url||'';
    if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
-   if(sourceUrl&&!/^https?:\/\//i.test(sourceUrl)){skipped++;continue}
+   if(sourceUrl&&!safeHttpsUrl(sourceUrl)){skipped++;continue}
    const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
    const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
    if(exists){skipped++;continue}
@@ -873,6 +922,7 @@ $('importList').addEventListener('click',e=>{
 document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Envoi en cours…';window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product}}));});
 window.addEventListener('dealhunter-match-request-result',e=>{const d=e.detail||{};document.querySelectorAll('[data-request-match]').forEach(b=>{if(b.dataset.seller!==d.sellerId||b.dataset.buyer!==d.buyerId)return;if(d.success){b.disabled=true;b.textContent='Demande envoyée';}else{b.disabled=false;b.textContent=b.dataset.originalLabel||'Demander la mise en relation';}});});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go-matches]');if(!b)return;window.dealhunterShowTab('matches',document.querySelector('[data-tab="matches"]'));});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go-work-requests]');if(!b)return;window.dealhunterShowTab('matchRequests',document.querySelector('[data-tab="matchRequests"]'));});
 window.addEventListener('dealhunter-generated-matches',e=>{
  const el=$('scheduledMatchList');
  if(!el)return;
@@ -1159,7 +1209,7 @@ window.addEventListener('dealhunter-service-data',e=>{
  const matchEl=$('serviceMatches');
  if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><button type="button" data-service-match-request data-offer-id="'+escapeHtml(p.o.id)+'" data-service-request-id="'+escapeHtml(p.r.id)+'">Demander la mise en relation</button><div class="muted">Aucune coordonnée n’est partagée avant acceptation.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
 });
-$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
+$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const sourceInput=$('srcUrl'),url=safeHttpsUrl(sourceInput.value);if(!url){sourceInput.setCustomValidity('Saisis une URL HTTPS valide.');sourceInput.reportValidity();return}sourceInput.setCustomValidity('');sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 window.addEventListener('dealhunter-business-record-result',e=>{
  const d=e.detail||{};

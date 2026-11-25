@@ -19,6 +19,62 @@ test("chaque onglet visible possède une destination réelle", () => {
   assert.ok(html.includes("panel.classList.toggle('hidden', id !== target)"));
 });
 
+test("les identifiants HTML sont uniques et les demandes professionnelles ont un seul conteneur", () => {
+  const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+  assert.deepEqual([...new Set(duplicates)], [], "Les identifiants HTML doivent être uniques");
+  assert.equal(ids.filter(id => id === "workMatchRequests").length, 1);
+  assert.match(html, /data-go-work-requests/);
+  assert.match(html, /dealhunterShowTab\('matchRequests'/);
+});
+
+test("les liens issus des imports et des sources sont limités à HTTPS", () => {
+  assert.match(html, /function safeHttpsUrl\(value\)/);
+  assert.match(html, /if\(sourceUrl&&!safeHttpsUrl\(sourceUrl\)\)/);
+  assert.match(html, /const sourceInput=\$\('srcUrl'\),url=safeHttpsUrl\(sourceInput\.value\)/);
+  assert.match(html, /safeHttpsUrl\(x\.sourceUrl\)/);
+  assert.match(html, /safeHttpsUrl\(n\.source_url\)/);
+  assert.match(html, /safeHttpsUrl\(x\.url\)/);
+});
+
+test("les onglets sont accessibles au clavier et exposent leurs rôles ARIA", () => {
+  assert.match(html, /id="mainTabs" role="tablist"/);
+  assert.match(html, /tab\.setAttribute\("role", "tab"\)/);
+  assert.match(html, /panel\.setAttribute\("role", "tabpanel"\)/);
+  assert.match(html, /event\.key === "ArrowRight"/);
+  assert.match(html, /event\.key === "ArrowLeft"/);
+  assert.match(html, /event\.key === "Home"/);
+  assert.match(html, /event\.key === "End"/);
+});
+
+test("tous les formulaires visibles sont reliés à un gestionnaire de soumission", () => {
+  const handlers = {
+    emailAuthForm: /emailForm\.addEventListener\("submit"/,
+    companyForm: /companyForm\.addEventListener\("submit"/,
+    sellerForm: /\$\('sellerForm'\)\.addEventListener\('submit'/,
+    buyerForm: /\$\('buyerForm'\)\.addEventListener\('submit'/,
+    serviceOfferForm: /\$\('serviceOfferForm'\)\.addEventListener\('submit'/,
+    serviceRequestForm: /\$\('serviceRequestForm'\)\.addEventListener\('submit'/,
+    workerProfileForm: /\$\('workerProfileForm'\)\.addEventListener\('submit'/,
+    workOpeningForm: /\$\('workOpeningForm'\)\.addEventListener\('submit'/,
+    verificationRequestForm: /\$\('verificationRequestForm'\)\.addEventListener\('submit'/,
+    trustReportForm: /\$\('trustReportForm'\)\.addEventListener\('submit'/,
+    marginForm: /\$\('marginForm'\)\.addEventListener\('submit'/,
+    sourceForm: /\$\('sourceForm'\)\.addEventListener\('submit'/
+  };
+  const formIds = [...html.matchAll(/<form\b[^>]*\bid="([A-Za-z][A-Za-z0-9_-]*)"/g)].map(match => match[1]);
+  assert.deepEqual([...formIds].sort(), Object.keys(handlers).sort());
+  for (const [id, pattern] of Object.entries(handlers)) {
+    assert.match(id === "emailAuthForm" || id === "companyForm" ? auth : html, pattern, "Gestionnaire submit manquant pour " + id);
+  }
+});
+
+test("tous les boutons déclarent explicitement leur type", () => {
+  const buttons = [...html.matchAll(/<button\b([^>]*)>/g)].map(match => match[1]);
+  assert.ok(buttons.length > 0);
+  for (const attributes of buttons) assert.match(attributes, /\btype=["'](?:button|submit|reset)["']/);
+});
+
 test("les événements d’action de l’interface sont traités par Firebase", () => {
   const actions = [...new Set([...html.matchAll(/new CustomEvent\(['"](dealhunter-[a-z0-9-]+)['"]/g)]
     .map(match => match[1]))]
@@ -137,4 +193,51 @@ test("les boîtes de réception services et emploi distinguent une erreur Firest
 test("auth transmet les erreurs de lecture aux boîtes de réception services et emploi", () => {
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))'));
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))'));
+});
+
+
+test("le statut initial du compte ne prétend pas à tort que Firebase est désactivé", () => {
+  assert.match(html, /id="authStatus"[^>]*>Vérification de la configuration Firebase…</);
+  assert.doesNotMatch(html, /id="authStatus"[^>]*>Firebase n’est pas encore configuré/);
+});
+
+
+test("les parcours de compte exposent inscription, connexion, récupération et vérification e-mail", () => {
+  assert.match(html, /id="emailAuthForm"/);
+  assert.match(html, /id="emailCreate"/);
+  assert.match(html, /id="emailSignIn"/);
+  assert.match(html, /id="passwordReset"/);
+  assert.match(html, /id="googleSignIn"/);
+  assert.match(html, /id="appleSignIn"/);
+  assert.match(html, /id="resendVerification"/);
+  assert.match(html, /id="signOut"/);
+  assert.match(auth, /createUserWithEmailAndPassword\(auth/);
+  assert.match(auth, /signInWithEmailAndPassword\(auth/);
+  assert.match(auth, /sendPasswordResetEmail\(auth/);
+  assert.match(auth, /sendEmailVerification\(/);
+  assert.match(auth, /requireVerifiedEmail/);
+  assert.match(auth, /signInWithRedirect\(auth, provider\)/);
+  assert.match(auth, /signInWithPopup\(auth, provider\)/);
+});
+
+
+test("les caches locaux vendeur, acheteur et import sont isolés par compte", () => {
+  assert.match(html, /let localStorageScope='guest',localStorageReady=false/);
+  assert.match(html, /scopedLocalKey\('dh_sellers'\)/);
+  assert.match(html, /scopedLocalKey\('dh_buyers'\)/);
+  assert.match(html, /scopedLocalKey\('dh_pending_imports'\)/);
+  assert.match(html, /scopedLocalKey\('dh_sources'\)/);
+  assert.match(html, /dealhunter-auth-user-changed/);
+  assert.match(auth, /new CustomEvent\("dealhunter-auth-user-changed"/);
+  assert.match(html, /if\(window\.dealhunterUserUid\)/);
+  assert.doesNotMatch(html, /let sellers=load\('dh_sellers'\)/);
+});
+
+
+test("les chargements asynchrones ne publient pas les données d'un ancien compte après déconnexion ou changement d'utilisateur", () => {
+  assert.match(auth, /const isCurrentUser = user => !!user && auth\.currentUser\?\.uid === user\.uid/);
+  assert.match(auth, /if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadNotifications = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadCloudRecords = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadMatchRequests = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
 });
