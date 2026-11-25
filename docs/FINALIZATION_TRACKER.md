@@ -32,6 +32,11 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 - PR #24 documente le blocage de sauvegarde : l'export/import Firestore géré exige Blaze, facturation et Cloud Storage. Aucun service payant n'a été activé. Une sauvegarde restaurable reste à concevoir et à tester.
 - PR #25 : `docs/ACCOUNT_DATA_EXPORT_DESIGN.md` définit la conception d'un export local limité au compte authentifié, distingue les données propres et partagées, prévoit la pagination, la pseudonymisation des tiers et les tests anti-divulgation. Aucun export réel ni changement de règles n'est implémenté.
 
+## Avancement complémentaire — conception des droits
+
+- PR #25 : conception de l'export du compte documentée dans `docs/ACCOUNT_DATA_EXPORT_DESIGN.md`. Aucun export réel ni changement de règles n'est implémenté.
+- PR #26 : matrice de rectification, retrait, effacement et conservation documentée dans `docs/ACCOUNT_ERASURE_DESIGN.md`. La procédure traite les données partagées, les sous-collections, les workers et l'ordre de suppression Auth. Aucun effacement réel ni automatisation n'est implémenté.
+
 ## Bloqueurs avant ouverture publique
 
 ### P0 — Protection des personnes et confiance
