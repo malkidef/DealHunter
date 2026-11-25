@@ -79,7 +79,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   });
 
   it("verrouille les champs des catalogues publics et réserve l'écriture au propriétaire", async () => {
-    const alice = testEnv.authenticatedContext("alice").firestore();
+    const alice = verifiedContext("alice").firestore();
     const bob = testEnv.authenticatedContext("bob").firestore();
     const offer = {
       ownerUid: "alice", company: "Entreprise A", product: "Cartons",
