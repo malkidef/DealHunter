@@ -136,6 +136,24 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "publicOffers", "offer-invalid"), {
       ...offer, quantity: "cinquante"
     }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-zero-quantity"), {
+      ...offer, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-negative-price"), {
+      ...offer, unitPrice: -1
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-long-product"), {
+      ...offer, product: "x".repeat(161)
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-quantity"), {
+      ...need, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-budget"), {
+      ...need, maxUnitBudget: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-long-location"), {
+      ...need, location: "x".repeat(121)
+    }));
     await assertFails(setDoc(doc(alice, "publicNeeds", "need-invalid"), {
       ...need, status: "draft"
     }));
@@ -446,6 +464,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       sellerConfirmed:false,buyerConfirmed:false,createdAt:new Date(),updatedAt:new Date()
     };
     await assertSucceeds(setDoc(doc(alice,"deals","deal-1"),proposal));
+    await assertFails(setDoc(doc(alice,"deals","role-inversion"),{
+      ...proposal,sellerUid:"bob",buyerUid:"alice",proposerUid:"alice",accepterUid:"bob"
+    }));
     await assertSucceeds(getDoc(doc(bob,"deals","deal-1")));
     await assertFails(getDoc(doc(outsider,"deals","deal-1")));
     await assertFails(setDoc(doc(alice,"deals","fake"),{...proposal,commissionRate:99}));
