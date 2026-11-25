@@ -5,7 +5,7 @@ import {
   sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
+  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -700,6 +700,7 @@ if (!ready) {
       const message = "Vérifie l’entreprise, le produit, la zone, la quantité, le prix/budget et les codes pays/devise.";
       status.textContent = message; result(false, message); return;
     }
+    let publicationStage = "vérification du jeton Firebase";
     try {
       // Rafraîchit le jeton avant l'écriture : Firestore vérifie le claim email_verified,
       // qui peut rester ancien même si Firebase Auth affiche déjà emailVerified=true.
@@ -722,10 +723,22 @@ if (!ready) {
       const publicPayload = collectionName === "sellerOffers"
         ? { ...common, unitPrice: price }
         : { ...common, maxUnitBudget: price };
-      const batch = writeBatch(db);
-      batch.set(privateRef, privatePayload);
-      batch.set(publicRef, publicPayload);
-      await batch.commit();
+      // Écrit séparément pour identifier précisément la règle Firestore qui refuse
+      // l'opération. Si la publication publique échoue, on annule le profil privé créé.
+      publicationStage = "enregistrement du profil privé";
+      await setDoc(privateRef, privatePayload);
+      publicationStage = "publication dans le catalogue partagé";
+      try {
+        await setDoc(publicRef, publicPayload);
+      } catch (publicError) {
+        try {
+          await deleteDoc(privateRef);
+        } catch (cleanupError) {
+          console.error("Nettoyage du profil privé après refus de publication impossible :", cleanupError);
+          publicError.cleanupError = cleanupError.code || cleanupError.message;
+        }
+        throw publicError;
+      }
       const message = collectionName === "sellerOffers"
         ? "Stock enregistré dans ton compte et publié dans le catalogue partagé."
         : "Besoin acheteur enregistré dans ton compte et publié dans le catalogue partagé.";
@@ -737,7 +750,7 @@ if (!ready) {
       }
     } catch (error) {
       console.error("Publication de l’annonce impossible :", error);
-      const message = "Publication impossible : " + (error.code || error.message || "erreur inconnue");
+      const message = "Publication impossible (" + publicationStage + ") : " + (error.code || error.message || "erreur inconnue") + (error.cleanupError ? " ; nettoyage du profil privé à vérifier : " + error.cleanupError : "");
       status.textContent = message; result(false, message);
     }
   });
