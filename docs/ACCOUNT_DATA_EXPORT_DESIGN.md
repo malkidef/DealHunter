@@ -1,6 +1,6 @@
 # Conception du droit d'accès et d'export — DealHunter
 
-État : conception technique, non implémentée. Revue du code et des règles effectuée le 25 novembre 2026.
+État : première version d’export personnel implémentée en branche de développement ; validation réelle multi-comptes et revue de couverture encore nécessaires. Conception initiale revue le 25 novembre 2026.
 
 ## 1. Décision de sécurité
 
@@ -88,3 +88,33 @@ Conséquences pour un futur export :
 - l'espace invité et les caches partagés de flux ne doivent pas être inclus dans un export personnel sans qualification de leur provenance.
 
 Cette évolution est en branche de développement, non fusionnée. L'inventaire d'export devra être revérifié après intégration et testé sur deux comptes successifs dans le même navigateur.
+
+
+## 7. Première implémentation — 25 novembre 2026
+
+Une première fonction d’export local a été ajoutée dans `auth.js` et reliée au panneau Compte de `index.html`. Elle génère un fichier JSON téléchargé directement dans le navigateur, sans téléversement vers un serveur.
+
+Périmètre inclus :
+- profil privé `users/{uid}` et sous-collections `sellerOffers` / `buyerNeeds` ;
+- annonces et besoins produits, services et emploi dont `ownerUid` correspond au compte ;
+- demandes de vérification appartenant au compte ;
+- signalements déposés par le compte (`reporterUid`) ;
+- notifications reçues (`recipientUid`) ;
+- profil public d’entreprise et preuve de vérification du titulaire.
+
+Garde-fous de cette version :
+- l’UID provient exclusivement de `auth.currentUser.uid` ;
+- l’adresse e-mail doit être vérifiée et la dernière connexion doit dater de moins de 15 minutes ;
+- chaque collection est plafonnée à 500 documents ; un dépassement ou une erreur est inscrit dans le manifeste ;
+- les dates Firestore sont converties en ISO 8601 ;
+- conversations, demandes partagées, transactions, avis, coordonnées de tiers, caches locaux, journaux internes et données fournisseurs sont explicitement exclus ;
+- aucun document source n’est modifié.
+
+Limites importantes :
+- ce premier export n’est pas encore exhaustif au sens du droit d’accès ; il ne remplace pas un examen manuel des demandes complexes ou des données partagées ;
+- les limites de pagination doivent être revues si le volume dépasse 500 documents par collection ;
+- les règles Firestore et l’interface doivent être testées avec deux comptes réels, dont un compte tiers ;
+- le téléchargement et la protection du fichier sur l’appareil doivent être vérifiés sur Android et ordinateur ;
+- le code est en branche de développement, pas encore sur le site public.
+
+Statut : **implémentation initiale réalisée, validation en attente**. Aucune suppression, anonymisation ou modification de données réelles n’est exécutée par cette fonction.
