@@ -55,6 +55,24 @@ after(async () => {
 });
 
 describe("Règles Firestore DealHunter — schéma actuellement utilisé", () => {
+  it("limite les suggestions de matching au vendeur ou à l'acheteur concerné", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "matches", "seller-view"), {
+        sellerUid: "alice", buyerUid: "bob", participantUids: ["alice", "bob"], status: "suggested"
+      });
+      await setDoc(doc(context.firestore(), "matches", "buyer-view"), {
+        sellerUid: "carol", buyerUid: "alice", participantUids: ["carol", "alice"], status: "suggested"
+      });
+    });
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
+    const outsider = verifiedContext("charlie").firestore();
+    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("sellerUid", "==", "alice"))));
+    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("buyerUid", "==", "alice"))));
+    await assertSucceeds(getDocs(query(collection(bob, "matches"), where("sellerUid", "==", "alice"))));
+    await assertFails(getDocs(query(collection(outsider, "matches"), where("sellerUid", "==", "alice"))));
+  });
+
   it("refuse l'accès anonyme aux profils et aux catalogues", async () => {
     const db = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(db, "users", "alice")));
