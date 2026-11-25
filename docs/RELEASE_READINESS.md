@@ -182,3 +182,15 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Après activation des API par l'administrateur, relancer le workflow manuel de déploiement. Vérifier ensuite dans Firebase/Google Cloud que les cinq fonctions sont effectivement déployées, puis tester avec deux comptes distincts la création de demande, acceptation/refus, message et proposition/évolution de transaction.
 - Les avertissements npm concernant des dépendances dépréciées n'ont pas provoqué cet échec. Ils méritent un suivi de maintenance distinct, sans mise à niveau précipitée du CLI de déploiement.
 - Stripe reste désactivé ; ce workflow ne cible que les cinq fonctions de notification.
+
+
+## Deuxième tentative de déploiement des notifications — 25 novembre 2026
+
+- Nouvelle tentative du workflow : l'API `cloudfunctions.googleapis.com` est désormais activée et reconnue comme disponible.
+- Le déploiement reste bloqué lors de l'activation de `artifactregistry.googleapis.com`, avec `Permissions denied enabling artifactregistry.googleapis.com`.
+- Le journal indique également que `cloudbuild.googleapis.com` est manquante et que Firebase prévoit de l'activer ; son activation n'est pas confirmée dans cette tentative.
+- Action administrateur restante : activer manuellement Artifact Registry et Cloud Build dans le projet `dealhunter-3747b`, avec un compte ayant les droits d'administration des API. Liens directs :
+  - `https://console.cloud.google.com/apis/library/artifactregistry.googleapis.com?project=dealhunter-3747b`
+  - `https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project=dealhunter-3747b`
+- Après activation, relancer le workflow `deploy-notification-functions.yml`. Ne pas élargir les droits du compte de service au rôle Owner/Editor ; si l'activation doit être déléguée, l'administrateur peut examiner un droit temporaire limité à Service Usage Admin.
+- Les fonctions ne sont pas déclarées déployées tant que le workflow n'a pas terminé avec succès et que leur présence n'a pas été vérifiée dans le projet.
