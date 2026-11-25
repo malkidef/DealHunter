@@ -521,7 +521,7 @@ service cloud.firestore {
       allow create: if hasVerifiedEmail() && validWorkerProfile();
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid && validWorkerProfile();
-      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow delete: if hasVerifiedEmail() && resource.data.ownerUid == request.auth.uid;
     }
 
     match /publicWorkOpenings/{openingId} {
@@ -557,7 +557,7 @@ service cloud.firestore {
       allow create: if hasVerifiedEmail() && validWorkOpening();
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid && validWorkOpening();
-      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+      allow delete: if hasVerifiedEmail() && resource.data.ownerUid == request.auth.uid;
     }
 
 
