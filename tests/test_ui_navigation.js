@@ -226,6 +226,7 @@ test("les caches locaux vendeur, acheteur et import sont isolés par compte", ()
   assert.match(html, /scopedLocalKey\('dh_sellers'\)/);
   assert.match(html, /scopedLocalKey\('dh_buyers'\)/);
   assert.match(html, /scopedLocalKey\('dh_pending_imports'\)/);
+  assert.match(html, /scopedLocalKey\('dh_sources'\)/);
   assert.match(html, /dealhunter-auth-user-changed/);
   assert.match(auth, /new CustomEvent\("dealhunter-auth-user-changed"/);
   assert.match(html, /if\(window\.dealhunterUserUid\)/);
