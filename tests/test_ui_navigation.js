@@ -138,3 +138,29 @@ test("auth transmet les erreurs de lecture aux boîtes de réception services et
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))'));
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))'));
 });
+
+test("l’export personnel est accessible uniquement depuis le compte connecté", () => {
+  assert.match(html, /id="exportAccountData"/);
+  assert.match(auth, /exportAccountDataButton\.classList\.toggle\("hidden", !user\)/);
+  assert.match(auth, /auth\.currentUser\?\.uid !== user\.uid/);
+  assert.match(auth, /user\.emailVerified/);
+  assert.match(auth, /lastSignInTime/);
+  assert.match(auth, /15 \* 60 \* 1000/);
+});
+
+test("l’export personnel filtre les données par UID et plafonne chaque collection", () => {
+  assert.match(auth, /where\(field, "==", user\.uid\)/);
+  assert.match(auth, /limit\(501\)/);
+  assert.match(auth, /snapshot\.docs\.slice\(0, 500\)/);
+  assert.match(auth, /users", user\.uid, "sellerOffers"/);
+  assert.match(auth, /users", user\.uid, "buyerNeeds"/);
+  assert.match(auth, /reporterUid/);
+  assert.match(auth, /recipientUid/);
+});
+
+test("l’export indique explicitement les données partagées et les limites", () => {
+  assert.match(auth, /Conversations et messages partagés/);
+  assert.match(auth, /Transactions et avis partagés/);
+  assert.match(auth, /export administratif exhaustif ni une sauvegarde/);
+  assert.match(auth, /application\/json;charset=utf-8/);
+});
