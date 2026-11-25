@@ -205,10 +205,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   it("autorise une demande valide uniquement pour les annonces actives des deux participants", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       const db = context.firestore();
-      await setDoc(doc(db, "publicOffers", "seller-record-1"), { ownerUid: "alice", status: "active" });
-      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), { ownerUid: "bob", status: "active" });
-      await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", status: "active" });
-      await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", status: "closed" });
+      await setDoc(doc(db, "publicOffers", "seller-record-1"), { ownerUid: "alice", company: "Entreprise A", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-record-1"), { ownerUid: "bob", company: "Entreprise B", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", company: "Entreprise C", product: "Cartons", status: "active" });
+      await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", company: "Entreprise B", product: "Cartons", status: "closed" });
     });
     const alice = verifiedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
@@ -230,6 +230,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "matchRequests", "request-4"), wrongRecipient));
     const unexpectedField = { ...requestData("alice", "bob"), privateEmail: "intrus@example.test" };
     await assertFails(setDoc(doc(alice, "matchRequests", "request-5"), unexpectedField));
+    const forgedProduct = { ...requestData("alice", "bob"), product: "Produit inexistant" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-product"), forgedProduct));
+    const forgedRequesterCompany = { ...requestData("alice", "bob"), requesterCompany: "Entreprise usurpée" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-requester"), forgedRequesterCompany));
+    const forgedRecipientCompany = { ...requestData("alice", "bob"), recipientCompany: "Autre entreprise" };
+    await assertFails(setDoc(doc(alice, "matchRequests", "request-forged-recipient"), forgedRecipientCompany));
   });
 
   it("réserve la décision au destinataire et protège les participants", async () => {
