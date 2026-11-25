@@ -961,10 +961,10 @@ if (!ready) {
       const existingRequests = await getDocs(query(
         collection(db, "verificationRequests"),
         where("ownerUid", "==", user.uid),
-        where("subjectType", "==", subjectType),
-        limit(20)
+        limit(500)
       ));
-      if (existingRequests.docs.some(item => ["pending", "verified"].includes(item.data().status))) {
+      if (existingRequests.docs.some(item => item.data().subjectType === subjectType &&
+          ["pending", "verified"].includes(item.data().status))) {
         throw new Error("Une demande est déjà en attente ou une vérification est déjà active pour ce sujet.");
       }
       await addDoc(collection(db, "verificationRequests"), {
