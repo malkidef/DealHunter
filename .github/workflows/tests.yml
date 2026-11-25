@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
+      - name: Vérifier la syntaxe YAML des workflows GitHub Actions
+        run: |
+          ruby -e 'require "yaml"; Dir.glob(".github/workflows/*.{yml,yaml}").each { |file| YAML.load_file(file, aliases: true); puts "YAML valide : #{file}" }'
       - name: Configurer Python
         uses: actions/setup-python@v5
         with:
