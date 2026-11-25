@@ -103,3 +103,23 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Procédures RGPD, documents légaux, traitement des litiges et conformité du paiement.
 
 **Décision :** CI et hébergement sont verts ; le socle Firestore est déployé selon la confirmation visuelle du propriétaire. DealHunter reste en préproduction. Les fonctions de paiement et les déclencheurs Firebase historiques sont explicitement exclus de tout déploiement tant que les incompatibilités ci-dessus ne sont pas résolues.
+
+
+## Revue complémentaire — vérification e-mail et CI (25 novembre 2026, commit d21c7393)
+
+### Changements et contrôles confirmés
+- Les écritures commerciales des catalogues produits et services, demandes de mise en relation, messageries, accords, contacts partagés, avis, profils professionnels et offres d'emploi exigent désormais le claim Firebase `email_verified == true`.
+- Les règles ne distinguent pas le fournisseur de connexion : les jetons Google/Apple sont acceptés lorsque Firebase les marque comme vérifiés. Des tests émulateur dédiés couvrent Google et Apple.
+- Les contrôles côté interface `requireVerifiedEmail` donnent un retour utilisateur avant les écritures commerciales. Les règles Firestore restent la protection faisant autorité.
+- Les fichiers `firestore.rules` et `firebase/firestore.rules` sont identiques (SHA de contenu identique au contrôle du 25 novembre).
+- Sur le commit `d21c7393`, les trois workflows sont terminés avec succès : Tests DealHunter (45626112146), Tests des règles Firestore (45626110245) et GitHub Pages (45626108453). Les tests émulateur incluent le nouveau test du marché des compétences.
+
+### Déploiement restant
+- Le déploiement Firestore réussi visible précédemment concernait le commit `b5bea58`, antérieur aux règles de vérification e-mail et aux corrections professionnelles. Il ne confirme donc pas le déploiement de la version actuelle.
+- Le commit `d21c7393` et les règles actuelles ne doivent être considérés comme déployés en production qu'après une nouvelle exécution réussie du workflow « DealHunter — déployer uniquement Firestore » sur ce commit, avec confirmation `dealhunter-3747b`.
+- Aucun déploiement de Cloud Functions ni de Stripe n'est autorisé par cette revue.
+
+### Limites et critères encore ouverts
+- Les tests OAuth sont des tests de jetons simulés dans l'émulateur. Les connexions réelles Google et Apple, ainsi que l'envoi/réception d'un e-mail de vérification, restent à tester sur Firebase Authentication.
+- Les tests avec deux comptes réels distincts, les parcours commerciaux de bout en bout, les notifications, la conformité RGPD et la validation juridique restent non certifiés.
+- DealHunter reste en préproduction. Ne pas accepter de paiements ni ouvrir publiquement avant la levée des bloqueurs.
