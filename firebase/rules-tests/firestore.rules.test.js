@@ -15,6 +15,7 @@ import {
   updateDoc,
   addDoc,
   deleteDoc,
+  writeBatch,
   query,
   where
 } from "firebase/firestore";
@@ -135,6 +136,24 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     }));
     await assertFails(setDoc(doc(alice, "publicOffers", "offer-invalid"), {
       ...offer, quantity: "cinquante"
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-zero-quantity"), {
+      ...offer, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-negative-price"), {
+      ...offer, unitPrice: -1
+    }));
+    await assertFails(setDoc(doc(alice, "publicOffers", "offer-long-product"), {
+      ...offer, product: "x".repeat(161)
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-quantity"), {
+      ...need, quantity: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-zero-budget"), {
+      ...need, maxUnitBudget: 0
+    }));
+    await assertFails(setDoc(doc(alice, "publicNeeds", "need-long-location"), {
+      ...need, location: "x".repeat(121)
     }));
     await assertFails(setDoc(doc(alice, "publicNeeds", "need-invalid"), {
       ...need, status: "draft"
@@ -277,6 +296,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-invalid-status"), {
       ...request, status: "draft"
     }));
+    await assertFails(setDoc(doc(alice, "publicServiceOffers", "service-long-description"), {
+      ...offer, description: "x".repeat(4001)
+    }));
+    await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-too-many-qualifications"), {
+      ...request, requiredQualifications: Array(31).fill("qualification")
+    }));
     await assertSucceeds(updateDoc(doc(alice, "publicServiceOffers", "service-1"), {
       description: "Maintenance et dépannage", updatedAt: new Date()
     }));
@@ -373,6 +398,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(bob,"publicWorkOpenings","opening-1"),{...opening,ownerUid:"bob"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-private"),{...opening,privatePhone:"0600000000"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-invalid"),{...opening,engagementType:"any"}));
+    await assertFails(setDoc(doc(alice,"publicWorkerProfiles","profile-long-description"),{...profile,description:"x".repeat(4001)}));
+    await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-too-many-skills"),{...opening,requiredSkills:Array(41).fill("skill")}));
     await assertSucceeds(deleteDoc(doc(alice,"publicWorkerProfiles","profile-1")));
   });
 
@@ -432,6 +459,38 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(getDoc(doc(outsider,"verificationRequests","verify-2")));
   });
 
+  it("lie une entreprise vérifiée à son profil par une décision administrateur atomique", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "companyProfiles", "alice"), { ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR", updatedAt: new Date() });
+      await setDoc(doc(db, "verificationRequests", "company-approval"), {
+        ownerUid: "alice", subjectType: "company", subjectName: "Entreprise A", countryCode: "FR",
+        evidenceLabel: "Registre officiel", publicEvidenceUrl: "https://annuaire-entreprises.data.gouv.fr/",
+        status: "pending", createdAt: new Date(), updatedAt: new Date()
+      });
+    });
+    const admin = testEnv.authenticatedContext("reviewer", { dealhunterAdmin: true }).firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
+    const verification = {
+      ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR",
+      verificationRequestId: "company-approval", status: "verified", verifiedAt: new Date()
+    };
+    await assertFails(setDoc(doc(alice, "companyVerifications", "alice"), verification));
+    await assertFails(setDoc(doc(admin, "companyVerifications", "alice"), verification));
+    const batch = writeBatch(admin);
+    batch.set(doc(admin, "companyVerifications", "alice"), verification);
+    batch.update(doc(admin, "verificationRequests", "company-approval"), {
+      status: "verified", reviewerNote: "Contrôle effectué", reviewedAt: new Date()
+    });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDoc(doc(alice, "companyVerifications", "alice")));
+    await assertSucceeds(getDoc(doc(bob, "companyVerifications", "alice")));
+    await assertSucceeds(getDocs(query(collection(bob, "companyVerifications"), where("status", "==", "verified"))));
+    await assertFails(updateDoc(doc(alice, "companyVerifications", "alice"), { companyName: "Entreprise usurpée" }));
+    await assertFails(setDoc(doc(bob, "companyVerifications", "bob"), { ...verification, ownerUid: "bob" }));
+  });
+
   it("sécurise les propositions commerciales et la confirmation bilatérale", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(),"matchRequests","deal-match"),requestData("alice","bob","accepted"));
@@ -446,6 +505,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       sellerConfirmed:false,buyerConfirmed:false,createdAt:new Date(),updatedAt:new Date()
     };
     await assertSucceeds(setDoc(doc(alice,"deals","deal-1"),proposal));
+    await assertFails(setDoc(doc(alice,"deals","role-inversion"),{
+      ...proposal,sellerUid:"bob",buyerUid:"alice",proposerUid:"alice",accepterUid:"bob"
+    }));
     await assertSucceeds(getDoc(doc(bob,"deals","deal-1")));
     await assertFails(getDoc(doc(outsider,"deals","deal-1")));
     await assertFails(setDoc(doc(alice,"deals","fake"),{...proposal,commissionRate:99}));

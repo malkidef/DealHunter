@@ -38,11 +38,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice > 0
+        && request.resource.data.unitPrice <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -73,11 +85,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.maxUnitBudget is number
+        && request.resource.data.maxUnitBudget > 0
+        && request.resource.data.maxUnitBudget <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -185,7 +209,9 @@ service cloud.firestore {
       function acceptedDealRequest() {
         return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
-          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids;
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid;
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
       allow create: if hasVerifiedEmail()
@@ -348,12 +374,26 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
+        && (!("requiredQualifications" in request.resource.data)
+          || (request.resource.data.requiredQualifications is list
+            && request.resource.data.requiredQualifications.size() <= 30))
+        && (!("remoteAccepted" in request.resource.data) || request.resource.data.remoteAccepted is bool)
         && request.resource.data.remote is bool
         && request.resource.data.coverageRadiusKm is number
         && request.resource.data.coverageRadiusKm >= 0
@@ -391,7 +431,9 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 30
         && request.resource.data.remote is bool
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.coverageRadiusKm is number
@@ -500,15 +542,25 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.skills is list
+        && request.resource.data.skills.size() <= 40
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 40
         && request.resource.data.engagementTypes is list
         && request.resource.data.engagementTypes.size() > 0
+        && request.resource.data.engagementTypes.size() <= 2
         && request.resource.data.engagementTypes.hasOnly(["employment","independent"])
         && request.resource.data.availableFrom is string
         && request.resource.data.remote is bool
@@ -538,16 +590,28 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.requiredSkills is list
+        && request.resource.data.requiredSkills.size() <= 40
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 40
         && request.resource.data.engagementType in ["employment","independent"]
         && request.resource.data.startDate is string
+        && request.resource.data.startDate.size() <= 40
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.status == "active"
         && request.resource.data.createdAt is timestamp
@@ -616,6 +680,65 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Fiche entreprise publique minimale, distincte du profil utilisateur privé.
+    match /companyProfiles/{ownerUid} {
+      function validCompanyProfile() {
+        return request.resource.data.keys().hasOnly(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.keys().hasAll(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.ownerUid == ownerUid
+          && request.resource.data.companyName is string
+          && request.resource.data.companyName.size() >= 2
+          && request.resource.data.companyName.size() <= 120
+          && request.resource.data.countryCode is string
+          && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+          && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == ownerUid
+        && validCompanyProfile();
+      allow delete: if false;
+    }
+
+    // Preuve publique minimale de vérification d'une entreprise.
+    // Seul un réviseur autorisé peut la créer/modifier ; l'approbation et la preuve sont atomiques.
+    match /companyVerifications/{ownerUid} {
+      function isDealHunterAdmin() {
+        return request.auth != null && request.auth.token.dealhunterAdmin == true;
+      }
+      function validCompanyVerification() {
+        let verificationPath = /databases/$(database)/documents/verificationRequests/$(request.resource.data.verificationRequestId);
+        let companyProfilePath = /databases/$(database)/documents/companyProfiles/$(ownerUid);
+        return request.resource.data.keys().hasOnly([
+          "ownerUid","companyName","countryCode","verificationRequestId","status","verifiedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid","companyName","countryCode","verificationRequestId","status","verifiedAt"
+        ])
+        && request.resource.data.ownerUid == ownerUid
+        && request.resource.data.companyName is string
+        && request.resource.data.companyName.size() >= 2
+        && request.resource.data.companyName.size() <= 160
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.status == "verified"
+        && request.resource.data.verifiedAt is timestamp
+        && existsAfter(verificationPath)
+        && getAfter(verificationPath).data.ownerUid == ownerUid
+        && getAfter(verificationPath).data.subjectType == "company"
+        && getAfter(verificationPath).data.subjectName == request.resource.data.companyName
+        && getAfter(verificationPath).data.countryCode == request.resource.data.countryCode
+        && getAfter(verificationPath).data.status == "verified"
+        && exists(companyProfilePath)
+        && get(companyProfilePath).data.companyName == request.resource.data.companyName
+        && get(companyProfilePath).data.countryCode == request.resource.data.countryCode;
+      }
+      allow read: if request.auth != null
+        && (resource.data.status == "verified" || ownerUid == request.auth.uid || isDealHunterAdmin());
+      allow create, update: if isDealHunterAdmin() && validCompanyVerification();
+      allow delete: if isDealHunterAdmin();
+    }
+
     // Vérification manuelle des entreprises et qualifications, sans dépôt de pièces privées.
     match /verificationRequests/{verificationId} {
       function isDealHunterAdmin() {
@@ -656,7 +779,10 @@ service cloud.firestore {
           && request.resource.data.status in ["verified","rejected"]
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","reviewedAt"])
           && request.resource.data.reviewedAt is timestamp
-          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500)))
+          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500))
+          && (request.resource.data.status != "verified" || resource.data.subjectType != "company"
+            || (existsAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid))
+              && getAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid)).data.verificationRequestId == verificationId)))
         ||
         (resource.data.ownerUid == request.auth.uid
           && resource.data.status == "pending"

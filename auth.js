@@ -571,6 +571,15 @@ if (!ready) {
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
     ];
+    const companyVerificationRead = await getDocs(
+      query(collection(db, "companyVerifications"), where("status", "==", "verified"), limit(500))
+    ).catch(error => {
+      console.warn("Statuts de vérification entreprise indisponibles :", error);
+      return null;
+    });
+    const verifiedCompanies = companyVerificationRead
+      ? companyVerificationRead.docs.map(item => ({ id: item.id, ...item.data() }))
+      : [];
     const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -598,7 +607,7 @@ if (!ready) {
     // Publie immédiatement le catalogue produits : les modules optionnels (services,
     // emploi, vérification) ne doivent jamais laisser l'écran produit sur « Chargement… ».
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { sellers, buyers, verifiedCompanies }
     }));
 
     // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
@@ -964,11 +973,37 @@ if (!ready) {
         await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
       } else {
         if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
-        await updateDoc(ref, {
-          status: decision,
-          reviewerNote: "Décision enregistrée par un réviseur autorisé.",
-          reviewedAt: serverTimestamp()
-        });
+        if (decision === "verified" && snapshot.data().subjectType === "company") {
+          const requestData = snapshot.data();
+          const profileSnapshot = await getDoc(doc(db, "companyProfiles", requestData.ownerUid));
+          const companyProfile = profileSnapshot.exists() ? profileSnapshot.data() : null;
+          const companyName = String(companyProfile?.companyName || "").trim();
+          const companyCountry = String(companyProfile?.countryCode || "").trim().toUpperCase();
+          if (!companyName || companyName !== requestData.subjectName || companyCountry !== requestData.countryCode) {
+            throw new Error("Le nom et le pays du profil entreprise doivent correspondre exactement à la demande avant validation.");
+          }
+          const batch = writeBatch(db);
+          batch.set(doc(db, "companyVerifications", requestData.ownerUid), {
+            ownerUid: requestData.ownerUid,
+            companyName,
+            countryCode: companyCountry,
+            verificationRequestId: requestId,
+            status: "verified",
+            verifiedAt: serverTimestamp()
+          });
+          batch.update(ref, {
+            status: "verified",
+            reviewerNote: "Entreprise contrôlée par un réviseur autorisé.",
+            reviewedAt: serverTimestamp()
+          });
+          await batch.commit();
+        } else {
+          await updateDoc(ref, {
+            status: decision,
+            reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+            reviewedAt: serverTimestamp()
+          });
+        }
       }
       finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
       try{await loadCloudRecords(user);}catch(refreshError){console.error("Décision enregistrée, actualisation impossible :",refreshError);}
@@ -1266,7 +1301,8 @@ if (!ready) {
     submitButton.disabled = true;
     status.textContent = "Enregistrement de ton espace entreprise…";
     try {
-      await setDoc(doc(db, "users", user.uid), {
+      const profileBatch = writeBatch(db);
+      profileBatch.set(doc(db, "users", user.uid), {
         company: {
           name: companyName,
           country: companyCountry,
@@ -1275,6 +1311,13 @@ if (!ready) {
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
+      profileBatch.set(doc(db, "companyProfiles", user.uid), {
+        ownerUid: user.uid,
+        companyName,
+        countryCode: companyCountry,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await profileBatch.commit();
       status.textContent = "Espace entreprise enregistré avec succès.";
       companyForm.reset();
     } catch (error) {
