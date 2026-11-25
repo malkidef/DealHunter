@@ -155,11 +155,11 @@ window.dealhunterShowTab = function(target, button) {
 <form id="sellerForm">
 <div class="field"><label for="sCompany">Entreprise vendeuse</label><input id="sCompany" required placeholder="Ex. Société Nord"></div>
 <div class="field"><label for="sProduct">Produit</label><input id="sProduct" required placeholder="Ex. Cartons d'emballage"></div>
-<div class="field"><label for="sCategory">Catégorie</label><select id="sCategory"><option value="Informatique et électronique">Informatique et électronique</option><option value="Véhicules et transport">Véhicules et transport</option><option value="Machines et équipements industriels">Machines et équipements industriels</option><option value="Construction et matériaux">Construction et matériaux</option><option value="Mobilier et bureau">Mobilier et bureau</option><option value="Agriculture">Agriculture</option><option value="Alimentation et boissons">Alimentation et boissons</option><option value="Textile et habillement">Textile et habillement</option><option value="Santé et matériel médical">Santé et matériel médical</option><option value="Chimie et consommables">Chimie et consommables</option><option value="Énergie et environnement">Énergie et environnement</option><option value="Emballage et logistique">Emballage et logistique</option><option value="Maison et biens de consommation">Maison et biens de consommation</option><option value="Autre / à classer">Autre / à classer</option></select></div>
+<div class="field"><label for="sCategory">Catégorie</label><select id="sCategory"><option value="Informatique et électronique">Informatique et électronique</option><option value="Véhicules et transport">Véhicules et transport</option><option value="Machines et équipements industriels">Machines et équipements industriels</option><option value="Construction et matériaux">Construction et matériaux</option><option value="Mobilier et bureau">Mobilier et bureau</option><option value="Agriculture">Agriculture</option><option value="Alimentation et boissons">Alimentation et boissons</option><option value="Textile et habillement">Textile et habillement</option><option value="Santé et matériel médical">Santé et matériel médical</option><option value="Chimie et consommables">Chimie et consommables</option><option value="Énergie et environnement">Énergie et environnement</option><option value="Emballage et logistique">Emballage et logistique</option><option value="Maison et biens de consommation">Maison et biens de consommation</option><option value="Parfumerie, cosmétiques et hygiène">Grossiste parfums, cosmétiques et hygiène</option><option value="Autre / à classer">Autre / à classer</option></select></div>
 <div class="field"><label for="sQty">Quantité disponible</label><input id="sQty" type="number" min="1" required placeholder="100"></div>
 <div class="field"><label for="sPrice">Prix unitaire (€)</label><input id="sPrice" type="number" min="0.01" step="0.01" required placeholder="4.50"></div>
 <div class="field"><label for="sUnit">Unité de quantité</label><input id="sUnit" required maxlength="20" value="unit" placeholder="pièce, kg, tonne, m…"></div><div class="field"><label for="sCurrency">Devise (code ISO 4217)</label><input id="sCurrency" required minlength="3" maxlength="3" pattern="[A-Za-z]{3}" value="EUR" placeholder="EUR, USD, GBP"></div><div class="field"><label for="sCountry">Pays (code ISO alpha-2)</label><input id="sCountry" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}" value="FR" placeholder="FR, US, DE"></div><div class="field"><label for="sLocation">Ville / zone</label><input id="sLocation" required placeholder="Lille"></div>
-<div class="auth-actions"><button type="submit" id="sellerSubmitButton">Enregistrer le stock</button><button type="button" class="secondary hidden" id="cancelSellerEdit">Annuler la modification</button></div></form></section>
+<div class="auth-actions"><button type="submit" id="sellerSubmitButton">Enregistrer le stock</button><button type="button" class="secondary hidden" id="cancelSellerEdit">Annuler la modification</button></div><div id="sellerPublishStatus" class="status-note hidden" role="status" aria-live="polite"></div></form></section>
 <section class="panel"><h2>Surplus enregistrés</h2><p class="muted">Tes offres restent liées à ton compte. Les acheteurs connectés peuvent voir les informations commerciales nécessaires au matching, sans coordonnées personnelles.</p><div id="sellerList" class="cards"></div></section>
 </div>
 <div id="buyers" class="grid hidden">
@@ -1169,6 +1169,16 @@ window.addEventListener('dealhunter-business-record-result',e=>{
  button.disabled=false;
  if(d.collectionName==='sellerOffers')button.textContent=form.dataset.editingId?'Enregistrer les modifications':'Enregistrer le stock';
  else button.textContent='Enregistrer le besoin';
+ if(d.collectionName==='sellerOffers'){
+  const feedback=$('sellerPublishStatus');
+  if(feedback){
+   feedback.textContent=d.message|| (d.success?'Stock publié.':'La publication a échoué.');
+   feedback.classList.remove('hidden');
+   feedback.style.borderColor=d.success?'#2d725e':'#8a4545';
+   feedback.style.background=d.success?'#15352e':'#3a2024';
+   feedback.style.color=d.success?'#b8f5d9':'#ffd0d0';
+  }
+ }
  if(d.success){form.reset();delete form.dataset.editingId;if(d.collectionName==='sellerOffers')$('cancelSellerEdit').classList.add('hidden');}
  else if(form.dataset.editingId)form.querySelector('button[type="submit"]').textContent='Enregistrer les modifications';
 });
