@@ -403,6 +403,7 @@ if (!ready) {
     const user=auth.currentUser,{dealId}=e.detail||{};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-deal-action-result",{detail:{success,message,dealId,action:"accept"}}));};
     if(!user||!dealId){finish(false,"Connecte-toi pour accepter cette proposition.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const ref=doc(db,"deals",dealId),snap=await getDoc(ref);
       if(!snap.exists()||snap.data().status!=="proposed"||snap.data().accepterUid!==user.uid)
@@ -660,7 +661,6 @@ if (!ready) {
     }
     if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     const record = data.record || {};
-    if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     const company = String(record.company || "").trim();
     const product = String(record.product || "").trim();
     const category = String(record.category || "Autre / à classer").trim();
@@ -979,6 +979,7 @@ if (!ready) {
       const message = "Modification impossible : compte ou annonce non valide.";
       status.textContent = message; result(false, message); return;
     }
+    if (!requireVerifiedEmail(user)) { const message = status.textContent; result(false, message); return; }
     const company = String(record.company || "").trim();
     const product = String(record.product || "").trim();
     const category = String(record.category || "").trim();
