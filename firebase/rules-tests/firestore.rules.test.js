@@ -22,6 +22,7 @@ import {
 const projectId = process.env.GCLOUD_PROJECT || "demo-dealhunter";
 const rules = fs.readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
 let testEnv;
+const verifiedContext = uid => testEnv.authenticatedContext(uid, { email_verified: true });
 
 const requestData = (requesterUid, recipientUid, status = "pending") => ({
   requesterUid,
@@ -159,7 +160,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       await setDoc(doc(db, "publicOffers", "seller-owned-by-charlie"), { ownerUid: "charlie", status: "active" });
       await setDoc(doc(db, "publicNeeds", "buyer-inactive"), { ownerUid: "bob", status: "closed" });
     });
-    const alice = testEnv.authenticatedContext("alice").firestore();
+    const alice = verifiedContext("alice").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchRequests", "request-1"), requestData("alice", "bob")));
     const forgedOwner = requestData("alice", "bob");
     forgedOwner.sellerId = "seller-owned-by-charlie";
@@ -185,8 +186,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "matchRequests", "request-1"), requestData("alice", "bob"));
     });
-    const alice = testEnv.authenticatedContext("alice").firestore();
-    const bob = testEnv.authenticatedContext("bob").firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
     await assertFails(updateDoc(doc(alice, "matchRequests", "request-1"), { status: "accepted" }));
     await assertFails(updateDoc(doc(bob, "matchRequests", "request-1"), {
       status: "accepted",
@@ -207,8 +208,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
       await setDoc(doc(context.firestore(), "matchRequests", "pending-1"), requestData("alice", "bob", "pending"));
     });
-    const alice = testEnv.authenticatedContext("alice").firestore();
-    const outsider = testEnv.authenticatedContext("charlie").firestore();
+    const alice = verifiedContext("alice").firestore();
+    const outsider = verifiedContext("charlie").firestore();
     await assertSucceeds(addDoc(collection(alice, "matchMessages"), {
       requestId: "accepted-1", senderUid: "alice", text: "Bonjour", createdAt: new Date()
     }));
@@ -418,9 +419,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(),"matchRequests","deal-match"),requestData("alice","bob","accepted"));
     });
-    const alice=testEnv.authenticatedContext("alice").firestore();
-    const bob=testEnv.authenticatedContext("bob").firestore();
-    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const alice=verifiedContext("alice").firestore();
+    const bob=verifiedContext("bob").firestore();
+    const outsider=verifiedContext("charlie").firestore();
     const proposal={
       requestId:"deal-match",sellerUid:"alice",buyerUid:"bob",participantUids:["alice","bob"],
       proposerUid:"alice",accepterUid:"bob",product:"Lot de câbles",quantity:10,unitPrice:2.5,
@@ -442,6 +443,23 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(deleteDoc(doc(alice,"deals","deal-1")));
   });
 
+
+  it("refuse les actions commerciales aux comptes non vérifiés mais accepte les jetons OAuth vérifiés", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), "publicOffers", "seller-record-1"), { ownerUid: "alice", status: "active" });
+      await setDoc(doc(context.firestore(), "publicNeeds", "buyer-record-1"), { ownerUid: "bob", status: "active" });
+      await setDoc(doc(context.firestore(), "matchRequests", "accepted-oauth"), requestData("alice", "bob", "accepted"));
+    });
+    const unverified = testEnv.authenticatedContext("alice", { email_verified: false }).firestore();
+    const verifiedGoogle = testEnv.authenticatedContext("google-user", { email_verified: true, firebase: { sign_in_provider: "google.com" } }).firestore();
+    const verifiedApple = testEnv.authenticatedContext("apple-user", { email_verified: true, firebase: { sign_in_provider: "apple.com" } }).firestore();
+    const offer = { ownerUid: "alice", company: "Entreprise A", product: "Cartons", category: "Emballage", quantity: 10, unitPrice: 2, location: "Lille", status: "active", createdAt: new Date() };
+    await assertFails(setDoc(doc(unverified, "publicOffers", "unverified-offer"), offer));
+    await assertFails(setDoc(doc(unverified, "matchRequests", "unverified-request"), requestData("alice", "bob")));
+    await assertSucceeds(setDoc(doc(verifiedGoogle, "publicOffers", "google-offer"), { ...offer, ownerUid: "google-user" }));
+    await assertSucceeds(setDoc(doc(verifiedApple, "publicOffers", "apple-offer"), { ...offer, ownerUid: "apple-user" }));
+  });
+
   it("autorise un avis unique seulement après une vente terminée", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(),"deals","completed-review"),{
@@ -453,9 +471,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
         status:"agreed",sellerConfirmed:false,buyerConfirmed:false
       });
     });
-    const alice=testEnv.authenticatedContext("alice").firestore();
-    const bob=testEnv.authenticatedContext("bob").firestore();
-    const outsider=testEnv.authenticatedContext("charlie").firestore();
+    const alice=verifiedContext("alice").firestore();
+    const bob=verifiedContext("bob").firestore();
+    const outsider=verifiedContext("charlie").firestore();
     const review={dealId:"completed-review",reviewerUid:"alice",subjectUid:"bob",rating:5,comment:"Transaction conforme.",createdAt:new Date()};
     await assertSucceeds(setDoc(doc(alice,"dealReviews","completed-review_alice"),review));
     await assertSucceeds(getDoc(doc(bob,"dealReviews","completed-review_alice")));
@@ -492,8 +510,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       await setDoc(doc(context.firestore(), "matchRequests", "accepted-1"), requestData("alice", "bob", "accepted"));
       await setDoc(doc(context.firestore(), "matchRequests", "pending-1"), requestData("alice", "bob", "pending"));
     });
-    const alice = testEnv.authenticatedContext("alice").firestore();
-    const bob = testEnv.authenticatedContext("bob").firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
     await assertSucceeds(setDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
       requestId: "accepted-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405", company: "Entreprise A", sharedAt: new Date()
     }));
@@ -501,7 +519,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "matchContacts", "pending-1_alice"), {
       requestId: "pending-1", ownerUid: "alice", email: "alice@example.test", phone: "0102030405", company: "Entreprise A", sharedAt: new Date()
     }));
-    await assertFails(getDoc(doc(testEnv.authenticatedContext("charlie").firestore(), "matchContacts", "accepted-1_alice")));
+    await assertFails(getDoc(doc(verifiedContext("charlie").firestore(), "matchContacts", "accepted-1_alice")));
     await assertFails(setDoc(doc(alice, "matchContacts", "accepted-1_alice"), {
       requestId: "accepted-1", ownerUid: "alice", email: "alice@example.test",
       phone: "0102030405", company: "Entreprise A", sharedAt: new Date(), privateNote: "interdit"
