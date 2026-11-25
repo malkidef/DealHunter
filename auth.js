@@ -701,6 +701,14 @@ if (!ready) {
       status.textContent = message; result(false, message); return;
     }
     try {
+      // Rafraîchit le jeton avant l'écriture : Firestore vérifie le claim email_verified,
+      // qui peut rester ancien même si Firebase Auth affiche déjà emailVerified=true.
+      await user.getIdToken(true);
+      const tokenResult = await user.getIdTokenResult();
+      if (tokenResult.claims.email_verified !== true) {
+        const message = "Firebase ne confirme pas encore la vérification de cette adresse. Déconnecte-toi, reconnecte-toi puis vérifie à nouveau ton e-mail avant de publier.";
+        status.textContent = message; result(false, message); return;
+      }
       const privateRef = doc(collection(db, "users", user.uid, collectionName));
       const publicCollection = collectionName === "sellerOffers" ? "publicOffers" : "publicNeeds";
       const publicRef = doc(db, publicCollection, privateRef.id);
