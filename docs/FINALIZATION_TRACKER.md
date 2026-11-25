@@ -65,3 +65,14 @@ Une correction n'est considérée comme terminée qu'après :
 5. décision explicite de déploiement.
 
 La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctionnalité est déployée ou opérationnelle.
+
+
+## Mise à jour — 25 novembre 2026 (contrôles transactions et profils)
+
+- La branche `finalization/security-hardening` contient les règles Firestore renforcées pour les profils privés, les catalogues offres/besoins et les transactions.
+- Les règles `firestore.rules` et `firebase/firestore.rules` sont synchronisées.
+- Les contrôles de création des transactions relient les rôles vendeur/acheteur aux rôles de la demande acceptée d'origine. Les confirmations bilatérales restent limitées à une confirmation par participant ; une transaction ne peut être supprimée par le client.
+- Les avis sont réservés aux participants d'une transaction terminée, avec un identifiant déterministe empêchant un second avis du même auteur.
+- Les dates de création des offres et besoins ne peuvent pas être modifiées lors d'une mise à jour.
+- Validation CI du commit `b067623da3142ba381024808539e79caed1cc971` : workflow `Tests DealHunter` réussi (run 45695125241) et workflow `Tests des règles Firestore` réussi (run 45695125054).
+- La PR21 reste en brouillon, non fusionnée et non déployée. Ces validations ne remplacent pas les essais réels avec deux comptes.
