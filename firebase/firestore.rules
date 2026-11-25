@@ -713,9 +713,11 @@ service cloud.firestore {
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
+      // Les requêtes client filtrent explicitement par vendeur ou acheteur.
+      // Les suggestions restent privées aux deux comptes concernés.
       allow read: if request.auth != null
-        && resource.data.participantUids is list
-        && request.auth.uid in resource.data.participantUids;
+        && (request.auth.uid == resource.data.sellerUid
+          || request.auth.uid == resource.data.buyerUid);
       allow create, update, delete: if false;
     }
 
