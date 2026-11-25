@@ -433,6 +433,7 @@ function score(s,b){
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function safeHttpsUrl(value){try{const url=new URL(String(value||"").trim());return url.protocol==="https:"&&url.hostname?url.href:""}catch{return ""}}
 function classifyGsaSector(x){
  const title=norm(x.title),t=norm([x.title,x.description].filter(Boolean).join(' '));
  const rules=[
@@ -484,7 +485,7 @@ window.addEventListener('dealhunter-cloud-data',event=>{
 });
 function render(){
  const importList=$('importList');
- if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(safeHttpsUrl(x.sourceUrl)||'#')+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
  const gsaList=$('gsaList');
  if(gsaList){
   const query=norm($('gsaSearch')?.value||'');
@@ -703,10 +704,10 @@ function render(){
   const filtered=bodaccNotices.filter(n=>!query||norm([n.title,n.location,n.city,n.department,n.department_code,n.published_at].join(' ')).includes(query));
   const summary=$('bodaccSummary');
   if(summary)summary.textContent=filtered.length+' signal(aux) affiché(s) sur '+bodaccNotices.length+' · source : DILA / BODACC · Licence Ouverte 2.0.';
-  bodaccList.innerHTML=filtered.length?filtered.map(n=>'<article class="item"><span class="pill">Signal légal · à vérifier</span><h3>'+escapeHtml(n.title)+'</h3><div class="muted">'+escapeHtml(n.location||'Lieu non précisé')+' · Publication : '+escapeHtml(n.published_at||'date inconnue')+'</div><p class="muted">Une vente ou cession d’entreprise/fonds a été publiée. Cela ne confirme ni un surplus, ni une quantité, ni une marchandise disponible.</p><div class="muted"><a href="'+escapeHtml(n.source_url||'https://www.bodacc.fr/')+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel BODACC</a> · Identifiant '+escapeHtml(n.source_listing_id)+'</div></article>').join(''):'<div class="empty">Aucun signal BODACC ne correspond à cette recherche.</div>';
+  bodaccList.innerHTML=filtered.length?filtered.map(n=>'<article class="item"><span class="pill">Signal légal · à vérifier</span><h3>'+escapeHtml(n.title)+'</h3><div class="muted">'+escapeHtml(n.location||'Lieu non précisé')+' · Publication : '+escapeHtml(n.published_at||'date inconnue')+'</div><p class="muted">Une vente ou cession d’entreprise/fonds a été publiée. Cela ne confirme ni un surplus, ni une quantité, ni une marchandise disponible.</p><div class="muted"><a href="'+escapeHtml(safeHttpsUrl(n.source_url)||'https://www.bodacc.fr/')+'" target="_blank" rel="noopener noreferrer">Consulter l’avis officiel BODACC</a> · Identifiant '+escapeHtml(n.source_listing_id)+'</div></article>').join(''):'<div class="empty">Aucun signal BODACC ne correspond à cette recherche.</div>';
  }
 
- const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(x.url)+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
+ const sourceList=$('sourceList');if(sourceList)sourceList.innerHTML=sources.length?sources.map((x,i)=>'<article class="item"><span class="pill">'+escapeHtml(x.status)+'</span><h3>'+escapeHtml(x.name)+'</h3><div class="muted">'+escapeHtml(x.type)+' · '+escapeHtml(x.scope||'Périmètre à préciser')+'</div><div class="muted"><a href="'+escapeHtml(safeHttpsUrl(x.url)||'#')+'" target="_blank" rel="noopener noreferrer">Ouvrir le site officiel</a></div><p><button type="button" class="secondary" data-delete-source="'+i+'">Supprimer</button></p></article>').join(''):'<div class="empty">Aucune source enregistrée. Ajoute une plateforme ou un fournisseur à examiner.</div>';
  const ms=matches();
  const ds=$('dashSellerCount');if(ds)ds.textContent=sellers.length;
  const db=$('dashBuyerCount');if(db)db.textContent=buyers.length;
@@ -851,7 +852,7 @@ $('csvFile').addEventListener('change',async e=>{
    const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
    const sourceUrl=r.source_url||r.url||'';
    if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
-   if(sourceUrl&&!/^https?:\/\//i.test(sourceUrl)){skipped++;continue}
+   if(sourceUrl&&!/^https:\/\//i.test(sourceUrl)){skipped++;continue}
    const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
    const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
    if(exists){skipped++;continue}
@@ -1160,7 +1161,7 @@ window.addEventListener('dealhunter-service-data',e=>{
  const matchEl=$('serviceMatches');
  if(matchEl)matchEl.innerHTML=pairs.length?pairs.map(p=>'<article class="item"><span class="pill">Compatibilité indicative : '+p.score+' %</span><h3>'+escapeHtml(p.o.company)+' → '+escapeHtml(p.r.company)+'</h3><div>'+escapeHtml(p.o.title)+' · '+escapeHtml(p.mode)+'</div><p class="muted">Besoin : '+escapeHtml(p.r.title)+' · Qualifications obligatoires vérifiées.</p><button type="button" data-service-match-request data-offer-id="'+escapeHtml(p.o.id)+'" data-service-request-id="'+escapeHtml(p.r.id)+'">Demander la mise en relation</button><div class="muted">Aucune coordonnée n’est partagée avant acceptation.</div></article>').join(''):'<div class="empty">Aucune correspondance éligible pour le moment. Les deux entreprises doivent proposer la même catégorie et la même zone, ou accepter le distanciel.</div>';
 });
-$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https?:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
+$('sourceForm').addEventListener('submit',e=>{e.preventDefault();const url=$('srcUrl').value.trim();if(!/^https:\/\//i.test(url))return;sources.push({name:$('srcName').value.trim(),url,type:$('srcType').value,scope:$('srcScope').value.trim(),status:$('srcStatus').value,createdAt:new Date().toISOString()});e.target.reset();save()});
 $('sourceList').addEventListener('click',e=>{const btn=e.target.closest('[data-delete-source]');if(!btn)return;const i=Number(btn.dataset.deleteSource);if(Number.isInteger(i)&&sources[i]){sources.splice(i,1);save()}});
 window.addEventListener('dealhunter-business-record-result',e=>{
  const d=e.detail||{};
