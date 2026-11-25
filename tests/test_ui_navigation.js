@@ -19,6 +19,15 @@ test("chaque onglet visible possède une destination réelle", () => {
   assert.ok(html.includes("panel.classList.toggle('hidden', id !== target)"));
 });
 
+test("les identifiants HTML sont uniques et les demandes professionnelles ont un seul conteneur", () => {
+  const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(match => match[1]);
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+  assert.deepEqual([...new Set(duplicates)], [], "Les identifiants HTML doivent être uniques");
+  assert.equal(ids.filter(id => id === "workMatchRequests").length, 1);
+  assert.match(html, /data-go-work-requests/);
+  assert.match(html, /dealhunterShowTab\('matchRequests'/);
+});
+
 test("les événements d’action de l’interface sont traités par Firebase", () => {
   const actions = [...new Set([...html.matchAll(/new CustomEvent\(['"](dealhunter-[a-z0-9-]+)['"]/g)]
     .map(match => match[1]))]
