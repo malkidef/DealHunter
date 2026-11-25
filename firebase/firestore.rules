@@ -696,6 +696,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Notifications privées : seul le serveur (Admin SDK) peut les créer.
+    // Le destinataire peut marquer une notification comme lue ou la supprimer.
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null
+        && resource.data.recipientUid == request.auth.uid;
+      allow create: if false;
+      allow update: if request.auth != null
+        && resource.data.recipientUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["readAt"])
+        && request.resource.data.readAt is timestamp;
+      allow delete: if request.auth != null
+        && resource.data.recipientUid == request.auth.uid;
+    }
+
     // Suggestions de matching : lisibles uniquement par les deux propriétaires.
     // Les écritures restent réservées au moteur serveur (Admin SDK).
     match /matches/{matchId} {
