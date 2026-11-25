@@ -66,8 +66,7 @@ async function run() {
     for (const { candidate, offer, need } of writes) {
       const id = crypto.createHash("sha256").update(`${candidate.listingId}:${candidate.requestId}`).digest("hex");
       batch.create(db.collection("matches").doc(id), {
-        listingId: candidate.listingId, requestId: candidate.requestId,
-        sellerUid: offer.companyId, buyerUid: need.companyId,
+        listingId: candidate.listingId, requestId: candidate.requestId,        // Compatibilité interface : IDs attendus pour créer une demande.        sellerId: candidate.listingId, buyerId: candidate.requestId,        sellerUid: offer.companyId, buyerUid: need.companyId,
         participantUids: [offer.companyId, need.companyId],
         sellerCompany: offer.company, buyerCompany: need.company,
         product: offer.productName, compatibilityScore: candidate.compatibilityScore,
@@ -85,8 +84,7 @@ async function run() {
           const snap = await tx.get(ref);
           if (snap.exists) return "existing";
           tx.create(ref, {
-            listingId: candidate.listingId, requestId: candidate.requestId,
-            sellerUid: offer.companyId, buyerUid: need.companyId,
+            listingId: candidate.listingId, requestId: candidate.requestId,            // Compatibilité interface : IDs attendus pour créer une demande.            sellerId: candidate.listingId, buyerId: candidate.requestId,            sellerUid: offer.companyId, buyerUid: need.companyId,
             participantUids: [offer.companyId, need.companyId],
             sellerCompany: offer.company, buyerCompany: need.company,
             product: offer.productName, compatibilityScore: candidate.compatibilityScore,
