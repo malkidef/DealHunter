@@ -181,6 +181,7 @@ if (!ready) {
     const user=auth.currentUser,d=e.detail||{};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-service-match-request-result",{detail:{success,message,offerId:d.offerId||"",serviceRequestId:d.serviceRequestId||""}}));};
     if(!user||!d.offerId||!d.serviceRequestId){finish(false,"Connecte-toi pour demander une mise en relation de services.");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const [offerSnap,needSnap]=await Promise.all([
         getDoc(doc(db,"publicServiceOffers",d.offerId)),
@@ -216,6 +217,7 @@ if (!ready) {
     const message=String(messageText||"").trim();
     const finish=(success,label)=>{status.textContent=label;window.dispatchEvent(new CustomEvent("dealhunter-service-message-result",{detail:{success,label,requestId}}));};
     if(!user||!requestId||!message||message.length>2000){finish(false,"Compte, demande ou message invalide (2 000 caractères maximum).");return;}
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     try{
       const requestSnap=await getDoc(doc(db,"serviceMatchRequests",requestId));
       if(!requestSnap.exists())throw new Error("Mise en relation introuvable.");
@@ -234,6 +236,7 @@ if (!ready) {
   window.addEventListener("dealhunter-update-service-match-request",async e=>{
     const user=auth.currentUser,{requestId,decision}=e.detail||{};
     if(!user||!requestId||!["accepted","rejected"].includes(decision))return;
+    if (!requireVerifiedEmail(user)) return;
     try{
       const ref=doc(db,"serviceMatchRequests",requestId),snap=await getDoc(ref);
       if(!snap.exists()||snap.data().recipientUid!==user.uid||snap.data().status!=="pending")
@@ -724,6 +727,7 @@ if (!ready) {
       finish(false, "Connecte-toi pour publier une offre ou une demande de service.");
       return;
     }
+    if (!requireVerifiedEmail(user)) { finish(false, status.textContent); return; }
     const record = data.record || {};
     const company = String(record.company || "").trim();
     const title = String(record.title || "").trim();
