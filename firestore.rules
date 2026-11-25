@@ -680,6 +680,26 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Fiche entreprise publique minimale, distincte du profil utilisateur privé.
+    match /companyProfiles/{ownerUid} {
+      function validCompanyProfile() {
+        return request.resource.data.keys().hasOnly(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.keys().hasAll(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.ownerUid == ownerUid
+          && request.resource.data.companyName is string
+          && request.resource.data.companyName.size() >= 2
+          && request.resource.data.companyName.size() <= 120
+          && request.resource.data.countryCode is string
+          && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+          && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == ownerUid
+        && validCompanyProfile();
+      allow delete: if false;
+    }
+
     // Preuve publique minimale de vérification d'une entreprise.
     // Seul un réviseur autorisé peut la créer/modifier ; l'approbation et la preuve sont atomiques.
     match /companyVerifications/{ownerUid} {
@@ -688,7 +708,7 @@ service cloud.firestore {
       }
       function validCompanyVerification() {
         let verificationPath = /databases/$(database)/documents/verificationRequests/$(request.resource.data.verificationRequestId);
-        let userPath = /databases/$(database)/documents/users/$(ownerUid);
+        let companyProfilePath = /databases/$(database)/documents/companyProfiles/$(ownerUid);
         return request.resource.data.keys().hasOnly([
           "ownerUid","companyName","countryCode","verificationRequestId","status","verifiedAt"
         ])
@@ -709,9 +729,9 @@ service cloud.firestore {
         && getAfter(verificationPath).data.subjectName == request.resource.data.companyName
         && getAfter(verificationPath).data.countryCode == request.resource.data.countryCode
         && getAfter(verificationPath).data.status == "verified"
-        && exists(userPath)
-        && get(userPath).data.company.name == request.resource.data.companyName
-        && get(userPath).data.company.country == request.resource.data.countryCode;
+        && exists(companyProfilePath)
+        && get(companyProfilePath).data.companyName == request.resource.data.companyName
+        && get(companyProfilePath).data.countryCode == request.resource.data.countryCode;
       }
       allow read: if request.auth != null
         && (resource.data.status == "verified" || ownerUid == request.auth.uid || isDealHunterAdmin());
