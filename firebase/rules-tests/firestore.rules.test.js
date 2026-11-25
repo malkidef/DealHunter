@@ -512,6 +512,18 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(getDocs(query(collection(bob, "companyVerifications"), where("status", "==", "verified"))));
     await assertFails(updateDoc(doc(alice, "companyVerifications", "alice"), { companyName: "Entreprise usurpée" }));
     await assertFails(setDoc(doc(bob, "companyVerifications", "bob"), { ...verification, ownerUid: "bob" }));
+    await assertFails(deleteDoc(doc(admin, "companyVerifications", "alice")));
+    await assertFails(updateDoc(doc(admin, "verificationRequests", "company-approval"), {
+      status: "revoked", reviewerNote: "Révocation", revokedAt: new Date()
+    }));
+    const revokeBatch = writeBatch(admin);
+    revokeBatch.delete(doc(admin, "companyVerifications", "alice"));
+    revokeBatch.update(doc(admin, "verificationRequests", "company-approval"), {
+      status: "revoked", reviewerNote: "Révocation justifiée", revokedAt: new Date()
+    });
+    await assertSucceeds(revokeBatch.commit());
+    await assertFails(getDoc(doc(alice, "companyVerifications", "alice")));
+    await assertSucceeds(getDoc(doc(admin, "verificationRequests", "company-approval")));
   });
 
   it("sécurise les propositions commerciales et la confirmation bilatérale", async () => {
