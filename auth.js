@@ -1333,6 +1333,7 @@ if (!ready) {
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
       : "Aucun utilisateur connecté.";
+    if (exportAccountDataButton) exportAccountDataButton.classList.toggle("hidden", !user);
     if (user) {
       startNotificationsListener(user);
       const label = document.createElement("span");
