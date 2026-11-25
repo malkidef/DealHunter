@@ -162,3 +162,11 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Commit d'implémentation : `0e762d26914516a071475b29ae70a4b5a43620da`.
 - Les workflows GitHub Actions de tests applicatifs, de règles Firestore et Pages ont été relancés sur ce commit ; leur résultat doit être contrôlé avant toute mise en production.
 - IMPORTANT : ces déclencheurs ne sont pas déclarés déployés. Le dépôt ne possède pas encore de workflow de déploiement ciblé de ces seules fonctions. Ne pas déployer toutes les fonctions existantes sans audit préalable : l'index contient aussi des anciens déclencheurs sur `seller_listings`/`buyer_requests` et le module de paiements. Stripe reste désactivé.
+
+
+## Déploiement isolé des notifications (25 novembre 2026)
+- Ajout du workflow manuel `.github/workflows/deploy-notification-functions.yml`.
+- Le workflow exige la saisie exacte de `dealhunter-3747b`, vérifie que le secret de compte de service cible ce même projet et déploie uniquement les cinq fonctions de notification.
+- Il ne déploie ni les anciens déclencheurs de matching, ni les fonctions de paiement/Stripe, ni les règles Firestore.
+- Workflow enregistré au commit `977e53fc8652890b1029e5cfd8af9426e96dc083`.
+- État : workflow disponible, mais aucun déploiement de production n'a été lancé depuis cette modification. Le lancement manuel et son résultat restent nécessaires ; les permissions IAM, APIs Firebase/Cloud Functions et éventuelle facturation doivent être confirmées par le résultat de ce déploiement.
