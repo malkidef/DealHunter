@@ -85,3 +85,61 @@ Cette matrice n'est pas encore une fonctionnalité exécutée. Chaque collection
 - Les tests couvrent les cas de succès, d'échec, de répétition et de concurrence.
 
 **État :** procédure de conception rédigée ; aucune automatisation d'export/effacement ni conformité RGPD ne doit être considérée comme achevée à ce stade.
+
+
+## 8. Inventaire technique des collections Firestore — audit du 25 novembre 2026
+
+Cet inventaire décrit les règles présentes dans la branche de finalisation. Il ne fixe pas à lui seul les durées légales de conservation et doit être revu avant toute automatisation d'effacement.
+
+| Collection / chemin | Données et lien au compte | Lecture selon les règles | Suppression actuellement autorisée |
+|---|---|---|---|
+| `users/{uid}` | Profil privé, UID | Propriétaire uniquement | Non |
+| `users/{uid}/sellerOffers` | Copies privées des stocks du propriétaire | Propriétaire | Propriétaire |
+| `users/{uid}/buyerNeeds` | Copies privées des besoins du propriétaire | Propriétaire | Propriétaire |
+| `publicOffers` | Annonces produit, `ownerUid` | Tout compte connecté | Propriétaire |
+| `publicNeeds` | Besoins produit, `ownerUid` | Tout compte connecté | Propriétaire |
+| `matchRequests` | Demande et deux participants | Participants | Non |
+| `matchMessages` | Message, auteur et demande liée | Participants d'une demande acceptée | Non |
+| `deals` | Transaction, rôles vendeur/acheteur et participants | Participants | Non |
+| `dealReviews` | Avis, auteur et personne évaluée | Auteur et personne évaluée | Non |
+| `matchContacts` | Coordonnées partagées, propriétaire et demande | Participants de la demande acceptée | Non |
+| `publicServiceOffers` | Offre de prestation, `ownerUid` | Tout compte connecté | Propriétaire |
+| `publicServiceRequests` | Demande de prestation, `ownerUid` | Tout compte connecté | Propriétaire |
+| `serviceMatchRequests` | Demande de mise en relation et participants | Participants | Non |
+| `serviceMatchMessages` | Messages de prestation et auteur | Participants d'une demande acceptée | Non |
+| `publicWorkerProfiles` | Profil professionnel public, consentement et `ownerUid` | Tout compte connecté | Propriétaire |
+| `publicWorkOpenings` | Offre d'emploi, `ownerUid` | Tout compte connecté | Propriétaire |
+| `workMatchRequests` | Candidature/mise en relation et participants | Participants | Non |
+| `workMatchMessages` | Messages emploi et auteur | Participants d'une demande acceptée | Non |
+| `companyProfiles` | Nom commercial et pays, `ownerUid` | Tout compte connecté | Non |
+| `companyVerifications` | Preuve de validation et demande liée | Statut vérifié, propriétaire ou administrateur | Administrateur uniquement |
+| `verificationRequests` | Preuve publique soumise, décision et propriétaire | Propriétaire ou administrateur | Non ; retrait possible tant qu'en attente |
+| `trustReports` | Signalement, auteur, cible et décision | Auteur ou administrateur | Non |
+| `notifications` | Événement destiné à un compte | Destinataire | Destinataire |
+| `matches` | Suggestion de matching et deux participants | Participants | Serveur uniquement |
+
+### Conséquences pour les droits des personnes
+
+- Le compte Firebase Authentication et le document `users/{uid}` sont deux objets distincts. Les règles actuelles interdisent la suppression du document utilisateur ; aucun parcours client de suppression du compte Auth n'a été identifié.
+- Les annonces et profils publics disposent de suppressions par leur propriétaire dans plusieurs collections, mais cela ne supprime pas les demandes, messages, coordonnées partagées, avis, transactions ou notifications associées.
+- Les demandes, messages, transactions, avis, contacts, signalements et certaines preuves ne sont pas supprimables par le client selon les règles actuelles. Il faut définir une stratégie d'anonymisation ou de conservation justifiée qui protège aussi les autres participants.
+- Les sous-collections `sellerOffers` et `buyerNeeds` doivent être parcourues explicitement : supprimer un document parent Firestore ne supprime pas automatiquement ses sous-collections.
+- Les documents `companyProfiles` et `companyVerifications` introduits par la correction de vérification entreprise doivent être intégrés au processus de rectification, révocation et effacement.
+- Les collections `matches` sont écrites par le serveur ; toute suppression ou anonymisation doit traiter également le worker de matching et ses données dérivées.
+- Les notifications peuvent être supprimées par le destinataire, mais les événements sources peuvent en recréer si les références de compte ne sont pas neutralisées.
+- Aucun parcours complet d'export n'est établi. Un export naïf des documents partagés risquerait de divulguer des données personnelles d'autres personnes ; les champs tiers doivent être filtrés ou pseudonymisés.
+- Aucun mécanisme global de purge des journaux, exports, sauvegardes ou données de fournisseurs n'a été établi.
+
+### Décision technique avant développement
+
+Ne pas ajouter une suppression globale depuis le navigateur, ni élargir les règles de suppression en bloc. Le bon mécanisme devra :
+1. authentifier à nouveau le demandeur et vérifier son contrôle du compte ;
+2. créer une demande de traitement traçable et idempotente ;
+3. retirer immédiatement les annonces et profils publics de l'affichage ;
+4. exporter les seules données communicables, en protégeant les tiers ;
+5. appliquer une matrice approuvée distinguant effacement, anonymisation et conservation légale ;
+6. traiter les sous-collections, références, notifications, matching, Auth, sauvegardes et fournisseurs ;
+7. permettre une reprise sûre après interruption et produire un journal minimal de preuve ;
+8. tester les cas de compte avec transactions, messages, signalements, vérification et demandes en cours.
+
+**Conclusion de l'audit :** l'application possède plusieurs suppressions locales utiles, mais pas de droit à l'effacement de bout en bout ni d'export complet vérifié. Cette fonction reste un bloqueur avant ouverture publique.
