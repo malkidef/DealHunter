@@ -488,6 +488,68 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(deleteDoc(doc(alice,"dealReviews","completed-review_alice")));
   });
 
+
+  it("impose un e-mail vérifié sur le marché des compétences et ses conversations", async () => {
+    const profile = {
+      ownerUid: "candidate", title: "Électricien ferroviaire", category: "Électricité",
+      description: "Profil de test", location: "Valenciennes", countryCode: "FR",
+      skills: ["maintenance"], qualifications: ["habilitation"], engagementTypes: ["employment"],
+      availableFrom: "2026-12-01", remote: false, publicProfileConsent: true,
+      status: "active", createdAt: new Date(), updatedAt: new Date()
+    };
+    const opening = {
+      ownerUid: "employer", company: "Entreprise B", title: "Électricien",
+      category: "Électricité", description: "Mission de test", location: "Lille",
+      countryCode: "FR", requiredSkills: ["maintenance"], requiredQualifications: ["habilitation"],
+      engagementType: "employment", startDate: "2026-12-01", remoteAccepted: false,
+      status: "active", createdAt: new Date(), updatedAt: new Date()
+    };
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "publicWorkerProfiles", "candidate-profile"), profile);
+      await setDoc(doc(db, "publicWorkOpenings", "employer-opening"), opening);
+      await setDoc(doc(db, "workMatchRequests", "accepted-work"), {
+        candidateProfileId: "candidate-profile", openingId: "employer-opening",
+        candidateUid: "candidate", employerUid: "employer",
+        participantUids: ["candidate", "employer"], requesterUid: "candidate",
+        recipientUid: "employer", engagementType: "employment",
+        candidateTitle: profile.title, openingTitle: opening.title,
+        status: "accepted", createdAt: new Date()
+      });
+    });
+    const unverified = testEnv.authenticatedContext("candidate", { email_verified: false }).firestore();
+    const verifiedGoogle = testEnv.authenticatedContext("candidate-google", {
+      email_verified: true, firebase: { sign_in_provider: "google.com" }
+    }).firestore();
+    const verifiedApple = testEnv.authenticatedContext("candidate-apple", {
+      email_verified: true, firebase: { sign_in_provider: "apple.com" }
+    }).firestore();
+    await assertFails(setDoc(doc(unverified, "publicWorkerProfiles", "unverified-profile"), {
+      ...profile, ownerUid: "candidate"
+    }));
+    await assertFails(setDoc(doc(unverified, "publicWorkOpenings", "unverified-opening"), {
+      ...opening, ownerUid: "candidate"
+    }));
+    await assertFails(deleteDoc(doc(unverified, "publicWorkerProfiles", "candidate-profile")));
+    await assertFails(setDoc(doc(unverified, "workMatchRequests", "unverified-work-request"), {
+      candidateProfileId: "candidate-profile", openingId: "employer-opening",
+      candidateUid: "candidate", employerUid: "employer",
+      participantUids: ["candidate", "employer"], requesterUid: "candidate",
+      recipientUid: "employer", engagementType: "employment",
+      candidateTitle: profile.title, openingTitle: opening.title,
+      status: "pending", createdAt: new Date()
+    }));
+    await assertFails(setDoc(doc(unverified, "workMatchMessages", "unverified-message"), {
+      requestId: "accepted-work", senderUid: "candidate", text: "Bonjour", createdAt: new Date()
+    }));
+    await assertSucceeds(setDoc(doc(verifiedGoogle, "publicWorkerProfiles", "google-profile"), {
+      ...profile, ownerUid: "candidate-google"
+    }));
+    await assertSucceeds(setDoc(doc(verifiedApple, "publicWorkerProfiles", "apple-profile"), {
+      ...profile, ownerUid: "candidate-apple"
+    }));
+  });
+
   it("protège les signalements de confiance et leur traitement", async () => {
     const alice=testEnv.authenticatedContext("alice").firestore();
     const bob=testEnv.authenticatedContext("bob").firestore();
