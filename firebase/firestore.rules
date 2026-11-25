@@ -793,7 +793,12 @@ service cloud.firestore {
       }
       allow read: if request.auth != null
         && (resource.data.status == "verified" || ownerUid == request.auth.uid || isDealHunterAdmin());
-      allow create, update: if isDealHunterAdmin() && validCompanyVerification();
+      allow create: if isDealHunterAdmin()
+        && !exists(/databases/$(database)/documents/companyVerifications/$(ownerUid))
+        && validCompanyVerification();
+      allow update: if isDealHunterAdmin()
+        && resource.data.verificationRequestId == request.resource.data.verificationRequestId
+        && validCompanyVerification();
       allow delete: if isDealHunterAdmin()
         && existsAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId))
         && getAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId)).data.status == "revoked"
@@ -830,7 +835,9 @@ service cloud.firestore {
         && request.resource.data.publicEvidenceUrl.size() <= 500
         && request.resource.data.status == "pending"
         && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && (request.resource.data.subjectType != "company"
+          || !exists(/databases/$(database)/documents/companyVerifications/$(request.auth.uid)));
       }
       allow create: if request.auth != null && validVerificationRequest();
       allow read: if request.auth != null
