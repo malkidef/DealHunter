@@ -142,3 +142,13 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Ajout d'un test émulateur couvrant la lecture croisée, la création cliente forgée, le marquage comme lu, la modification de contenu et la suppression par un tiers.
 - Cette modification ne constitue pas encore un centre de notifications fonctionnel : aucun producteur serveur d'événements, compteur non-lu, préférences, interface ni canal e-mail/push n'est déployé. Les notifications ne doivent pas être considérées comme émises tant que ces composants ne sont pas développés et testés.
 - Les règles sont modifiées dans les deux fichiers source. Déploiement Firebase requis après validation CI.
+
+
+## Centre de notifications — interface et consultation (25 novembre 2026)
+
+- Ajout d'un onglet Notifications dans l'interface DealHunter.
+- Chargement des 50 notifications les plus récentes du compte connecté, compteur non lues, affichage du titre, du contenu et de la date, action « Marquer comme lue ».
+- La lecture reste filtrée par `recipientUid`; les règles Firestore imposent que l'utilisateur ne lise que ses propres documents et ne modifie que `readAt`.
+- Tests des règles de confidentialité exécutés avec succès sur le commit `a5a2fa56` (tests DealHunter, règles Firestore et Pages : succès).
+- Les commits d'interface `a69ce7b6` et `23c7dd38` sont en cours de validation CI au moment de cette mise à jour.
+- Limite restante : aucun déclencheur serveur ne crée encore les notifications lors des événements métier. L'interface peut afficher les notifications créées par un producteur autorisé, mais ne génère pas elle-même les alertes. Pas de push, d'e-mail ni de centre de préférences.
