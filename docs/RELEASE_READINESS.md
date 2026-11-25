@@ -123,3 +123,14 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Les tests OAuth sont des tests de jetons simulés dans l'émulateur. Les connexions réelles Google et Apple, ainsi que l'envoi/réception d'un e-mail de vérification, restent à tester sur Firebase Authentication.
 - Les tests avec deux comptes réels distincts, les parcours commerciaux de bout en bout, les notifications, la conformité RGPD et la validation juridique restent non certifiés.
 - DealHunter reste en préproduction. Ne pas accepter de paiements ni ouvrir publiquement avant la levée des bloqueurs.
+
+
+## Mise à jour de suivi — commit c7d8f842 (25 novembre 2026)
+
+- Les workflows `Tests des règles Firestore`, `Tests DealHunter` et `GitHub Pages` ont tous terminé avec succès sur le commit `c7d8f842`.
+- Les tests du marché des compétences couvrent maintenant aussi la modification d'un profil par un compte non vérifié et la décision d'un employeur non vérifié sur une demande.
+- Le centre de notifications n'est toujours pas implémenté : aucune collection `notifications`, règle dédiée, interface ou production d'événements n'a été trouvée lors de l'audit du code actuel.
+- L'écart entre le schéma `deals` utilisé par `auth.js` et le schéma `companies` / `amountTotalCents` attendu par `firebase/functions/src/payments.js` reste bloquant. Ne pas connecter le module de paiement à l'interface actuelle.
+- Le workflow de déploiement Firestore est manuel (`workflow_dispatch`) et exige le champ `confirm_project` égal à `dealhunter-3747b`. Les dernières règles validées sur `c7d8f842` ne sont pas réputées déployées tant qu'une exécution de ce workflow sur le commit actuel n'est pas terminée avec succès.
+- Les tests OAuth Google/Apple utilisent des jetons simulés dans l'émulateur ; ils ne remplacent pas une validation des connexions réelles et des e-mails de vérification sur Firebase Authentication.
+- Les tests à deux comptes réels, la livraison effective des e-mails, la validation RGPD/juridique et les essais de bout en bout restent à faire.
