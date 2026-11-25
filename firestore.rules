@@ -181,8 +181,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
         && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.ownerUid == request.resource.data.buyerUid
         && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
+        // Les informations affichées dans la demande doivent provenir des annonces réelles.
+        && request.resource.data.product == get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.product
         && request.resource.data.requesterCompany is string
+        && request.resource.data.requesterCompany == (
+          request.resource.data.requesterUid == request.resource.data.sellerUid
+            ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+            : get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+        )
         && request.resource.data.recipientCompany is string
+        && request.resource.data.recipientCompany == (
+          request.resource.data.recipientUid == request.resource.data.sellerUid
+            ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+            : get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+        )
         && request.resource.data.product is string
         && request.resource.data.createdAt is timestamp;
       // Seuls les deux participants peuvent lire une demande.
