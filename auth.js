@@ -5,7 +5,7 @@ import {
   sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot
+  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -74,23 +74,11 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
-  let unsubscribeNotifications = null;
-  const startNotificationsListener = user => {
-    if (unsubscribeNotifications) unsubscribeNotifications();
-    const notificationsQuery = query(
-      collection(db, "notifications"),
-      where("recipientUid", "==", user.uid),
-      limit(50)
-    );
-    unsubscribeNotifications = onSnapshot(notificationsQuery, snapshot => {
-      const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
-        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-      window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
-    }, error => {
-      console.error("Écoute des notifications Firestore interrompue :", error);
-      status.append(document.createTextNode(" · Notifications indisponibles : " +
-        (error.code || error.message || "erreur Firestore") + "."));
-    });
+  const loadNotifications = async user => {
+    const snapshot = await getDocs(query(collection(db, "notifications"), where("recipientUid", "==", user.uid), limit(50)));
+    const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
   };
 
   window.addEventListener("dealhunter-mark-notification-read", async event => {
@@ -98,7 +86,7 @@ if (!ready) {
     if (!auth.currentUser || !notificationId || notificationId.length > 180) return;
     try {
       await updateDoc(doc(db, "notifications", notificationId), { readAt: serverTimestamp() });
-      // L'écoute temps réel répercute automatiquement le changement de readAt.
+      await loadNotifications(auth.currentUser);
     } catch (error) {
       console.error("Impossible de marquer la notification comme lue :", error);
       status.textContent = "Impossible de mettre à jour cette notification. Réessaie.";
@@ -1144,18 +1132,12 @@ if (!ready) {
   getRedirectResult(auth).catch(showError);
 
   onAuthStateChanged(auth, async user => {
-    if (unsubscribeNotifications) {
-      unsubscribeNotifications();
-      unsubscribeNotifications = null;
-    }
-    window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications: [] } }));
     window.dealhunterUserUid = user?.uid || ''; 
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
       : "Aucun utilisateur connecté.";
     if (user) {
-      startNotificationsListener(user);
       const label = document.createElement("span");
       label.className = "auth-user";
       label.textContent = "Connecté : " + (user.email || user.displayName || "compte utilisateur");
@@ -1172,9 +1154,10 @@ if (!ready) {
       const startupTasks = await Promise.allSettled([
         saveUserProfile(user),
         loadCloudRecords(user),
-        loadMatchRequests(user)
+        loadMatchRequests(user),
+        loadNotifications(user)
       ]);
-      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions"];
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions", "notifications"];
       const startupErrors = startupTasks.flatMap((result, index) => {
         if (result.status === "fulfilled") return [];
         console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
