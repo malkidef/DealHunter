@@ -150,3 +150,15 @@ Les spécifications suivantes sont maintenant réunies sur la branche de finalis
 - `docs/OPERATIONS_READINESS.md` : limites Spark, sauvegardes/restauration et surveillance des automatisations.
 
 Ces documents sont des spécifications préparatoires, pas des fonctions opérationnelles. Aucun export, effacement ou backup réel n'a été exécuté. La sauvegarde restaurable reste un bloqueur de mise en production.
+
+
+### Mise à jour — export personnel initial (25 novembre 2026)
+
+- Ajout d'un bouton « Exporter mes données personnelles (JSON) » au panneau Compte.
+- Export local filtré par UID connecté : profil privé, sous-collections vendeur/acheteur, annonces et besoins produits/services/emploi, demandes de vérification, signalements déposés, notifications reçues et profil/preuve entreprise.
+- Exige une adresse e-mail vérifiée et une connexion datant de moins de 15 minutes.
+- Chaque collection est plafonnée à 500 documents ; erreurs et plafonds sont consignés dans le manifeste JSON.
+- Conversations, demandes de mise en relation, transactions, avis et données de tiers restent exclus de cette première version.
+- Tests statiques ajoutés pour le filtrage UID, la fraîcheur de connexion, les plafonds et l'annonce des exclusions.
+- Code en branche de développement uniquement. Validation CI, test réel sur deux comptes et vérification du téléchargement sur Android/ordinateur encore requis.
+- Cette première version n'est pas encore un export exhaustif de tous les droits d'accès ; aucun effacement ou changement des données source n'est réalisé.
