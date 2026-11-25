@@ -219,3 +219,15 @@ test("les parcours de compte exposent inscription, connexion, récupération et 
   assert.match(auth, /signInWithRedirect\(auth, provider\)/);
   assert.match(auth, /signInWithPopup\(auth, provider\)/);
 });
+
+
+test("les caches locaux vendeur, acheteur et import sont isolés par compte", () => {
+  assert.match(html, /let localStorageScope='guest',localStorageReady=false/);
+  assert.match(html, /scopedLocalKey\('dh_sellers'\)/);
+  assert.match(html, /scopedLocalKey\('dh_buyers'\)/);
+  assert.match(html, /scopedLocalKey\('dh_pending_imports'\)/);
+  assert.match(html, /dealhunter-auth-user-changed/);
+  assert.match(auth, /new CustomEvent\("dealhunter-auth-user-changed"/);
+  assert.match(html, /if\(window\.dealhunterUserUid\)/);
+  assert.doesNotMatch(html, /let sellers=load\('dh_sellers'\)/);
+});
