@@ -1209,11 +1209,10 @@ if (!ready) {
     const errors = [];
     const readOwnedCollection = async (label, collectionPath, field) => {
       try {
-        const snapshot = await getDocs(query(
-          collection(db, ...collectionPath),
-          where(field, "==", user.uid),
-          limit(501)
-        ));
+        const baseCollection = collection(db, ...collectionPath);
+        const snapshot = await getDocs(field
+          ? query(baseCollection, where(field, "==", user.uid), limit(501))
+          : query(baseCollection, limit(501)));
         const docs = snapshot.docs.slice(0, 500).map(item => ({ id: item.id, ...item.data() }));
         collections[label] = docs;
         if (snapshot.size > 500) errors.push(label + " : plus de 500 documents, export partiel plafonné.");
@@ -1233,8 +1232,8 @@ if (!ready) {
     };
 
     await readOwnDocument("profil_prive", ["users", user.uid]);
-    await readOwnedCollection("stocks_prives", ["users", user.uid, "sellerOffers"], "ownerUid");
-    await readOwnedCollection("besoins_prives", ["users", user.uid, "buyerNeeds"], "ownerUid");
+    await readOwnedCollection("stocks_prives", ["users", user.uid, "sellerOffers"], null);
+    await readOwnedCollection("besoins_prives", ["users", user.uid, "buyerNeeds"], null);
     await Promise.all([
       readOwnedCollection("annonces_produits", ["publicOffers"], "ownerUid"),
       readOwnedCollection("besoins_produits", ["publicNeeds"], "ownerUid"),
