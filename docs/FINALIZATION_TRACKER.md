@@ -139,3 +139,14 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Une preuve de vérification ne peut plus être remplacée par une décision provenant d'une autre demande ; une deuxième approbation concurrente ou obsolète est refusée.
 - La révocation doit intervenir avant de pouvoir soumettre une nouvelle demande entreprise.
 - Tests de règles ajoutés pour les demandes en doublon et la tentative d'approbation d'une deuxième demande ; CI à confirmer sur le dernier commit.
+
+
+### Complément — dossier documentaire RGPD et continuité (25 novembre 2026)
+
+Les spécifications suivantes sont maintenant réunies sur la branche de finalisation :
+- `docs/PRIVACY_OPERATIONS.md` : inventaire des collections, visibilité, droits et risques liés aux sous-collections et aux données partagées.
+- `docs/ACCOUNT_DATA_EXPORT_DESIGN.md` : export local filtré par UID, pagination, pseudonymisation des tiers et limites.
+- `docs/ACCOUNT_ERASURE_DESIGN.md` : rectification, retrait, effacement, anonymisation et ordre de traitement Auth/Firestore.
+- `docs/OPERATIONS_READINESS.md` : limites Spark, sauvegardes/restauration et surveillance des automatisations.
+
+Ces documents sont des spécifications préparatoires, pas des fonctions opérationnelles. Aucun export, effacement ou backup réel n'a été exécuté. La sauvegarde restaurable reste un bloqueur de mise en production.
