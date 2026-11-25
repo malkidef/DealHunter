@@ -20,6 +20,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Vérifier que les règles testées sont celles déployées
+        run: cmp firestore.rules firebase/firestore.rules
       - name: Installer les dépendances de test
         working-directory: firebase/rules-tests
         run: npm install
