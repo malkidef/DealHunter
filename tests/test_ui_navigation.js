@@ -31,7 +31,7 @@ test("les identifiants HTML sont uniques et les demandes professionnelles ont un
 test("les liens issus des imports et des sources sont limités à HTTPS", () => {
   assert.match(html, /function safeHttpsUrl\(value\)/);
   assert.match(html, /if\(sourceUrl&&!safeHttpsUrl\(sourceUrl\)\)/);
-  assert.match(html, /const url=safeHttpsUrl\(\$\('srcUrl'\)\.value\)/);
+  assert.match(html, /const sourceInput=\$\('srcUrl'\),url=safeHttpsUrl\(sourceInput\.value\)/);
   assert.match(html, /safeHttpsUrl\(x\.sourceUrl\)/);
   assert.match(html, /safeHttpsUrl\(n\.source_url\)/);
   assert.match(html, /safeHttpsUrl\(x\.url\)/);
