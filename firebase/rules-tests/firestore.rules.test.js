@@ -330,8 +330,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
 
 
   it("sécurise les profils professionnels et les offres d'emploi", async () => {
-    const alice=testEnv.authenticatedContext("alice").firestore();
-    const bob=testEnv.authenticatedContext("bob").firestore();
+    const alice=verifiedContext("alice").firestore();
+    const bob=verifiedContext("bob").firestore();
     const profile={
       ownerUid:"alice",title:"Électricien monteur câbleur",category:"électricité industrielle",
       description:"Câblage et maintenance",location:"Lille",countryCode:"FR",
@@ -360,7 +360,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   });
 
   it("protège les mises en relation et messages du marché du travail", async () => {
-    const alice=testEnv.authenticatedContext("alice").firestore(),bob=testEnv.authenticatedContext("bob").firestore(),outsider=testEnv.authenticatedContext("charlie").firestore();
+    const alice=verifiedContext("alice").firestore(),bob=verifiedContext("bob").firestore(),outsider=testEnv.authenticatedContext("charlie").firestore();
     await testEnv.withSecurityRulesDisabled(async c=>{
       const db=c.firestore();
       await setDoc(doc(db,"publicWorkerProfiles","candidate-1"),{ownerUid:"alice",title:"Électricien câbleur",category:"électricité",description:"Câblage",location:"Lille",countryCode:"FR",skills:["câblage"],qualifications:[],engagementTypes:["employment","independent"],availableFrom:"2026-12-01",remote:false,publicProfileConsent:true,status:"active",createdAt:new Date(),updatedAt:new Date()});
