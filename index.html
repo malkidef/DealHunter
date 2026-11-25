@@ -60,6 +60,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <button type="button" class="active" data-tab="matches" onclick="window.dealhunterShowTab('matches',this)">Correspondances</button>
 <button type="button" class="secondary" data-tab="matchRequests" onclick="window.dealhunterShowTab('matchRequests',this)">Demandes</button>
 <button type="button" class="secondary" data-tab="dashboard" onclick="window.dealhunterShowTab('dashboard',this)">Tableau de bord</button>
+<button type="button" class="secondary" data-tab="notifications" onclick="window.dealhunterShowTab(&quot;notifications&quot;,this)">Notifications <span id="notificationUnreadCount"></span></button>
 <button type="button" class="secondary" data-tab="account" onclick="window.dealhunterShowTab('account',this)">Connexion / Compte</button>
 <button type="button" class="secondary" data-tab="sellers" onclick="window.dealhunterShowTab('sellers',this)">Déposer un surplus</button>
 <button type="button" class="secondary" data-tab="buyers" onclick="window.dealhunterShowTab('buyers',this)">Besoins acheteurs</button>
@@ -72,7 +73,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 </div>
 <script>
 window.dealhunterShowTab = function(target, button) {
-  const allowedTabs = ["matches","matchRequests","dashboard","account","sellers","buyers","services","imports","gsa","bodacc","agrasc","sources"];
+  const allowedTabs = ["matches","matchRequests","notifications","dashboard","account","sellers","buyers","services","imports","gsa","bodacc","agrasc","sources"];
   if (!allowedTabs.includes(target)) return;
   document.querySelectorAll('#mainTabs button[data-tab]').forEach(function(tab) {
     const active = tab.dataset.tab === target;
@@ -143,6 +144,7 @@ window.dealhunterShowTab = function(target, button) {
 </section>
 </section>
 <section id="matchRequests" class="panel hidden"><h2>Demandes de mise en relation</h2><p class="muted">Consulte les demandes reçues et envoyées. Le destinataire peut accepter ou refuser.</p><div id="matchRequestList" class="cards"><div class="empty">Chargement…</div></div><h3 style="margin-top:24px">Mises en relation — services B2B</h3><p class="muted">La conversation ne sera disponible qu'après acceptation de la proposition par l'autre entreprise.</p><div id="serviceMatchRequestList" class="cards"><div class="empty">Aucune demande de service pour le moment.</div></div><h3 style="margin-top:24px">Mises en relation — emploi et missions</h3><p class="muted">Les demandes professionnelles et les conversations apparaissent ici après acceptation.</p><div id="workMatchRequests" class="cards"><div class="empty">Aucune demande professionnelle pour le moment.</div></div></section>
+<section id="notifications" class="panel hidden"><h2>Notifications</h2><p class="muted">Tes alertes privées concernant tes demandes et activités DealHunter.</p><div id="notificationList" class="cards"><div class="empty">Connecte-toi pour consulter tes notifications.</div></div></section>
 <section id="matches" class="panel">
 <h2>Matching automatique</h2><p class="muted">Les offres et les demandes compatibles sont rapprochées à chaque modification.</p>
 <div id="matchingDataStatus" class="muted" role="status">Chargement des données Firebase…</div>
@@ -1407,11 +1409,27 @@ window.addEventListener('dealhunter-work-match-requests',e=>{
  }).join(''):(failures.length?'<div class="empty">La liste des demandes professionnelles est indisponible. Réessaie après le rétablissement de Firebase.</div>':'<div class="empty">Aucune demande professionnelle pour le moment.</div>'));
 });
 
+window.addEventListener('dealhunter-notifications',e=>{
+ const items=Array.isArray(e.detail?.notifications)?e.detail.notifications:[],el=document.getElementById('notificationList'),count=document.getElementById('notificationUnreadCount');
+ if(!el)return;
+ const unread=items.filter(n=>!n.readAt).length;
+ if(count)count.textContent=unread?'('+unread+' non lue'+(unread>1?'s':'')+')':'';
+ el.innerHTML=items.length?items.map(n=>{
+  const date=n.createdAt?.toDate?.();const when=date?date.toLocaleString('fr-FR'):'';
+  const action=!n.readAt?'<button type="button" class="secondary" data-mark-notification-read="'+escapeHtml(n.id)+'">Marquer comme lue</button>':'<span class="pill">Lue</span>';
+  return '<article class="item"><strong>'+escapeHtml(n.title||'Notification DealHunter')+'</strong><p>'+escapeHtml(n.body||'')+'</p><div class="muted">'+escapeHtml(when)+'</div>'+action+'</article>';
+ }).join(''):'<div class="empty">Aucune notification pour le moment.</div>';
+});
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-mark-notification-read]');if(!b||b.disabled)return;
+ b.disabled=true;b.textContent='Mise à jour…';
+ window.dispatchEvent(new CustomEvent('dealhunter-mark-notification-read',{detail:{notificationId:b.dataset.markNotificationRead}}));
+});
 render();
 syncGsaFeed();
 syncSamFeed();
 syncTedFeed();
 syncBodaccFeed();
 </script>
-<script type="module" src="auth.js?v=20261124-22"></script>
+<script type="module" src="auth.js?v=20261125-notifications-1"></script>
 </body></html>
