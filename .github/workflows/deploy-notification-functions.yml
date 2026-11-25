@@ -1,0 +1,61 @@
+name: DealHunter — déployer uniquement les notifications
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Saisir exactement dealhunter-3747b pour autoriser le déploiement"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dealhunter-notification-functions-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Vérifier le projet cible et le compte de service
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CONFIRM_PROJECT: ${{ inputs.confirm_project }}
+        run: |
+          CONFIRM_PROJECT="$(echo "$CONFIRM_PROJECT" | xargs)"
+          if [ "$CONFIRM_PROJECT" != "dealhunter-3747b" ]; then
+            echo "::error::Confirmation du projet incorrecte ; aucun déploiement effectué."
+            exit 1
+          fi
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT absent."
+            exit 1
+          fi
+          node -e 'const x=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); if(x.project_id !== "dealhunter-3747b" || !x.client_email || !x.private_key) process.exit(1); console.log("Compte de service vérifié :",x.client_email)'
+      - name: Préparer l'identité Firebase temporaire
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/dealhunter-functions-service-account.json"
+          chmod 600 "$RUNNER_TEMP/dealhunter-functions-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/dealhunter-functions-service-account.json" >> "$GITHUB_ENV"
+      - name: Vérifier la syntaxe des fonctions
+        working-directory: firebase/functions
+        run: node --check src/index.js
+      - name: Déployer exclusivement les cinq fonctions de notification
+        run: |
+          npx --yes firebase-tools@14 deploy \
+            --only functions:notifyOnMatchRequestCreated,functions:notifyOnMatchRequestDecision,functions:notifyOnMatchMessageCreated,functions:notifyOnDealCreated,functions:notifyOnDealStatusChanged \
+            --project dealhunter-3747b --non-interactive
+      - name: Nettoyer l'identité temporaire
+        if: always()
+        run: rm -f "$RUNNER_TEMP/dealhunter-functions-service-account.json"
