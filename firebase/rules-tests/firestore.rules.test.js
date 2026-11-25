@@ -584,6 +584,15 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(updateDoc(doc(bob,"deals","deal-1"),{totalAmount:1}));
     await assertFails(updateDoc(doc(outsider,"deals","deal-1"),{status:"completed",updatedAt:new Date()}));
     await assertFails(deleteDoc(doc(alice,"deals","deal-1")));
+
+    // Le second ordre de confirmation (acheteur puis vendeur) doit aussi terminer la vente.
+    await assertSucceeds(setDoc(doc(alice,"deals","deal-2"),{...proposal}));
+    await assertSucceeds(updateDoc(doc(bob,"deals","deal-2"),{status:"agreed",agreedAt:new Date(),updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(bob,"deals","deal-2"),{buyerConfirmed:true,buyerConfirmedAt:new Date(),status:"agreed",updatedAt:new Date()}));
+    await assertSucceeds(updateDoc(doc(alice,"deals","deal-2"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
+    // Une confirmation déjà enregistrée ne peut pas être rejouée ni rouvrir la vente.
+    await assertFails(updateDoc(doc(alice,"deals","deal-2"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"deals","deal-2"),{buyerConfirmed:true,buyerConfirmedAt:new Date(),status:"agreed",updatedAt:new Date()}));
   });
 
 
