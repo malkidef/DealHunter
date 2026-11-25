@@ -462,7 +462,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   it("lie une entreprise vérifiée à son profil par une décision administrateur atomique", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       const db = context.firestore();
-      await setDoc(doc(db, "users", "alice"), { company: { name: "Entreprise A", country: "FR" } });
+      await setDoc(doc(db, "companyProfiles", "alice"), { ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR", updatedAt: new Date() });
       await setDoc(doc(db, "verificationRequests", "company-approval"), {
         ownerUid: "alice", subjectType: "company", subjectName: "Entreprise A", countryCode: "FR",
         evidenceLabel: "Registre officiel", publicEvidenceUrl: "https://annuaire-entreprises.data.gouv.fr/",
