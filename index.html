@@ -88,7 +88,7 @@ window.dealhunterShowTab = function(target, button) {
 </script>
 <section id="account" class="panel hidden">
 <h2>Compte entreprise</h2>
-<p class="muted">Crée un compte ou connecte-toi pour préparer ton espace DealHunter. L’authentification sera active après configuration du projet Firebase.</p>
+<p class="muted">Crée un compte ou connecte-toi pour accéder aux fonctions professionnelles de DealHunter. Une adresse e-mail vérifiée est nécessaire pour publier des offres, des besoins et utiliser les fonctions commerciales.</p>
 <div class="status-note" id="authStatus" role="status" aria-live="polite">Firebase n’est pas encore configuré. Aucun compte ne peut être créé pour le moment.</div>
 <div class="auth-layout">
 <section class="item">
@@ -280,7 +280,7 @@ window.dealhunterShowTab = function(target, button) {
 <p class="muted">Les scores sont indicatifs. Les diplômes, habilitations et autorisations doivent être vérifiés par l'entreprise.</p>
 <div id="workMatches" class="cards"><div class="empty">Les correspondances apparaîtront après publication.</div></div>
 <h3>Demandes de mise en relation et conversations</h3>
-<div id="workMatchRequests" class="cards"><div class="empty">Aucune demande professionnelle pour le moment.</div></div>
+<div class="item"><p class="muted">Les demandes et conversations professionnelles sont regroupées dans l’onglet « Demandes ».</p><button type="button" class="secondary" data-go-work-requests>Voir mes demandes et conversations</button></div>
 <section class="panel" style="margin-top:18px">
   <h3>Vérification des entreprises et qualifications</h3>
   <p class="muted">Soumets un lien vers un registre officiel public ou une page publique de l'organisme émetteur. Aucun document privé ni pièce d'identité ne doit être envoyé. Une déclaration n'est jamais considérée comme vérifiée avant contrôle humain.</p>
@@ -873,6 +873,7 @@ $('importList').addEventListener('click',e=>{
 document.addEventListener('click',e=>{const b=e.target.closest('[data-request-match]');if(!b||b.disabled)return;b.dataset.originalLabel=b.textContent;b.disabled=true;b.textContent='Envoi en cours…';window.dispatchEvent(new CustomEvent('dealhunter-create-match-request',{detail:{sellerId:b.dataset.seller,buyerId:b.dataset.buyer,sellerUid:b.dataset.sellerUid,buyerUid:b.dataset.buyerUid,sellerCompany:b.dataset.sellerCompany,buyerCompany:b.dataset.buyerCompany,product:b.dataset.product}}));});
 window.addEventListener('dealhunter-match-request-result',e=>{const d=e.detail||{};document.querySelectorAll('[data-request-match]').forEach(b=>{if(b.dataset.seller!==d.sellerId||b.dataset.buyer!==d.buyerId)return;if(d.success){b.disabled=true;b.textContent='Demande envoyée';}else{b.disabled=false;b.textContent=b.dataset.originalLabel||'Demander la mise en relation';}});});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go-matches]');if(!b)return;window.dealhunterShowTab('matches',document.querySelector('[data-tab="matches"]'));});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go-work-requests]');if(!b)return;window.dealhunterShowTab('matchRequests',document.querySelector('[data-tab="matchRequests"]'));});
 window.addEventListener('dealhunter-generated-matches',e=>{
  const el=$('scheduledMatchList');
  if(!el)return;
