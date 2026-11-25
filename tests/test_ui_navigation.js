@@ -200,3 +200,22 @@ test("le statut initial du compte ne prétend pas à tort que Firebase est désa
   assert.match(html, /id="authStatus"[^>]*>Vérification de la configuration Firebase…</);
   assert.doesNotMatch(html, /id="authStatus"[^>]*>Firebase n’est pas encore configuré/);
 });
+
+
+test("les parcours de compte exposent inscription, connexion, récupération et vérification e-mail", () => {
+  assert.match(html, /id="emailAuthForm"/);
+  assert.match(html, /id="emailCreate"/);
+  assert.match(html, /id="emailSignIn"/);
+  assert.match(html, /id="passwordReset"/);
+  assert.match(html, /id="googleSignIn"/);
+  assert.match(html, /id="appleSignIn"/);
+  assert.match(html, /id="resendVerification"/);
+  assert.match(html, /id="signOut"/);
+  assert.match(auth, /createUserWithEmailAndPassword\(auth/);
+  assert.match(auth, /signInWithEmailAndPassword\(auth/);
+  assert.match(auth, /sendPasswordResetEmail\(auth/);
+  assert.match(auth, /sendEmailVerification\(/);
+  assert.match(auth, /requireVerifiedEmail/);
+  assert.match(auth, /signInWithRedirect\(auth, provider\)/);
+  assert.match(auth, /signInWithPopup\(auth, provider\)/);
+});
