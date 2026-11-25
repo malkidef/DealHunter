@@ -67,10 +67,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const alice = verifiedContext("alice").firestore();
     const bob = verifiedContext("bob").firestore();
     const outsider = verifiedContext("charlie").firestore();
-    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("sellerUid", "==", "alice"))));
-    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("buyerUid", "==", "alice"))));
-    await assertSucceeds(getDocs(query(collection(bob, "matches"), where("buyerUid", "==", "bob"))));
-    await assertFails(getDocs(query(collection(outsider, "matches"), where("sellerUid", "==", "alice"))));
+    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("participantUids", "array-contains", "alice"))));
+    await assertSucceeds(getDocs(query(collection(alice, "matches"), where("participantUids", "array-contains", "alice"))));
+    await assertSucceeds(getDocs(query(collection(bob, "matches"), where("participantUids", "array-contains", "bob"))));
+    await assertFails(getDocs(query(collection(outsider, "matches"), where("participantUids", "array-contains", "alice"))));
   });
 
   it("refuse l'accès anonyme aux profils et aux catalogues", async () => {
