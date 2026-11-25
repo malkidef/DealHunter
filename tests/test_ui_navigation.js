@@ -34,8 +34,10 @@ test("les événements d’action de l’interface sont traités par Firebase", 
 test("les formulaires stock et besoin déclenchent une publication cloud", () => {
   assert.match(html, /dealhunter-save-business-record/);
   assert.match(auth, /addEventListener\("dealhunter-save-business-record"/);
-  assert.match(auth, /batch\.set\(privateRef, privatePayload\)/);
-  assert.match(auth, /batch\.set\(publicRef, publicPayload\)/);
+  assert.match(auth, /await setDoc\(privateRef, privatePayload\)/);
+  assert.match(auth, /await setDoc\(publicRef, publicPayload\)/);
+  assert.match(auth, /await deleteDoc\(privateRef\)/);
+  assert.match(auth, /publicationStage = "publication dans le catalogue partagé"/);
   assert.match(html, /data-edit-buyer-record/);
   assert.ok(auth.includes('"buyerNeeds"'), "La modification des besoins acheteurs doit être gérée côté Firebase");
 });
