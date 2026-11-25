@@ -114,18 +114,33 @@ def build_queue(inputs: dict[str, Path], today: date | None = None) -> dict:
     rows = source_rows(payload, "notices")
     eligible = 0
     for row in rows:
-        notice_type = str(row.get("noticeType") or row.get("notice_type") or "").lower()
-        if notice_type and not (notice_type.startswith("cn-") or notice_type in {"contract notice", "competition"}):
+        # TED's contract-award notices (CAN), prior-information notices and
+        # modification notices are not open calls for tenders. Require a
+        # recognized contract-notice family; unknown/missing types are rejected.
+        notice_type = str(row.get("noticeType") or row.get("notice_type") or "").strip().lower()
+        if not notice_type.startswith("cn-"):
             continue
+
         pub_date = parse_date(row.get("publicationDate") or row.get("publication_date"))
-        deadline = parse_date(row.get("deadline") or row.get("deadline_date"))
-        if pub_date and pub_date > today:
+        if pub_date is None or pub_date > today:
             continue
+
+        # TED may return one deadline per lot, separated by semicolons.
+        # Keep the notice only if at least one lot has a parseable, non-expired
+        # deadline. Missing or wholly unparseable deadlines are not actionable.
+        deadline_value = row.get("deadline") or row.get("deadline_date")
+        deadline_dates = [
+            parsed for part in str(deadline_value or "").split(";")
+            if (parsed := parse_date(part)) is not None
+        ]
+        if not any(deadline >= today for deadline in deadline_dates):
+            continue
+
         eligible += 1
         source_id = row.get("id") or row.get("publication_number") or row.get("title", "unknown")
         add(review_record(
             "ted_eu", source_id, str(row.get("title") or "Avis TED sans titre"), "buyer",
-            row.get("url") or row.get("source_url"), None, row.get("deadline") or row.get("deadline_date"),
+            row.get("url") or row.get("source_url"), None, deadline_value,
             "Avis de marché public non vérifié. Confirmer le type d'avis, la date limite, les lots et le besoin réel avant toute mise en relation.",
             row,
         ))
