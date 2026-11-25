@@ -551,12 +551,16 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(getDoc(doc(bob,"deals","deal-1")));
     await assertFails(getDoc(doc(outsider,"deals","deal-1")));
     await assertFails(setDoc(doc(alice,"deals","fake"),{...proposal,commissionRate:99}));
+    await assertFails(setDoc(doc(alice,"deals","excess-quantity"),{...proposal,quantity:1000000001,totalAmount:2500000025,commissionAmount:125000001.25}));
+    await assertFails(setDoc(doc(alice,"deals","excess-price"),{...proposal,unitPrice:1000000001,totalAmount:10000000010,commissionAmount:500000000.5}));
+    await assertFails(setDoc(doc(alice,"deals","excess-total"),{...proposal,quantity:1000000,unitPrice:1000000,totalAmount:1000000000001,commissionAmount:50000000000.05}));
     await assertFails(setDoc(doc(alice,"deals","extra"),{...proposal,privateEmail:"a@example.test"}));
     await assertFails(updateDoc(doc(alice,"deals","deal-1"),{status:"agreed",agreedAt:new Date(),updatedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(bob,"deals","deal-1"),{status:"agreed",agreedAt:new Date(),updatedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(alice,"deals","deal-1"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"agreed",updatedAt:new Date()}));
     await assertFails(updateDoc(doc(alice,"deals","deal-1"),{sellerConfirmed:true,sellerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(bob,"deals","deal-1"),{buyerConfirmed:true,buyerConfirmedAt:new Date(),status:"completed",updatedAt:new Date()}));
+    await assertFails(updateDoc(doc(bob,"deals","deal-1"),{status:"agreed",updatedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"deals","deal-1"),{totalAmount:1}));
     await assertFails(updateDoc(doc(outsider,"deals","deal-1"),{status:"completed",updatedAt:new Date()}));
     await assertFails(deleteDoc(doc(alice,"deals","deal-1")));
