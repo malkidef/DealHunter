@@ -792,7 +792,7 @@ service cloud.firestore {
         && get(companyProfilePath).data.countryCode == request.resource.data.countryCode;
       }
       allow read: if request.auth != null
-        && (resource.data.status == "verified" || ownerUid == request.auth.uid || isDealHunterAdmin());
+        && (ownerUid == request.auth.uid || resource.data.status == "verified" || isDealHunterAdmin());
       allow create: if isDealHunterAdmin()
         && !exists(/databases/$(database)/documents/companyVerifications/$(ownerUid))
         && validCompanyVerification();
