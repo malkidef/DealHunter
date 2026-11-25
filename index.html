@@ -426,7 +426,7 @@ const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
 let localStorageScope='guest',localStorageReady=false;
 const scopedLocalKey=key=>key.replace(/^dh_/,'dh_'+localStorageScope+'_');
-let sellers=[],buyers=[],pendingImports=[],sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let sellers=[],buyers=[],pendingImports=[],sources=[],gsaListings=load('dh_gsa_listings');
 window.addEventListener('dealhunter-auth-user-changed',event=>{
  const uid=typeof event.detail?.uid==='string'?event.detail.uid:'';
  localStorageScope=uid?'user_'+uid:'guest';
@@ -434,11 +434,12 @@ window.addEventListener('dealhunter-auth-user-changed',event=>{
  sellers=load(scopedLocalKey('dh_sellers'));
  buyers=load(scopedLocalKey('dh_buyers'));
  pendingImports=load(scopedLocalKey('dh_pending_imports'));
+ sources=load(scopedLocalKey('dh_sources'));
  render();
 });
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
-const save=()=>{if(localStorageReady){localStorage.setItem(scopedLocalKey('dh_sellers'),JSON.stringify(sellers));localStorage.setItem(scopedLocalKey('dh_buyers'),JSON.stringify(buyers));localStorage.setItem(scopedLocalKey('dh_pending_imports'),JSON.stringify(pendingImports))}localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
+const save=()=>{if(localStorageReady){localStorage.setItem(scopedLocalKey('dh_sellers'),JSON.stringify(sellers));localStorage.setItem(scopedLocalKey('dh_buyers'),JSON.stringify(buyers));localStorage.setItem(scopedLocalKey('dh_pending_imports'),JSON.stringify(pendingImports));localStorage.setItem(scopedLocalKey('dh_sources'),JSON.stringify(sources))}localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function canonicalCategory(value){
  const v=norm(value);
