@@ -5,7 +5,7 @@ import {
   sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot
+  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot, orderBy
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -80,6 +80,7 @@ if (!ready) {
     const notificationsQuery = query(
       collection(db, "notifications"),
       where("recipientUid", "==", user.uid),
+      orderBy("createdAt", "desc"),
       limit(50)
     );
     unsubscribeNotifications = onSnapshot(notificationsQuery, snapshot => {
