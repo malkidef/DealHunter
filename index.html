@@ -484,7 +484,7 @@ window.addEventListener('dealhunter-cloud-data',event=>{
 });
 function render(){
  const importList=$('importList');
- if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Examiner et ajouter aux stocks locaux</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
  const gsaList=$('gsaList');
  if(gsaList){
   const query=norm($('gsaSearch')?.value||'');
@@ -850,8 +850,8 @@ $('csvFile').addEventListener('change',async e=>{
    const price=Number((r.unit_price||r.price||'').replace(',','.'));
    const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
    const sourceUrl=r.source_url||r.url||'';
-   if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
-   if(sourceUrl&&!/^https?:\/\//i.test(sourceUrl)){skipped++;continue}
+   if(!product||!Number.isFinite(qty)||qty<=0||qty>1000000000||!Number.isFinite(price)||price<=0||price>1000000000||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
+   if(sourceUrl&&!/^https:\/\//i.test(sourceUrl)){skipped++;continue}
    const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
    const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
    if(exists){skipped++;continue}
@@ -865,8 +865,8 @@ $('csvFile').addEventListener('change',async e=>{
 $('importList').addEventListener('click',e=>{
  const approve=e.target.closest('[data-approve-import]'),reject=e.target.closest('[data-reject-import]');
  if(approve){const i=Number(approve.dataset.approveImport),x=pendingImports[i];if(!x)return;
-  sellers.push({company:x.company,product:x.product,category:x.category,qty:x.qty,price:x.price,location:x.city||x.countryCode||'',sourceUrl:x.sourceUrl,verified:true});
-  pendingImports.splice(i,1);save();$('importMessage').textContent='Opportunité validée et ajoutée aux stocks locaux.';
+  sellers.push({company:x.company,product:x.product,category:x.category,qty:x.qty,price:x.price,location:x.city||x.countryCode||'',sourceUrl:x.sourceUrl,verified:false,sourceRowReviewed:true});
+  pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne examinée et ajoutée aux stocks locaux. Vendeur et stock non vérifiés.';
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
