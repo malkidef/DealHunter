@@ -164,3 +164,14 @@ test("l’export indique explicitement les données partagées et les limites", 
   assert.match(auth, /export administratif exhaustif ni une sauvegarde/);
   assert.match(auth, /application\/json;charset=utf-8/);
 });
+
+test("le profil entreprise existant est rechargé pour permettre sa rectification", () => {
+  assert.match(auth, /const loadCompanyProfile = async user =>/);
+  assert.match(auth, /companyProfiles", user\.uid/);
+  assert.match(auth, /privateCompany\.phone/);
+  assert.match(auth, /nameInput\.value = publicCompany\.companyName/);
+  assert.match(auth, /nameInput\.readOnly = locked/);
+  assert.match(auth, /countryInput\.disabled = locked/);
+  assert.match(auth, /loadCompanyProfile\(user\)/);
+  assert.match(html, /id="companyProfileHint"/);
+});
