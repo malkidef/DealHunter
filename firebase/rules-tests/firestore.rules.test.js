@@ -69,7 +69,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     const outsider = verifiedContext("charlie").firestore();
     await assertSucceeds(getDocs(query(collection(alice, "matches"), where("sellerUid", "==", "alice"))));
     await assertSucceeds(getDocs(query(collection(alice, "matches"), where("buyerUid", "==", "alice"))));
-    await assertSucceeds(getDocs(query(collection(bob, "matches"), where("sellerUid", "==", "alice"))));
+    await assertSucceeds(getDocs(query(collection(bob, "matches"), where("buyerUid", "==", "bob"))));
     await assertFails(getDocs(query(collection(outsider, "matches"), where("sellerUid", "==", "alice"))));
   });
 
