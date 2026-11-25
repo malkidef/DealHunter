@@ -510,6 +510,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(getDoc(doc(alice, "companyVerifications", "alice")));
     await assertSucceeds(getDoc(doc(bob, "companyVerifications", "alice")));
     await assertSucceeds(getDocs(query(collection(bob, "companyVerifications"), where("status", "==", "verified"))));
+    await assertFails(updateDoc(doc(alice, "companyProfiles", "alice"), { companyName: "Autre entreprise", updatedAt: new Date() }));
+    await assertFails(updateDoc(doc(alice, "companyProfiles", "alice"), { countryCode: "BE", updatedAt: new Date() }));
+    await assertSucceeds(updateDoc(doc(alice, "companyProfiles", "alice"), { updatedAt: new Date() }));
     await assertFails(updateDoc(doc(alice, "companyVerifications", "alice"), { companyName: "Entreprise usurpée" }));
     await assertFails(setDoc(doc(bob, "companyVerifications", "bob"), { ...verification, ownerUid: "bob" }));
     await assertFails(deleteDoc(doc(admin, "companyVerifications", "alice")));
