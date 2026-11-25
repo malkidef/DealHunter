@@ -74,6 +74,24 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
+  const loadNotifications = async user => {
+    const snapshot = await getDocs(query(collection(db, "notifications"), where("recipientUid", "==", user.uid), limit(50)));
+    const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
+  };
+
+  window.addEventListener("dealhunter-mark-notification-read", async event => {
+    const notificationId = String(event.detail?.notificationId || "");
+    if (!auth.currentUser || !notificationId || notificationId.length > 180) return;
+    try {
+      await updateDoc(doc(db, "notifications", notificationId), { readAt: serverTimestamp() });
+      await loadNotifications(auth.currentUser);
+    } catch (error) {
+      console.error("Impossible de marquer la notification comme lue :", error);
+      status.textContent = "Impossible de mettre à jour cette notification. Réessaie.";
+    }
+  });
   const loadMatchRequests = async user => {
     // Les ventes restent liées à une demande acceptée et ne sont visibles qu'aux deux participants.
     // Une collection secondaire indisponible ne doit pas bloquer les suggestions
@@ -1115,9 +1133,10 @@ if (!ready) {
       const startupTasks = await Promise.allSettled([
         saveUserProfile(user),
         loadCloudRecords(user),
-        loadMatchRequests(user)
+        loadMatchRequests(user),
+        loadNotifications(user)
       ]);
-      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions"];
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions", "notifications"];
       const startupErrors = startupTasks.flatMap((result, index) => {
         if (result.status === "fulfilled") return [];
         console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
@@ -1144,6 +1163,7 @@ if (!ready) {
       window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail: { matches: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
+      window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications: [] } }));
       signOutButton.classList.add("hidden");
       if (resendVerificationButton) {
         resendVerificationButton.classList.add("hidden");
