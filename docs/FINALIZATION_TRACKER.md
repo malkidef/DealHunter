@@ -86,3 +86,13 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Les deux fichiers de règles Firestore sont synchronisés sur la branche.
 - CI en cours sur le commit `b9b530d690a20e6313e1028b446d3659ea498bf6` : tests applicatifs et tests des règles Firestore lancés ; ne pas considérer la correction validée avant leur succès.
 - Cette correction reste dans la PR21 brouillon, non fusionnée et non déployée.
+
+
+### Complément — intégrité des demandes produit et service (25 novembre 2026)
+
+- Les demandes `matchRequests` reprennent désormais le produit et les noms d'entreprises directement depuis les fiches publiques liées, avec contrôle du bon rôle demandeur/destinataire.
+- Les demandes `serviceMatchRequests` vérifient le titre de l'offre, le titre du besoin, les entreprises et l'identité du destinataire à partir des fiches référencées.
+- Tests négatifs ajoutés pour les valeurs falsifiées dans les deux parcours.
+- Les règles `firestore.rules` et `firebase/firestore.rules` ont été comparées et sont identiques.
+- CI sur le commit de code `99421980535afb0236a5b53ce0317708298ea075` : tests applicatifs et tests des règles Firestore terminés avec succès (run `45697112388` et run `45697111917`). Le dernier commit documentaire ne modifie pas le code testé.
+- La PR #21 demeure ouverte, en brouillon, non fusionnée et non déployée.
