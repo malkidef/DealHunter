@@ -56,7 +56,7 @@ footer{text-align:center;padding:25px;color:#8190a7;font-size:12px}
 <div class="stat"><strong id="buyerCount">0</strong><span>Besoins acheteurs</span></div>
 <div class="stat"><strong id="matchCount">0</strong><span>Correspondances</span></div>
 </section>
-<div class="tabs" id="mainTabs">
+<div class="tabs" id="mainTabs" role="tablist" aria-label="Navigation principale">
 <button type="button" class="active" data-tab="matches" onclick="window.dealhunterShowTab('matches',this)">Correspondances</button>
 <button type="button" class="secondary" data-tab="matchRequests" onclick="window.dealhunterShowTab('matchRequests',this)">Demandes</button>
 <button type="button" class="secondary" data-tab="dashboard" onclick="window.dealhunterShowTab('dashboard',this)">Tableau de bord</button>
@@ -79,12 +79,46 @@ window.dealhunterShowTab = function(target, button) {
     const active = tab.dataset.tab === target;
     tab.classList.toggle('active', active);
     tab.classList.toggle('secondary', !active);
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
   });
   allowedTabs.forEach(function(id) {
     const panel = document.getElementById(id);
     if (panel) panel.classList.toggle('hidden', id !== target);
   });
 };
+const tabList = document.getElementById("mainTabs");
+if (tabList) {
+  const tabButtons = [...tabList.querySelectorAll('button[data-tab]')];
+  tabButtons.forEach(tab => {
+    tab.id = "tab-" + tab.dataset.tab;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", tab.dataset.tab);
+    const selected = tab.classList.contains("active");
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    const panel = document.getElementById(tab.dataset.tab);
+    if (panel) {
+      panel.setAttribute("role", "tabpanel");
+      panel.setAttribute("aria-labelledby", tab.id);
+      panel.tabIndex = 0;
+    }
+  });
+  tabList.addEventListener("keydown", event => {
+    const current = tabButtons.indexOf(event.target.closest('button[data-tab]'));
+    if (current < 0) return;
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % tabButtons.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + tabButtons.length) % tabButtons.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabButtons.length - 1;
+    else return;
+    event.preventDefault();
+    const tab = tabButtons[next];
+    window.dealhunterShowTab(tab.dataset.tab, tab);
+    tab.focus();
+  });
+}
 </script>
 <section id="account" class="panel hidden">
 <h2>Compte entreprise</h2>
