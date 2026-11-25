@@ -276,14 +276,19 @@ service cloud.firestore {
         && request.resource.data.product.size() <= 160
         && request.resource.data.quantity is int
         && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.unitPrice is number
         && request.resource.data.unitPrice > 0
+        && request.resource.data.unitPrice <= 1000000000
         && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount > 0
+        && request.resource.data.totalAmount <= 1000000000000
         // Le total est arrondi au centime côté interface : tolérance de 0,005 €.
         && request.resource.data.totalAmount >= request.resource.data.quantity * request.resource.data.unitPrice - 0.005
         && request.resource.data.totalAmount <= request.resource.data.quantity * request.resource.data.unitPrice + 0.005
         && request.resource.data.commissionRate == 5
         && request.resource.data.commissionAmount is number
+        && request.resource.data.commissionAmount <= 50000000000
         // La commission reste indicative et doit correspondre à 5 % du total, au centime près.
         && request.resource.data.commissionAmount >= request.resource.data.totalAmount * 0.05 - 0.005
         && request.resource.data.commissionAmount <= request.resource.data.totalAmount * 0.05 + 0.005
