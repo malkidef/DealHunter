@@ -518,6 +518,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       });
     });
     const unverified = testEnv.authenticatedContext("candidate", { email_verified: false }).firestore();
+    const unverifiedEmployer = testEnv.authenticatedContext("employer", { email_verified: false }).firestore();
     const verifiedGoogle = testEnv.authenticatedContext("candidate-google", {
       email_verified: true, firebase: { sign_in_provider: "google.com" }
     }).firestore();
@@ -531,6 +532,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       ...opening, ownerUid: "candidate"
     }));
     await assertFails(deleteDoc(doc(unverified, "publicWorkerProfiles", "candidate-profile")));
+    await assertFails(updateDoc(doc(unverified, "publicWorkerProfiles", "candidate-profile"), {
+      ...profile, updatedAt: new Date()
+    }));
+    await assertFails(updateDoc(doc(unverifiedEmployer, "workMatchRequests", "accepted-work"), {
+      status: "rejected", respondedAt: new Date()
+    }));
     await assertFails(setDoc(doc(unverified, "workMatchRequests", "unverified-work-request"), {
       candidateProfileId: "candidate-profile", openingId: "employer-opening",
       candidateUid: "candidate", employerUid: "employer",
