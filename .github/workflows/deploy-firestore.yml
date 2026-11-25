@@ -31,6 +31,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CONFIRM_PROJECT: ${{ inputs.confirm_project }}
         run: |
+          CONFIRM_PROJECT="$(echo "$CONFIRM_PROJECT" | xargs)"
           if [ "$CONFIRM_PROJECT" != "dealhunter-3747b" ]; then
             echo "::error::Confirmation du projet incorrecte ; aucun déploiement effectué."
             exit 1
