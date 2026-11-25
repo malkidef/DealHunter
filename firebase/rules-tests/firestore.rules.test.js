@@ -361,6 +361,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"rejected",participantUids:["bob"],respondedAt:new Date()}));
     await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-extra"),{...request,privateEmail:"secret@example.test"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-company"),{...request,requesterCompany:"Entreprise usurpée"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-title"),{...request,serviceTitle:"Autre prestation"}));
+    await assertFails(setDoc(doc(alice,"serviceMatchRequests","svc-forged-recipient"),{...request,recipientUid:"alice"}));
   });
 
   it("ouvre la messagerie de services uniquement après acceptation bilatérale", async () => {
