@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ted-feed-publication
+  group: dealhunter-feed-publication
   cancel-in-progress: false
 
 jobs:
