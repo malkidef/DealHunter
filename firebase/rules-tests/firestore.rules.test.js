@@ -482,6 +482,38 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(getDoc(doc(outsider,"verificationRequests","verify-2")));
   });
 
+  it("lie une entreprise vérifiée à son profil par une décision administrateur atomique", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "companyProfiles", "alice"), { ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR", updatedAt: new Date() });
+      await setDoc(doc(db, "verificationRequests", "company-approval"), {
+        ownerUid: "alice", subjectType: "company", subjectName: "Entreprise A", countryCode: "FR",
+        evidenceLabel: "Registre officiel", publicEvidenceUrl: "https://annuaire-entreprises.data.gouv.fr/",
+        status: "pending", createdAt: new Date(), updatedAt: new Date()
+      });
+    });
+    const admin = testEnv.authenticatedContext("reviewer", { dealhunterAdmin: true }).firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
+    const verification = {
+      ownerUid: "alice", companyName: "Entreprise A", countryCode: "FR",
+      verificationRequestId: "company-approval", status: "verified", verifiedAt: new Date()
+    };
+    await assertFails(setDoc(doc(alice, "companyVerifications", "alice"), verification));
+    await assertFails(setDoc(doc(admin, "companyVerifications", "alice"), verification));
+    const batch = writeBatch(admin);
+    batch.set(doc(admin, "companyVerifications", "alice"), verification);
+    batch.update(doc(admin, "verificationRequests", "company-approval"), {
+      status: "verified", reviewerNote: "Contrôle effectué", reviewedAt: new Date()
+    });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(getDoc(doc(alice, "companyVerifications", "alice")));
+    await assertSucceeds(getDoc(doc(bob, "companyVerifications", "alice")));
+    await assertSucceeds(getDocs(query(collection(bob, "companyVerifications"), where("status", "==", "verified"))));
+    await assertFails(updateDoc(doc(alice, "companyVerifications", "alice"), { companyName: "Entreprise usurpée" }));
+    await assertFails(setDoc(doc(bob, "companyVerifications", "bob"), { ...verification, ownerUid: "bob" }));
+  });
+
   it("sécurise les propositions commerciales et la confirmation bilatérale", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(),"matchRequests","deal-match"),requestData("alice","bob","accepted"));
