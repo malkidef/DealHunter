@@ -234,9 +234,9 @@ test("les caches locaux vendeur, acheteur et import sont isolés par compte", ()
 
 
 test("les chargements asynchrones ne publient pas les données d'un ancien compte après déconnexion ou changement d'utilisateur", () => {
-  assert.match(auth, /const isCurrentUser = user => !!user && auth\\.currentUser\\?\\.uid === user\\.uid/);
-  assert.match(auth, /if \\(!isCurrentUser\\(user\\)\\) return;/);
-  assert.match(auth, /const loadNotifications = async user =>[\\s\\S]*?if \\(!isCurrentUser\\(user\\)\\) return;/);
-  assert.match(auth, /const loadCloudRecords = async user =>[\\s\\S]*?if \\(!isCurrentUser\\(user\\)\\) return;/);
-  assert.match(auth, /const loadMatchRequests = async user =>[\\s\\S]*?if \\(!isCurrentUser\\(user\\)\\) return;/);
+  assert.match(auth, /const isCurrentUser = user => !!user && auth\.currentUser\?\.uid === user\.uid/);
+  assert.match(auth, /if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadNotifications = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadCloudRecords = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
+  assert.match(auth, /const loadMatchRequests = async user =>[\s\S]*?if \(!isCurrentUser\(user\)\) return;/);
 });
