@@ -138,6 +138,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
 
     await assertFails(setDoc(doc(bob, "publicOffers", "offer-1"), { ...offer, ownerUid: "bob" }));
     await assertFails(setDoc(doc(bob, "publicNeeds", "need-1"), { ...need, ownerUid: "bob" }));
+    await assertFails(updateDoc(doc(alice, "publicOffers", "offer-1"), { createdAt: new Date(Date.now() + 86400000) }));
+    await assertFails(updateDoc(doc(alice, "publicNeeds", "need-1"), { createdAt: new Date(Date.now() + 86400000) }));
+    await assertSucceeds(updateDoc(doc(alice, "publicOffers", "offer-1"), { quantity: 45 }));
+    await assertSucceeds(updateDoc(doc(alice, "publicNeeds", "need-1"), { quantity: 18 }));
     await assertFails(setDoc(doc(alice, "publicOffers", "offer-private"), {
       ...offer, privateEmail: "confidentiel@example.test"
     }));
