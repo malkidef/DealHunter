@@ -20,7 +20,7 @@ test("chaque onglet visible possède une destination réelle", () => {
 });
 
 test("les identifiants HTML sont uniques et les demandes professionnelles ont un seul conteneur", () => {
-  const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(match => match[1]);
+  const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
   const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
   assert.deepEqual([...new Set(duplicates)], [], "Les identifiants HTML doivent être uniques");
   assert.equal(ids.filter(id => id === "workMatchRequests").length, 1);
