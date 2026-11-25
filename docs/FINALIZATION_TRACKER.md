@@ -115,3 +115,11 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Tests ajoutés : révocation atomique autorisée, suppression seule refusée, changement du statut seul refusé, changement du nom/pays pendant vérification refusé, mise à jour non identitaire autorisée.
 - Validation CI du nouveau commit en cours au moment de la mise à jour ; ne pas considérer la PR #28 comme validée avant les résultats finaux des deux workflows.
 - Aucun déploiement Firestore, aucune fusion ni aucune modification des données réelles effectués.
+
+
+### Complément — notifications en temps réel (25 novembre 2026)
+
+- Le chargement ponctuel des notifications à la connexion est remplacé sur cette branche par un listener Firestore `onSnapshot`, limité aux 50 notifications du compte connecté.
+- Le listener est désabonné à chaque changement d'état d'authentification ; l'interface est vidée avant le chargement du compte suivant pour éviter l'affichage des notifications d'un autre utilisateur.
+- Le marquage comme lu est répercuté par le listener, sans relecture manuelle supplémentaire.
+- La CI applicative valide la syntaxe JavaScript de cette version. Le test du parcours réel sur deux comptes et la latence du worker périodique restent à vérifier.
