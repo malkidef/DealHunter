@@ -76,3 +76,13 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Les dates de création des offres et besoins ne peuvent pas être modifiées lors d'une mise à jour.
 - Validation CI du commit `b067623da3142ba381024808539e79caed1cc971` : workflow `Tests DealHunter` réussi (run 45695125241) et workflow `Tests des règles Firestore` réussi (run 45695125054).
 - La PR21 reste en brouillon, non fusionnée et non déployée. Ces validations ne remplacent pas les essais réels avec deux comptes.
+
+
+### Mise à jour — 25 novembre 2026 : intégrité des demandes de mise en relation
+
+- Les règles Firestore imposent désormais que le produit d'une demande de mise en relation corresponde au produit de l'offre active référencée.
+- Les noms d'entreprises affichés pour le demandeur et le destinataire doivent correspondre aux fiches publiques vendeur/acheteur liées à la demande ; un client ne peut plus forger ces libellés dans la demande.
+- Trois tests négatifs supplémentaires couvrent le faux produit, le faux nom de l'entreprise demandeuse et le faux nom de l'entreprise destinataire.
+- Les deux fichiers de règles Firestore sont synchronisés sur la branche.
+- CI en cours sur le commit `b9b530d690a20e6313e1028b446d3659ea498bf6` : tests applicatifs et tests des règles Firestore lancés ; ne pas considérer la correction validée avant leur succès.
+- Cette correction reste dans la PR21 brouillon, non fusionnée et non déployée.
