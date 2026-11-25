@@ -28,6 +28,15 @@ test("les identifiants HTML sont uniques et les demandes professionnelles ont un
   assert.match(html, /dealhunterShowTab\('matchRequests'/);
 });
 
+test("les liens issus des imports et des sources sont limités à HTTPS", () => {
+  assert.match(html, /function safeHttpsUrl\(value\)/);
+  assert.match(html, /if\(sourceUrl&&!safeHttpsUrl\(sourceUrl\)\)/);
+  assert.match(html, /const url=safeHttpsUrl\(\$\('srcUrl'\)\.value\)/);
+  assert.match(html, /safeHttpsUrl\(x\.sourceUrl\)/);
+  assert.match(html, /safeHttpsUrl\(n\.source_url\)/);
+  assert.match(html, /safeHttpsUrl\(x\.url\)/);
+});
+
 test("les événements d’action de l’interface sont traités par Firebase", () => {
   const actions = [...new Set([...html.matchAll(/new CustomEvent\(['"](dealhunter-[a-z0-9-]+)['"]/g)]
     .map(match => match[1]))]
