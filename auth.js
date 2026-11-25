@@ -964,11 +964,37 @@ if (!ready) {
         await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
       } else {
         if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
-        await updateDoc(ref, {
-          status: decision,
-          reviewerNote: "Décision enregistrée par un réviseur autorisé.",
-          reviewedAt: serverTimestamp()
-        });
+        if (decision === "verified" && snapshot.data().subjectType === "company") {
+          const requestData = snapshot.data();
+          const profileSnapshot = await getDoc(doc(db, "users", requestData.ownerUid));
+          const company = profileSnapshot.exists() ? profileSnapshot.data().company : null;
+          const companyName = String(company?.name || "").trim();
+          const companyCountry = String(company?.country || "").trim().toUpperCase();
+          if (!companyName || companyName !== requestData.subjectName || companyCountry !== requestData.countryCode) {
+            throw new Error("Le nom et le pays du profil entreprise doivent correspondre exactement à la demande avant validation.");
+          }
+          const batch = writeBatch(db);
+          batch.set(doc(db, "companyVerifications", requestData.ownerUid), {
+            ownerUid: requestData.ownerUid,
+            companyName,
+            countryCode: companyCountry,
+            verificationRequestId: requestId,
+            status: "verified",
+            verifiedAt: serverTimestamp()
+          });
+          batch.update(ref, {
+            status: "verified",
+            reviewerNote: "Entreprise contrôlée par un réviseur autorisé.",
+            reviewedAt: serverTimestamp()
+          });
+          await batch.commit();
+        } else {
+          await updateDoc(ref, {
+            status: decision,
+            reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+            reviewedAt: serverTimestamp()
+          });
+        }
       }
       finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
       try{await loadCloudRecords(user);}catch(refreshError){console.error("Décision enregistrée, actualisation impossible :",refreshError);}
