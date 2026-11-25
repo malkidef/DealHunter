@@ -62,7 +62,7 @@ test("tous les formulaires visibles sont reliés à un gestionnaire de soumissio
     marginForm: /\$\('marginForm'\)\.addEventListener\('submit'/,
     sourceForm: /\$\('sourceForm'\)\.addEventListener\('submit'/
   };
-  const formIds = [...html.matchAll(/<form\b[^>]*\bid="([^"]+)"/g)].map(match => match[1]);
+  const formIds = [...html.matchAll(/<form\b[^>]*\bid="([A-Za-z][A-Za-z0-9_-]*)"/g)].map(match => match[1]);
   assert.deepEqual([...formIds].sort(), Object.keys(handlers).sort());
   for (const [id, pattern] of Object.entries(handlers)) {
     assert.match(id === "emailAuthForm" || id === "companyForm" ? auth : html, pattern, "Gestionnaire submit manquant pour " + id);
