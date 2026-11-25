@@ -30,6 +30,7 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 
 ### P0 — Protection des personnes et confiance
 
+- Inventaire des 23 chemins/collections Firestore ajouté dans `docs/PRIVACY_OPERATIONS.md` (branche `finalization/privacy-rights-map`). Il confirme qu'il n'existe pas de suppression ni d'export de bout en bout ; plusieurs collections liées aux transactions, messages, coordonnées et demandes ne sont pas supprimables par le client.
 - Mettre en place et tester un parcours complet d'accès/export, rectification et suppression de compte/données. La procédure de conception existe, mais l'automatisation n'est pas livrée.
 - PR #22 : relier l'approbation humaine à une fiche publique minimale `companyProfiles/{uid}` et à une preuve `companyVerifications/{uid}` réservée à l'administration. L'approbation de l'entreprise et l'écriture de la preuve sont atomiques ; le nom et le pays doivent correspondre. L'interface affiche le statut dans les catalogues uniquement si UID et nom concordent. La CI de cette PR est encore en cours ; aucun déploiement ni essai réel n'a eu lieu.
 - Prévoir une procédure opérationnelle de révocation et vérifier les annonces existantes, les changements de nom et les profils historiques avant mise en production.
