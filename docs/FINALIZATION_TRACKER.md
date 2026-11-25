@@ -162,3 +162,13 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Tests statiques ajoutés pour le filtrage UID, la fraîcheur de connexion, les plafonds et l'annonce des exclusions.
 - Code en branche de développement uniquement. Validation CI, test réel sur deux comptes et vérification du téléchargement sur Android/ordinateur encore requis.
 - Cette première version n'est pas encore un export exhaustif de tous les droits d'accès ; aucun effacement ou changement des données source n'est réalisé.
+
+
+### Mise à jour — rectification du profil entreprise (25 novembre 2026)
+
+- Le profil existant est relu depuis Firestore et prérempli dans le formulaire Compte.
+- Le formulaire permet de corriger le nom, le pays et le téléphone du profil non vérifié.
+- Une vérification active verrouille le nom et le pays dans l'interface ; les règles Firestore imposent également leur invariance.
+- Les champs sont vidés lors d'une déconnexion ou d'un changement de compte.
+- Tests statiques ajoutés pour le rechargement, les verrous et le nettoyage du formulaire.
+- Code en branche de développement uniquement ; validation CI postérieure aux derniers commits et essais réels multi-comptes encore requis.
