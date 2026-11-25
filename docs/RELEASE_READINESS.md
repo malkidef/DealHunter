@@ -72,3 +72,34 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Le code de paiement Stripe existe dans `firebase/functions/src/payments.js`, mais les Cloud Functions ne sont pas déployées et le paiement reste hors service. Ne pas présenter la commission indicative de 5 % comme encaissée automatiquement.
 
 **Décision inchangée :** ces avancées améliorent la préparation technique, mais ne lèvent pas les blocages de préproduction, de protection des données et de validation juridique. Ne pas ouvrir au public ni accepter de paiements à ce stade.
+
+## Revue complémentaire — état constaté après CI (25 novembre 2026)
+
+### Vérifications automatisées désormais confirmées
+
+- Workflow « Tests DealHunter » : succès sur le commit `3e3fd869` (exécution 45621425250).
+- Workflow « Tests des règles Firestore » : succès sur le commit `3e3fd869` (exécution 45621424629), incluant la vérification `cmp firestore.rules firebase/firestore.rules`.
+- Publication GitHub Pages : succès sur le commit `3e3fd869` (exécution 45621424719).
+- Les workflows sur le commit `91eff02c` ont également terminé avec succès.
+- Le propriétaire a fourni une capture confirmant le déploiement réussi des règles et index Firestore (workflow terminé en 36 secondes).
+
+### Incompatibilités fonctionnelles identifiées à corriger avant paiement
+
+- Le parcours d'accord commercial actuel dans `auth.js` crée des documents `deals` avec `sellerUid`, `buyerUid`, `totalAmount`, `commissionAmount` et des statuts `proposed/agreed/completed`.
+- Le module Stripe `firebase/functions/src/payments.js` attend un autre modèle : documents `companies`, `sellerCompanyId`, `buyerCompanyId`, `amountTotalCents`, devise et statuts de paiement. Le module n'est pas relié à un parcours de paiement opérationnel dans l'interface.
+- Le module Stripe ne doit donc pas être déployé ni activé avant une migration de schéma, des tests d'intégration, une revue de sécurité des transferts et la validation juridique/contractuelle du rôle de la plateforme.
+- Les déclencheurs historiques de `firebase/functions/src/index.js` écoutent `seller_listings` et `buyer_requests`, alors que le matching actuel en production utilise `publicOffers` et `publicNeeds` via GitHub Actions. Ne pas déployer ces déclencheurs historiques tels quels.
+- Aucun système de notifications applicatives/push/e-mail complet n'a été trouvé dans les règles et l'interface actuelles.
+- L'envoi de vérification d'e-mail est présent pour l'inscription e-mail/mot de passe, mais les règles Firestore ne conditionnent pas encore les écritures commerciales au claim `email_verified`. Il faut concevoir et tester cette transition sans bloquer les comptes OAuth valides ni les parcours existants.
+- Les règles permettent actuellement à chaque utilisateur de créer/modifier son document `users/{uid}` en propre ; les sous-documents privés sont également gérés par leur propriétaire. Une politique de schéma de profil plus stricte reste à définir avant d'y stocker des rôles ou des champs d'entreprise de confiance.
+
+### Critères non certifiables par CI seule
+
+- Livraison et réception réelles de l'e-mail de vérification.
+- Deux comptes Firebase distincts avec deux entreprises différentes.
+- Demande, acceptation, refus, accès à la messagerie et partage de coordonnées en conditions réelles.
+- Création d'un accord, refus/acceptation, confirmations indépendantes et avis après vente.
+- Tests d'accès non autorisé sur le projet Firebase de production.
+- Procédures RGPD, documents légaux, traitement des litiges et conformité du paiement.
+
+**Décision :** CI et hébergement sont verts ; le socle Firestore est déployé selon la confirmation visuelle du propriétaire. DealHunter reste en préproduction. Les fonctions de paiement et les déclencheurs Firebase historiques sont explicitement exclus de tout déploiement tant que les incompatibilités ci-dessus ne sont pas résolues.
