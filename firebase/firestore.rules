@@ -390,6 +390,10 @@ service cloud.firestore {
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
         && request.resource.data.qualifications.size() <= 30
+        && (!("requiredQualifications" in request.resource.data)
+          || (request.resource.data.requiredQualifications is list
+            && request.resource.data.requiredQualifications.size() <= 30))
+        && (!("remoteAccepted" in request.resource.data) || request.resource.data.remoteAccepted is bool)
         && request.resource.data.remote is bool
         && request.resource.data.coverageRadiusKm is number
         && request.resource.data.coverageRadiusKm >= 0
