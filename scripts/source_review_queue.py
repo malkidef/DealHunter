@@ -74,7 +74,6 @@ def review_record(source: str, source_id: str, title: str, direction: str,
         "unit_price": None,
         "currency": None,
         "notes": notes,
-        "source_snapshot": source_record,
     }
 
 
