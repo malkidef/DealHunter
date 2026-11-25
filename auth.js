@@ -958,6 +958,15 @@ if (!ready) {
       return;
     }
     try {
+      const existingRequests = await getDocs(query(
+        collection(db, "verificationRequests"),
+        where("ownerUid", "==", user.uid),
+        where("subjectType", "==", subjectType),
+        limit(20)
+      ));
+      if (existingRequests.docs.some(item => ["pending", "verified"].includes(item.data().status))) {
+        throw new Error("Une demande est déjà en attente ou une vérification est déjà active pour ce sujet.");
+      }
       await addDoc(collection(db, "verificationRequests"), {
         ownerUid: user.uid, subjectType, subjectName, countryCode, evidenceLabel,
         publicEvidenceUrl, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
@@ -1011,8 +1020,13 @@ if (!ready) {
           if (!companyName || companyName !== requestData.subjectName || companyCountry !== requestData.countryCode) {
             throw new Error("Le nom et le pays du profil entreprise doivent correspondre exactement à la demande avant validation.");
           }
+          const verificationRef = doc(db, "companyVerifications", requestData.ownerUid);
+          const existingVerification = await getDoc(verificationRef);
+          if (existingVerification.exists() && existingVerification.data().verificationRequestId !== requestId) {
+            throw new Error("Une autre demande a déjà validé cette entreprise. Révoque d'abord la vérification active.");
+          }
           const batch = writeBatch(db);
-          batch.set(doc(db, "companyVerifications", requestData.ownerUid), {
+          batch.set(verificationRef, {
             ownerUid: requestData.ownerUid,
             companyName,
             countryCode: companyCountry,
