@@ -424,10 +424,21 @@ if (tabList) {
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let localStorageScope='guest',localStorageReady=false;
+const scopedLocalKey=key=>key.replace(/^dh_/,'dh_'+localStorageScope+'_');
+let sellers=[],buyers=[],pendingImports=[],sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+window.addEventListener('dealhunter-auth-user-changed',event=>{
+ const uid=typeof event.detail?.uid==='string'?event.detail.uid:'';
+ localStorageScope=uid?'user_'+uid:'guest';
+ localStorageReady=true;
+ sellers=load(scopedLocalKey('dh_sellers'));
+ buyers=load(scopedLocalKey('dh_buyers'));
+ pendingImports=load(scopedLocalKey('dh_pending_imports'));
+ render();
+});
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
-const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
+const save=()=>{if(localStorageReady){localStorage.setItem(scopedLocalKey('dh_sellers'),JSON.stringify(sellers));localStorage.setItem(scopedLocalKey('dh_buyers'),JSON.stringify(buyers));localStorage.setItem(scopedLocalKey('dh_pending_imports'),JSON.stringify(pendingImports))}localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function canonicalCategory(value){
  const v=norm(value);
@@ -505,8 +516,10 @@ function classifyGsaTech(x){
 }
 window.addEventListener('dealhunter-cloud-data',event=>{
  const data=event.detail||{};
- sellers=Array.isArray(data.sellers)?data.sellers:[];
- buyers=Array.isArray(data.buyers)?data.buyers:[];
+ if(window.dealhunterUserUid){
+  sellers=Array.isArray(data.sellers)?data.sellers:[];
+  buyers=Array.isArray(data.buyers)?data.buyers:[];
+ }
  const info=$('matchingDataStatus');
  if(info)info.textContent=window.dealhunterUserUid
   ?'Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.'
