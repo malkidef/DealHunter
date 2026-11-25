@@ -96,3 +96,11 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Les règles `firestore.rules` et `firebase/firestore.rules` ont été comparées et sont identiques.
 - CI sur le commit de code `99421980535afb0236a5b53ce0317708298ea075` : tests applicatifs et tests des règles Firestore terminés avec succès (run `45697112388` et run `45697111917`). Le dernier commit documentaire ne modifie pas le code testé.
 - La PR #21 demeure ouverte, en brouillon, non fusionnée et non déployée.
+
+
+## Mise à jour — 25 novembre 2026 : branche de vérification entreprise réalignée
+
+- La PR #28 est reconstruite depuis le head actuel de la PR #21 afin de conserver les derniers contrôles de cohérence des demandes produit et service.
+- Les règles `companyProfiles`, `companyVerifications` et `verificationRequests` ont été réintégrées sur cette base ; les deux copies de règles Firestore sont identiques.
+- Le test de vérification humaine atomique a été ajouté à la suite la plus récente, sans écraser les tests plus récents de la PR #21.
+- La PR #28 reste un brouillon non fusionné. Sa CI et sa révocation de statut doivent encore être validées.
