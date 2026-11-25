@@ -11,7 +11,8 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 - Base : `main` au commit `dd5c234e52d5733bc37218317686703db9bd337a`
 - La PR est en brouillon et n'est pas fusionnée.
 - Les règles `firestore.rules` et `firebase/firestore.rules` sont identiques dans la branche.
-- Les workflows CI de la PR n'ont pas encore fourni de résultats. Ne pas considérer les changements comme validés avant leur exécution réussie.
+- CI sur le commit `02445c00596024f0d8739b9183eb967e57fd10e9` : `Tests DealHunter` réussi et `Tests des règles Firestore` réussi (émulateur Firestore compris).
+- Ces tests valident les suites automatisées, pas encore les essais réels d'authentification, d'e-mail ou le parcours complet sur le site.
 - Aucun déploiement Firebase, publication Pages, activation de facturation, déploiement Cloud Functions ou activation Stripe n'a été effectué par cette branche.
 
 ## Corrections préparées dans la PR #21
@@ -19,7 +20,7 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 - Quantités et prix/budgets des offres et besoins produits strictement positifs et plafonnés.
 - Limites de longueur sur les champs textuels des catalogues produits.
 - Limites de longueur et de taille de listes sur les catalogues de services, profils professionnels et offres d'emploi.
-- Cohérence des rôles vendeur/acheteur d'une transaction avec la demande de mise en relation acceptée d'origine.
+- Cohérence des rôles vendeur/acheteur d'un deal avec les rôles de la demande de mise en relation acceptée d'origine.
 - Tests négatifs ajoutés pour les valeurs nulles/négatives, les champs trop longs, les listes trop grandes et l'inversion des rôles.
 - Import CSV : une ligne examinée localement ne devient pas un vendeur vérifié ; les sources importées doivent utiliser HTTPS.
 - Collecte TED : schéma du collecteur manuel harmonisé avec l'interface ; suppression de sa planification périodique concurrente ; sérialisation des deux publications et limite de durée.
