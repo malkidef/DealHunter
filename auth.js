@@ -46,6 +46,7 @@ if (!ready) {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const isCurrentUser = user => !!user && auth.currentUser?.uid === user.uid;
   const requireVerifiedEmail = user => {
     if (user?.emailVerified === true) return true;
     status.textContent = "Vérifie ton adresse e-mail pour publier, contacter une entreprise ou conclure une vente. Les comptes Google/Apple reconnus comme vérifiés par Firebase sont acceptés automatiquement.";
@@ -77,6 +78,7 @@ if (!ready) {
 
   const loadNotifications = async user => {
     const snapshot = await getDocs(query(collection(db, "notifications"), where("recipientUid", "==", user.uid), limit(50)));
+    if (!isCurrentUser(user)) return;
     const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
       .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
     window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
@@ -107,8 +109,10 @@ if (!ready) {
     const emptySnapshot = { docs: [] };
     const [snap, dealSnap, generatedSnap, serviceRequestSnap, workRequestSnap] =
       reads.map(result => result.status === "fulfilled" ? result.value : emptySnapshot);
+    if (!isCurrentUser(user)) return;
     // Les suggestions automatiques sont indépendantes des messages et services.
     const generatedMatches = generatedSnap.docs.map(item => ({ id:item.id, ...item.data() }));
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-generated-matches", { detail:{ matches:generatedMatches } }));
     const failedReads = reads
       .map((result,index) => result.status === "rejected"
@@ -132,6 +136,7 @@ if (!ready) {
         console.warn("Messages de service indisponibles :", messageError);
       }
     }
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-service-match-requests",{detail:{requests:serviceRequests,failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))}}));
     const workRequests=workRequestSnap.docs.map(item=>({id:item.id,...item.data()}));
     for(const request of workRequests){
@@ -145,10 +150,12 @@ if (!ready) {
         console.warn("Messages de travail indisponibles :", messageError);
       }
     }
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-work-match-requests",{detail:{requests:workRequests,failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))}}));
     const deals = dealSnap.docs.map(item => ({id:item.id,...item.data()}));
     // Publier d'abord les demandes : les avis sont secondaires et ne doivent
     // jamais empêcher l'affichage de la boîte de réception.
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-deals",{detail:{deals}}));
     const dealsByRequest = new Map();
     deals.forEach(deal => {
@@ -181,6 +188,7 @@ if (!ready) {
         r.messages = [];
       }
     }
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-match-requests",{detail:{requests,failedCollections:failedReads}}));
     const reviewReads = await Promise.allSettled([
       getDocs(query(collection(db,"dealReviews"),where("reviewerUid","==",user.uid))),
@@ -191,6 +199,7 @@ if (!ready) {
     const receivedReviews = reviewReads[1].status==="fulfilled" ? reviewReads[1].value : emptyReviews;
     if(reviewReads.some(result=>result.status==="rejected"))
       console.warn("Avis DealHunter indisponibles ; les demandes restent affichées.");
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-deal-reviews",{detail:{
       given:givenReviews.docs.map(item=>({id:item.id,...item.data()})),
       received:receivedReviews.docs.map(item=>({id:item.id,...item.data()}))
@@ -526,6 +535,7 @@ if (!ready) {
       getDocs(collection(db, "users", user.uid, "sellerOffers")),
       getDocs(collection(db, "users", user.uid, "buyerNeeds"))
     ]);
+    if (!isCurrentUser(user)) return;
 
     // La synchronisation publique est réservée aux comptes vérifiés ; les autres peuvent toujours consulter le catalogue.
     if (user.emailVerified === true) await Promise.all([
@@ -560,6 +570,7 @@ if (!ready) {
       getDocs(query(collection(db, "publicOffers"), limit(500))),
       getDocs(query(collection(db, "publicNeeds"), limit(500)))
     ]);
+    if (!isCurrentUser(user)) return;
 
     // Nettoie uniquement les copies publiques orphelines appartenant à ce compte.
     const activeOfferIds = new Set(sellerSnapshot.docs.map(item => item.id));
@@ -585,6 +596,7 @@ if (!ready) {
     const duplicatePairs = window.DealHunterListingDedupe
       ? window.DealHunterListingDedupe.findPotentialDuplicates(sellers)
       : [];
+    if (!isCurrentUser(user)) return;
     window.dispatchEvent(new CustomEvent("dealhunter-duplicate-signals", { detail: { pairs: duplicatePairs, truncated: sellers.length >= 500 } }));
     const buyers = publicBuyerSnapshot.docs.filter(item => !staleNeedIds.has(item.id)).map(item => {
       const data = item.data();
@@ -603,6 +615,7 @@ if (!ready) {
     }));
 
     // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
+    if (!isCurrentUser(user)) return;
     try {
       for (let i = 0; i < stalePublicDocs.length; i += 400) {
         const batch = writeBatch(db);
@@ -619,6 +632,7 @@ if (!ready) {
       getDocs(query(collection(db, "publicServiceOffers"), limit(500))),
       getDocs(query(collection(db, "publicServiceRequests"), limit(500)))
     ]);
+    if (!isCurrentUser(user)) return;
     const serviceOffers = serviceReads[0].status === "fulfilled"
       ? serviceReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
     const serviceRequests = serviceReads[1].status === "fulfilled"
@@ -633,6 +647,7 @@ if (!ready) {
       getDocs(query(collection(db, "publicWorkerProfiles"), limit(500))),
       getDocs(query(collection(db, "publicWorkOpenings"), limit(500)))
     ]);
+    if (!isCurrentUser(user)) return;
     const profiles = workReads[0].status === "fulfilled"
       ? workReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
     const openings = workReads[1].status === "fulfilled"
@@ -659,6 +674,7 @@ if (!ready) {
     const trustReads = await Promise.allSettled([
       getDocs(verificationQuery), getDocs(reportsQuery)
     ]);
+    if (!isCurrentUser(user)) return;
     const verificationRequests = trustReads[0].status === "fulfilled"
       ? trustReads[0].value.docs.map(item => ({ id:item.id, ...item.data() })) : [];
     const trustReports = trustReads[1].status === "fulfilled"
