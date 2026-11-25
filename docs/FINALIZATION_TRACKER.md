@@ -1,6 +1,6 @@
 # Registre de finalisation — DealHunter
 
-Dernière mise à jour : 25 novembre 2026
+Dernière mise à jour : 25 novembre 2026 — suivi des PR #21 et #22
 
 Ce document suit les vérifications techniques. Il ne constitue ni une certification de sécurité, ni un avis juridique, ni une autorisation de mise en production.
 
@@ -14,6 +14,7 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 - CI sur le commit `02445c00596024f0d8739b9183eb967e57fd10e9` : `Tests DealHunter` réussi et `Tests des règles Firestore` réussi (émulateur Firestore compris).
 - Ces tests valident les suites automatisées, pas encore les essais réels d'authentification, d'e-mail ou le parcours complet sur le site.
 - Aucun déploiement Firebase, publication Pages, activation de facturation, déploiement Cloud Functions ou activation Stripe n'a été effectué par cette branche.
+- La PR #22 est une branche de travail empilée sur la PR #21 et cible `main` pour permettre l'exécution CI ; elle contient donc temporairement les changements de la PR #21 en plus de la vérification entreprise.
 
 ## Corrections préparées dans la PR #21
 
@@ -30,7 +31,8 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 ### P0 — Protection des personnes et confiance
 
 - Mettre en place et tester un parcours complet d'accès/export, rectification et suppression de compte/données. La procédure de conception existe, mais l'automatisation n'est pas livrée.
-- Relier une décision de vérification humaine au profil entreprise et à ses annonces, avec un statut de confiance explicite et vérifiable. À ce jour, une demande marquée « vérifiée » ne suffit pas à certifier automatiquement le profil et les stocks.
+- PR #22 : relier l'approbation humaine à une fiche publique minimale `companyProfiles/{uid}` et à une preuve `companyVerifications/{uid}` réservée à l'administration. L'approbation de l'entreprise et l'écriture de la preuve sont atomiques ; le nom et le pays doivent correspondre. L'interface affiche le statut dans les catalogues uniquement si UID et nom concordent. La CI de cette PR est encore en cours ; aucun déploiement ni essai réel n'a eu lieu.
+- Prévoir une procédure opérationnelle de révocation et vérifier les annonces existantes, les changements de nom et les profils historiques avant mise en production.
 - Finaliser la politique de confidentialité, les conditions d'utilisation, les mentions légales, les durées de conservation, les bases légales et le contact responsable. Le document `docs/PRIVACY_OPERATIONS.md` est une procédure interne de conception, pas une politique publique définitive.
 - Tester les inscriptions et connexions réelles, les e-mails de vérification et les parcours commerciaux avec deux comptes distincts. Les tests émulateur ne remplacent pas ces essais réels.
 
