@@ -26,6 +26,12 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 - Import CSV : une ligne examinée localement ne devient pas un vendeur vérifié ; les sources importées doivent utiliser HTTPS.
 - Collecte TED : schéma du collecteur manuel harmonisé avec l'interface ; suppression de sa planification périodique concurrente ; sérialisation des deux publications et limite de durée.
 
+## Avancement complémentaire — PR #24 et PR #25
+
+- PR #24 (branche `finalization/operations-monitoring-main`, base `main`) : watchdog des workflows, issues GitHub sur échec, contrôle quotidien de fraîcheur, sérialisation des collecteurs et validation YAML. Tests généraux et tests des règles Firestore réussis sur le commit `0beb3f236563dbf214d8409ad7df097071f7caa7`. La PR est en brouillon, non fusionnée et non active.
+- PR #24 documente le blocage de sauvegarde : l'export/import Firestore géré exige Blaze, facturation et Cloud Storage. Aucun service payant n'a été activé. Une sauvegarde restaurable reste à concevoir et à tester.
+- PR #25 : `docs/ACCOUNT_DATA_EXPORT_DESIGN.md` définit la conception d'un export local limité au compte authentifié, distingue les données propres et partagées, prévoit la pagination, la pseudonymisation des tiers et les tests anti-divulgation. Aucun export réel ni changement de règles n'est implémenté.
+
 ## Bloqueurs avant ouverture publique
 
 ### P0 — Protection des personnes et confiance
