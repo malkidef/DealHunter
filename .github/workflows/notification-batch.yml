@@ -2,6 +2,13 @@ name: DealHunter — notifications périodiques sans Cloud Functions
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "firebase/functions/src/notification-batch.js"
+      - "firebase/functions/package.json"
+      - ".github/workflows/notification-batch.yml"
   schedule:
     - cron: "*/5 * * * *"
 
