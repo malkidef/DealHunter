@@ -962,7 +962,7 @@ if (!ready) {
   window.addEventListener("dealhunter-review-verification-request", async event => {
     const user = auth.currentUser, { requestId, decision } = event.detail || {};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-verification-review-result",{detail:{success,message,requestId,decision}}));};
-    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) { finish(false,"Action de vérification invalide."); return; }
+    if (!user || !requestId || !["verified", "rejected", "withdrawn", "revoked"].includes(decision)) { finish(false,"Action de vérification invalide."); return; }
     try {
       const token = await user.getIdTokenResult();
       const ref = doc(db, "verificationRequests", requestId);
