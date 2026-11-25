@@ -8,12 +8,21 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ted-feed-publication
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Collecter les avis TED officiels
         run: python3 scripts/collect_ted.py
       - name: Publier le flux TED
