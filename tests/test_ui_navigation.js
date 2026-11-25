@@ -47,6 +47,34 @@ test("les onglets sont accessibles au clavier et exposent leurs rôles ARIA", ()
   assert.match(html, /event\.key === "End"/);
 });
 
+test("tous les formulaires visibles sont reliés à un gestionnaire de soumission", () => {
+  const handlers = {
+    emailAuthForm: /emailForm\.addEventListener\("submit"/,
+    companyForm: /companyForm\.addEventListener\("submit"/,
+    sellerForm: /\$\('sellerForm'\)\.addEventListener\('submit'/,
+    buyerForm: /\$\('buyerForm'\)\.addEventListener\('submit'/,
+    serviceOfferForm: /\$\('serviceOfferForm'\)\.addEventListener\('submit'/,
+    serviceRequestForm: /\$\('serviceRequestForm'\)\.addEventListener\('submit'/,
+    workerProfileForm: /\$\('workerProfileForm'\)\.addEventListener\('submit'/,
+    workOpeningForm: /\$\('workOpeningForm'\)\.addEventListener\('submit'/,
+    verificationRequestForm: /\$\('verificationRequestForm'\)\.addEventListener\('submit'/,
+    trustReportForm: /\$\('trustReportForm'\)\.addEventListener\('submit'/,
+    marginForm: /\$\('marginForm'\)\.addEventListener\('submit'/,
+    sourceForm: /\$\('sourceForm'\)\.addEventListener\('submit'/
+  };
+  const formIds = [...html.matchAll(/<form\b[^>]*\bid="([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual([...formIds].sort(), Object.keys(handlers).sort());
+  for (const [id, pattern] of Object.entries(handlers)) {
+    assert.match(id === "emailAuthForm" || id === "companyForm" ? auth : html, pattern, "Gestionnaire submit manquant pour " + id);
+  }
+});
+
+test("tous les boutons déclarent explicitement leur type", () => {
+  const buttons = [...html.matchAll(/<button\b([^>]*)>/g)].map(match => match[1]);
+  assert.ok(buttons.length > 0);
+  for (const attributes of buttons) assert.match(attributes, /\btype=["'](?:button|submit|reset)["']/);
+});
+
 test("les événements d’action de l’interface sont traités par Firebase", () => {
   const actions = [...new Set([...html.matchAll(/new CustomEvent\(['"](dealhunter-[a-z0-9-]+)['"]/g)]
     .map(match => match[1]))]
