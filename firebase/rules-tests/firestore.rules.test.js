@@ -13,6 +13,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  writeBatch,
   addDoc,
   deleteDoc,
   query,
