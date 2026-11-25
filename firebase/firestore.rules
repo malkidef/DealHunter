@@ -716,6 +716,7 @@ service cloud.firestore {
       // Les requêtes client filtrent explicitement par vendeur ou acheteur.
       // Les suggestions restent privées aux deux comptes concernés.
       allow read: if request.auth != null
+        && resource.data.keys().hasAll(["sellerUid", "buyerUid"])
         && (request.auth.uid == resource.data.sellerUid
           || request.auth.uid == resource.data.buyerUid);
       allow create, update, delete: if false;
