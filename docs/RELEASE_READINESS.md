@@ -152,3 +152,13 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 - Tests des règles de confidentialité exécutés avec succès sur le commit `a5a2fa56` (tests DealHunter, règles Firestore et Pages : succès).
 - Les commits d'interface `a69ce7b6` et `23c7dd38` sont en cours de validation CI au moment de cette mise à jour.
 - Limite restante : aucun déclencheur serveur ne crée encore les notifications lors des événements métier. L'interface peut afficher les notifications créées par un producteur autorisé, mais ne génère pas elle-même les alertes. Pas de push, d'e-mail ni de centre de préférences.
+
+
+## Notifications métier côté serveur (25 novembre 2026)
+- Ajout de déclencheurs Firebase Functions v2 pour les nouvelles demandes de mise en relation, les décisions accepter/refuser, les nouveaux messages après acceptation, les propositions commerciales et les changements de statut de transaction.
+- Les notifications sont créées avec l'Admin SDK uniquement ; les identifiants sont déterministes pour éviter les doublons lors des nouvelles tentatives Firebase.
+- Le destinataire est calculé à partir des participants enregistrés côté serveur. Les messages ne déclenchent une notification que si la demande associée est acceptée et que l'expéditeur est bien participant.
+- Les contenus sont bornés en longueur ; aucune donnée de paiement ou coordonnée privée n'est copiée dans la notification.
+- Commit d'implémentation : `0e762d26914516a071475b29ae70a4b5a43620da`.
+- Les workflows GitHub Actions de tests applicatifs, de règles Firestore et Pages ont été relancés sur ce commit ; leur résultat doit être contrôlé avant toute mise en production.
+- IMPORTANT : ces déclencheurs ne sont pas déclarés déployés. Le dépôt ne possède pas encore de workflow de déploiement ciblé de ces seules fonctions. Ne pas déployer toutes les fonctions existantes sans audit préalable : l'index contient aussi des anciens déclencheurs sur `seller_listings`/`buyer_requests` et le module de paiements. Stripe reste désactivé.
