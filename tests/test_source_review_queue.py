@@ -27,8 +27,20 @@ class SourceReviewQueueTests(unittest.TestCase):
                 ]}),
                 "ted": self.write(root, "ted.json", {"notices": [
                     {"id": "T1", "title": "Supply of gloves", "noticeType": "cn-standard",
-                     "publicationDate": "2026-11-20", "url": "https://ted.europa.eu/T1"},
-                    {"id": "T2", "title": "Awarded contract", "noticeType": "can-award"}
+                     "publicationDate": "2026-11-20", "deadline": "2026-12-10",
+                     "url": "https://ted.europa.eu/T1"},
+                    {"id": "T2", "title": "Awarded contract", "noticeType": "can-award",
+                     "publicationDate": "2026-11-20", "deadline": "2026-12-10"},
+                    {"id": "T3", "title": "Unknown notice type",
+                     "publicationDate": "2026-11-20", "deadline": "2026-12-10"},
+                    {"id": "T4", "title": "Expired contract notice", "noticeType": "cn-standard",
+                     "publicationDate": "2026-11-20", "deadline": "2026-10-10"},
+                    {"id": "T5", "title": "Contract notice without deadline", "noticeType": "cn-standard",
+                     "publicationDate": "2026-11-20"},
+                    {"id": "T6", "title": "Notice with one open lot", "noticeType": "cn-standard",
+                     "publicationDate": "2026-11-20", "deadline": "2026-10-10; 2026-12-15"},
+                    {"id": "T7", "title": "Notice without publication date", "noticeType": "cn-standard",
+                     "deadline": "2026-12-15"}
                 ]}),
                 "sam": root / "sam.json",
                 "gsa": self.write(root, "gsa.json", {"listings": [
@@ -42,8 +54,10 @@ class SourceReviewQueueTests(unittest.TestCase):
             result = build_queue(inputs, today=date(2026, 11, 25))
 
         self.assertEqual(result["mode"], "review_only_no_firestore_writes")
-        self.assertEqual(result["count"], 3)
+        self.assertEqual(result["count"], 4)
         by_source = {item["source_id"]: item for item in result["review_queue"]}
+        ted_ids = {item["source_record_id"] for item in result["review_queue"] if item["source_id"] == "ted_eu"}
+        self.assertEqual(ted_ids, {"T1", "T6"})
         self.assertEqual(set(by_source), {"boamp", "ted_eu", "gsa_auctions"})
         self.assertEqual(by_source["boamp"]["direction"], "buyer")
         self.assertEqual(by_source["gsa_auctions"]["direction"], "seller")
