@@ -1,6 +1,6 @@
 # Registre de finalisation — DealHunter
 
-Dernière mise à jour : 25 novembre 2026 — suivi des PR #21 et #22
+Dernière mise à jour : 25 novembre 2026 — suivi des PR #21 à #24
 
 Ce document suit les vérifications techniques. Il ne constitue ni une certification de sécurité, ni un avis juridique, ni une autorisation de mise en production.
 
@@ -38,8 +38,12 @@ Ce document suit les vérifications techniques. Il ne constitue ni une certifica
 
 ### P0 — Exploitation et continuité
 
-- Mettre en place une sauvegarde Firestore adaptée, une procédure de restauration et un test de restauration. Aucun dispositif complet de sauvegarde/restauration n'a été confirmé lors de l'audit.
-- Ajouter une surveillance des collecteurs et workers avec alertes exploitables. Les workflows GitHub Actions et leurs journaux ne constituent pas à eux seuls une supervision complète.
+- **Blocage Spark confirmé par la documentation Firebase :** l'export/import Firestore géré exige le forfait Blaze, la facturation activée et un bucket Cloud Storage. Aucune sauvegarde Firestore complète et restaurable n'est donc disponible dans la configuration Spark actuelle. Ne pas activer Blaze sans décision explicite.
+- Mettre en place une sauvegarde Firestore adaptée, une procédure de restauration et un test de restauration. Une solution alternative compatible Spark doit être conçue sans exposer de données personnelles dans GitHub ou dans le dépôt. Aucun dispositif complet de sauvegarde/restauration n'a été confirmé lors de l'audit.
+- PR #24 : workflow `automation-watchdog.yml` proposé pour surveiller les échecs des workers/collecteurs et détecter les exécutions trop anciennes. Il ouvre/actualise une issue GitHub et la clôt après un succès. Non opérationnel tant que la PR n'est pas fusionnée sur la branche par défaut et testé sur les événements réels.
+- Les collecteurs BOAMP, BODACC, TED, SAM et GSA sont sérialisés par un groupe de concurrence partagé et disposent de délais maximaux d'exécution. Ces changements restent dans la PR #24.
+- Les notifications d'incident dépendent des notifications GitHub du compte propriétaire ; aucun canal e-mail/SMS indépendant n'est configuré.
+- Les workflows GitHub Actions et leurs journaux ne constituent pas à eux seuls une supervision complète.
 - Vérifier le déploiement Pages après les corrections : le site a été signalé accessible, mais le dernier workflow Pages audité sur `main` avait échoué ; une publication récente réussie doit être confirmée.
 
 ### P1 — Fonctionnalités et données
