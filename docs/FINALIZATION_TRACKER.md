@@ -104,3 +104,14 @@ La présence d'un code ou d'un workflow dans GitHub ne prouve pas qu'une fonctio
 - Les règles `companyProfiles`, `companyVerifications` et `verificationRequests` ont été réintégrées sur cette base ; les deux copies de règles Firestore sont identiques.
 - Le test de vérification humaine atomique a été ajouté à la suite la plus récente, sans écraser les tests plus récents de la PR #21.
 - La PR #28 reste un brouillon non fusionné. Sa CI et sa révocation de statut doivent encore être validées.
+
+
+### Complément — révocation contrôlée de la vérification entreprise (25 novembre 2026)
+
+- L'interface de révision permet désormais à un administrateur autorisé de révoquer une vérification d'entreprise précédemment validée.
+- L'opération supprime la preuve `companyVerifications/{uid}` et passe la demande liée à `revoked` dans un même batch Firestore.
+- Les règles refusent une suppression isolée de la preuve et une révocation isolée de la demande ; les deux changements doivent être atomiques et porter sur le même propriétaire.
+- Le nom et le pays du profil public ne peuvent plus être modifiés tant qu'une preuve de vérification active existe. Après révocation, une nouvelle modification/revue peut être effectuée.
+- Tests ajoutés : révocation atomique autorisée, suppression seule refusée, changement du statut seul refusé, changement du nom/pays pendant vérification refusé, mise à jour non identitaire autorisée.
+- Validation CI du nouveau commit en cours au moment de la mise à jour ; ne pas considérer la PR #28 comme validée avant les résultats finaux des deux workflows.
+- Aucun déploiement Firestore, aucune fusion ni aucune modification des données réelles effectués.
