@@ -86,6 +86,17 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(setDoc(doc(db, "users/alice/buyerNeeds", "need-1"), { product: "Palettes" }));
   });
 
+  it("interdit les champs privilégiés ou inattendus dans le profil privé", async () => {
+    const db = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, "users", "alice"), { displayName: "Alice" }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { displayName: "Alice", role: "admin" }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { isAdmin: true }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), { company: { name: "Entreprise", verified: true } }, { merge: true }));
+    await assertSucceeds(setDoc(doc(db, "users", "alice"), {
+      company: { name: "Entreprise", country: "FR", phone: "0102030405", updatedAt: new Date() }
+    }, { merge: true }));
+  });
+
   it("interdit à un utilisateur de lire ou modifier le profil privé d'un autre", async () => {
     await testEnv.withSecurityRulesDisabled(async context => {
       await setDoc(doc(context.firestore(), "users", "bob"), { displayName: "Bob" });
