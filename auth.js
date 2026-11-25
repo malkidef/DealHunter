@@ -37,6 +37,7 @@ const ready = Object.values(firebaseConfig).every(value =>
 );
 
 if (!ready) {
+  window.dispatchEvent(new CustomEvent("dealhunter-auth-user-changed", { detail: { uid: "" } }));
   status.textContent = "À configurer : crée le projet Firebase et renseigne firebase-web-config.js.";
   const matchingStatus = document.getElementById("matchingDataStatus");
   if (matchingStatus) matchingStatus.textContent = "Firebase n’est pas configuré : renseigne firebase-web-config.js pour charger les annonces partagées.";
@@ -1132,7 +1133,8 @@ if (!ready) {
   getRedirectResult(auth).catch(showError);
 
   onAuthStateChanged(auth, async user => {
-    window.dealhunterUserUid = user?.uid || ''; 
+    window.dealhunterUserUid = user?.uid || '';
+    window.dispatchEvent(new CustomEvent("dealhunter-auth-user-changed", { detail: { uid: window.dealhunterUserUid } }));
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
