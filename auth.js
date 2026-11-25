@@ -32,6 +32,7 @@ const googleButton = document.getElementById("googleSignIn");
 const appleButton = document.getElementById("appleSignIn");
 const signOutButton = document.getElementById("signOut");
 const resendVerificationButton = document.getElementById("resendVerification");
+const exportAccountDataButton = document.getElementById("exportAccountData");
 const ready = Object.values(firebaseConfig).every(value =>
   typeof value === "string" && value.length > 0 && !value.includes("A_REMPLACER")
 );
@@ -1194,6 +1195,116 @@ if (!ready) {
       status.textContent = message; result(false, message);
     }
   });
+
+  const exportAccountData = async user => {
+    if (!user || auth.currentUser?.uid !== user.uid) throw new Error("Compte non connecté.");
+    if (!user.emailVerified) throw new Error("Vérifie ton adresse e-mail avant de demander l’export.");
+    const lastSignIn = Date.parse(user.metadata?.lastSignInTime || "");
+    if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > 15 * 60 * 1000) {
+      throw new Error("Pour protéger tes données, déconnecte-toi puis reconnecte-toi avant de relancer l’export.");
+    }
+
+    const generatedAt = new Date().toISOString();
+    const collections = {};
+    const errors = [];
+    const readOwnedCollection = async (label, collectionPath, field) => {
+      try {
+        const snapshot = await getDocs(query(
+          collection(db, ...collectionPath),
+          where(field, "==", user.uid),
+          limit(501)
+        ));
+        const docs = snapshot.docs.slice(0, 500).map(item => ({ id: item.id, ...item.data() }));
+        collections[label] = docs;
+        if (snapshot.size > 500) errors.push(label + " : plus de 500 documents, export partiel plafonné.");
+      } catch (error) {
+        collections[label] = [];
+        errors.push(label + " : " + (error.code || error.message || "lecture impossible"));
+      }
+    };
+    const readOwnDocument = async (label, path) => {
+      try {
+        const snapshot = await getDoc(doc(db, ...path));
+        collections[label] = snapshot.exists() ? [{ id: snapshot.id, ...snapshot.data() }] : [];
+      } catch (error) {
+        collections[label] = [];
+        errors.push(label + " : " + (error.code || error.message || "lecture impossible"));
+      }
+    };
+
+    await readOwnDocument("profil_prive", ["users", user.uid]);
+    await readOwnedCollection("stocks_prives", ["users", user.uid, "sellerOffers"], "ownerUid");
+    await readOwnedCollection("besoins_prives", ["users", user.uid, "buyerNeeds"], "ownerUid");
+    await Promise.all([
+      readOwnedCollection("annonces_produits", ["publicOffers"], "ownerUid"),
+      readOwnedCollection("besoins_produits", ["publicNeeds"], "ownerUid"),
+      readOwnedCollection("offres_services", ["publicServiceOffers"], "ownerUid"),
+      readOwnedCollection("demandes_services", ["publicServiceRequests"], "ownerUid"),
+      readOwnedCollection("profils_professionnels", ["publicWorkerProfiles"], "ownerUid"),
+      readOwnedCollection("offres_emploi_mission", ["publicWorkOpenings"], "ownerUid"),
+      readOwnedCollection("demandes_verification", ["verificationRequests"], "ownerUid"),
+      readOwnedCollection("signalements_deposes", ["trustReports"], "reporterUid"),
+      readOwnedCollection("notifications_recues", ["notifications"], "recipientUid"),
+      readOwnDocument("profil_entreprise_public", ["companyProfiles", user.uid]),
+      readOwnDocument("verification_entreprise", ["companyVerifications", user.uid])
+    ]);
+
+    const normalize = value => {
+      if (value && typeof value.toDate === "function") return value.toDate().toISOString();
+      if (Array.isArray(value)) return value.map(normalize);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalize(item)]));
+      }
+      return value;
+    };
+    const totalDocuments = Object.values(collections).reduce((sum, items) => sum + items.length, 0);
+    const payload = {
+      export: {
+        product: "DealHunter",
+        generatedAt,
+        accountUid: user.uid,
+        accountEmail: user.email || null,
+        formatVersion: 1,
+        totalDocuments,
+        limits: errors,
+        excluded: [
+          "Conversations et messages partagés",
+          "Demandes de mise en relation impliquant d’autres personnes",
+          "Transactions et avis partagés",
+          "Coordonnées de tiers, journaux internes et données fournisseurs",
+          "Caches locaux du navigateur et données non synchronisées"
+        ],
+        note: "Export personnel filtré. Les erreurs et plafonds éventuels figurent dans limits ; ce fichier ne constitue pas un export administratif exhaustif ni une sauvegarde."
+      },
+      data: normalize(collections)
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "dealhunter-export-personnel-" + generatedAt.slice(0, 10) + ".json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return { totalDocuments, errors };
+  };
+
+  if (exportAccountDataButton) {
+    exportAccountDataButton.addEventListener("click", async () => {
+      exportAccountDataButton.disabled = true;
+      status.textContent = "Préparation de ton export personnel…";
+      try {
+        const result = await exportAccountData(auth.currentUser);
+        status.textContent = "Export téléchargé : " + result.totalDocuments + " document(s)." +
+          (result.errors.length ? " Attention : " + result.errors.length + " limite(s) ou erreur(s) sont indiquées dans le fichier." : "");
+      } catch (error) {
+        status.textContent = "Export impossible : " + (error.message || error.code || "erreur inconnue");
+      } finally {
+        exportAccountDataButton.disabled = false;
+      }
+    });
+  }
 
   const saveUserProfile = async user => {
     const userRef = doc(db, "users", user.uid);
