@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import {
   getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
-  sendEmailVerification, onAuthStateChanged, signOut
+  sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
@@ -31,6 +31,7 @@ const resetButton = document.getElementById("passwordReset");
 const googleButton = document.getElementById("googleSignIn");
 const appleButton = document.getElementById("appleSignIn");
 const signOutButton = document.getElementById("signOut");
+const resendVerificationButton = document.getElementById("resendVerification");
 const ready = Object.values(firebaseConfig).every(value =>
   typeof value === "string" && value.length > 0 && !value.includes("A_REMPLACER")
 );
@@ -1079,6 +1080,13 @@ if (!ready) {
       label.textContent = "Connecté : " + (user.email || user.displayName || "compte utilisateur");
       status.append(label);
       signOutButton.classList.remove("hidden");
+      if (resendVerificationButton) {
+        resendVerificationButton.classList.toggle("hidden", !user.email || user.emailVerified);
+        resendVerificationButton.disabled = false;
+      }
+      if (user.email && !user.emailVerified) {
+        status.append(document.createTextNode(" · Adresse e-mail non vérifiée : vérifie ta boîte de réception."));
+      }
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = true);
       const startupTasks = await Promise.allSettled([
         saveUserProfile(user),
@@ -1113,6 +1121,10 @@ if (!ready) {
       window.dispatchEvent(new CustomEvent('dealhunter-match-requests', { detail: { requests: [] } }));
       window.dispatchEvent(new CustomEvent('dealhunter-deals', { detail: { deals: [] } }));
       signOutButton.classList.add("hidden");
+      if (resendVerificationButton) {
+        resendVerificationButton.classList.add("hidden");
+        resendVerificationButton.disabled = false;
+      }
       [emailButton, createButton, googleButton, appleButton].forEach(button => button.disabled = false);
     }
   });
@@ -1207,6 +1219,32 @@ if (!ready) {
       submitButton.disabled = false;
     }
   });
+
+  if (resendVerificationButton) {
+    resendVerificationButton.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        status.textContent = "Connecte-toi avec ton adresse e-mail avant de demander une vérification.";
+        return;
+      }
+      resendVerificationButton.disabled = true;
+      status.textContent = "Vérification de l’état de ton adresse e-mail…";
+      try {
+        await reload(user);
+        if (auth.currentUser?.emailVerified) {
+          resendVerificationButton.classList.add("hidden");
+          status.textContent = "Adresse e-mail vérifiée. Ton compte est à jour.";
+          return;
+        }
+        await sendEmailVerification(auth.currentUser);
+        status.textContent = "Nouvel e-mail de vérification envoyé. Consulte ta boîte de réception et les courriers indésirables, puis reconnecte-toi.";
+      } catch (error) {
+        showError(error);
+      } finally {
+        resendVerificationButton.disabled = false;
+      }
+    });
+  }
 
   signOutButton.addEventListener("click", async () => {
     try { await signOut(auth); }
