@@ -295,6 +295,12 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-invalid-status"), {
       ...request, status: "draft"
     }));
+    await assertFails(setDoc(doc(alice, "publicServiceOffers", "service-long-description"), {
+      ...offer, description: "x".repeat(4001)
+    }));
+    await assertFails(setDoc(doc(alice, "publicServiceRequests", "service-too-many-qualifications"), {
+      ...request, requiredQualifications: Array(31).fill("qualification")
+    }));
     await assertSucceeds(updateDoc(doc(alice, "publicServiceOffers", "service-1"), {
       description: "Maintenance et dépannage", updatedAt: new Date()
     }));
@@ -391,6 +397,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertFails(setDoc(doc(bob,"publicWorkOpenings","opening-1"),{...opening,ownerUid:"bob"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-private"),{...opening,privatePhone:"0600000000"}));
     await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-invalid"),{...opening,engagementType:"any"}));
+    await assertFails(setDoc(doc(alice,"publicWorkerProfiles","profile-long-description"),{...profile,description:"x".repeat(4001)}));
+    await assertFails(setDoc(doc(alice,"publicWorkOpenings","opening-too-many-skills"),{...opening,requiredSkills:Array(41).fill("skill")}));
     await assertSucceeds(deleteDoc(doc(alice,"publicWorkerProfiles","profile-1")));
   });
 
