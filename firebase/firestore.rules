@@ -89,6 +89,7 @@ service cloud.firestore {
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == resource.data.createdAt
         && validOffer();
       allow delete: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid;
@@ -136,6 +137,7 @@ service cloud.firestore {
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == resource.data.createdAt
         && validNeed();
       allow delete: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid;
