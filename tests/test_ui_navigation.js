@@ -194,3 +194,9 @@ test("auth transmet les erreurs de lecture aux boîtes de réception services et
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))'));
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))'));
 });
+
+
+test("le statut initial du compte ne prétend pas à tort que Firebase est désactivé", () => {
+  assert.match(html, /id="authStatus"[^>]*>Vérification de la configuration Firebase…</);
+  assert.doesNotMatch(html, /id="authStatus"[^>]*>Firebase n’est pas encore configuré/);
+});
