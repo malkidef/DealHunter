@@ -232,7 +232,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   });
 
   it("sécurise les catalogues de prestations et de demandes de service", async () => {
-    const alice = testEnv.authenticatedContext("alice").firestore();
+    const alice = verifiedContext("alice").firestore();
     const bob = testEnv.authenticatedContext("bob").firestore();
     const offer = {
       ownerUid: "alice", company: "Entreprise A", title: "Maintenance électrique",
@@ -268,8 +268,8 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
   });
 
   it("impose le double consentement pour les mises en relation de services", async () => {
-    const alice = testEnv.authenticatedContext("alice").firestore();
-    const bob = testEnv.authenticatedContext("bob").firestore();
+    const alice = verifiedContext("alice").firestore();
+    const bob = verifiedContext("bob").firestore();
     await testEnv.withSecurityRulesDisabled(async context => {
       const db=context.firestore();
       await setDoc(doc(db,"publicServiceOffers","offer-svc"),{
@@ -314,7 +314,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
         requestId:"svc-accepted",senderUid:"bob",text:"Message existant",createdAt:new Date()
       });
     });
-    const alice=testEnv.authenticatedContext("alice").firestore();
+    const alice=verifiedContext("alice").firestore();
     const outsider=testEnv.authenticatedContext("charlie").firestore();
     const message={requestId:"svc-accepted",senderUid:"alice",text:"Bonjour, parlons du besoin.",createdAt:new Date()};
     await assertSucceeds(addDoc(collection(alice,"serviceMatchMessages"),message));
