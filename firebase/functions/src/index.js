@@ -1,4 +1,4 @@
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten, onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const crypto = require("node:crypto");
@@ -139,3 +139,116 @@ async function createSuggestionsFromRequest(listingDocs, requestDoc) {
 
 // Marketplace payments and seller commission workflow
 Object.assign(exports, require("./payments.js"));
+
+
+// Notifications métier : création exclusivement côté serveur (Admin SDK).
+// Les IDs déterministes rendent les écritures idempotentes lors des retries Firebase.
+async function createPrivateNotification({ eventId, recipientUid, type, title, body, relatedId }) {
+  if (typeof recipientUid !== "string" || !recipientUid.trim() || recipientUid.length > 128) return false;
+  const id = crypto.createHash("sha256")
+    .update(`${eventId}:${recipientUid}:${type}`)
+    .digest("hex");
+  const ref = db.collection("notifications").doc(id);
+  try {
+    await ref.create({
+      recipientUid,
+      type,
+      title: String(title || "Notification DealHunter").slice(0, 120),
+      body: String(body || "").slice(0, 1000),
+      relatedId: typeof relatedId === "string" ? relatedId.slice(0, 180) : null,
+      createdAt: FieldValue.serverTimestamp(),
+      readAt: null
+    });
+    return true;
+  } catch (error) {
+    // Une notification déjà créée signifie que l'événement a été traité.
+    if (error.code === 6 || error.code === "already-exists") return false;
+    throw error;
+  }
+}
+
+exports.notifyOnMatchRequestCreated = onDocumentCreated("matchRequests/{requestId}", async (event) => {
+  const request = event.data?.data();
+  if (!request || request.status !== "pending") return;
+  await createPrivateNotification({
+    eventId: event.id,
+    recipientUid: request.recipientUid,
+    type: "match_request",
+    title: "Nouvelle demande de mise en relation",
+    body: `${String(request.requesterCompany || "Une entreprise").slice(0, 120)} souhaite vous contacter au sujet de ${String(request.product || "un produit").slice(0, 160)}.`,
+    relatedId: event.params.requestId
+  });
+});
+
+exports.notifyOnMatchRequestDecision = onDocumentUpdated("matchRequests/{requestId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!before || !after || before.status !== "pending" || !["accepted", "rejected"].includes(after.status)) return;
+  await createPrivateNotification({
+    eventId: event.id,
+    recipientUid: after.requesterUid,
+    type: after.status === "accepted" ? "match_accepted" : "match_rejected",
+    title: after.status === "accepted" ? "Demande acceptée" : "Demande refusée",
+    body: after.status === "accepted"
+      ? "Votre mise en relation est acceptée. Vous pouvez poursuivre l'échange dans DealHunter."
+      : "Votre demande de mise en relation a été refusée.",
+    relatedId: event.params.requestId
+  });
+});
+
+exports.notifyOnMatchMessageCreated = onDocumentCreated("matchMessages/{messageId}", async (event) => {
+  const message = event.data?.data();
+  if (!message || typeof message.requestId !== "string" || typeof message.senderUid !== "string") return;
+  const requestSnap = await db.collection("matchRequests").doc(message.requestId).get();
+  if (!requestSnap.exists) return;
+  const request = requestSnap.data();
+  if (request.status !== "accepted" || !Array.isArray(request.participantUids)
+      || !request.participantUids.includes(message.senderUid)) return;
+  const recipientUid = request.participantUids.find(uid => uid !== message.senderUid);
+  if (!recipientUid) return;
+  await createPrivateNotification({
+    eventId: event.id,
+    recipientUid,
+    type: "match_message",
+    title: "Nouveau message DealHunter",
+    body: String(message.text || "Vous avez reçu un nouveau message.").slice(0, 180),
+    relatedId: message.requestId
+  });
+});
+
+exports.notifyOnDealCreated = onDocumentCreated("deals/{dealId}", async (event) => {
+  const deal = event.data?.data();
+  if (!deal || deal.status !== "proposed" || !Array.isArray(deal.participantUids)) return;
+  const recipientUid = deal.participantUids.find(uid => uid !== deal.proposerUid);
+  if (!recipientUid) return;
+  await createPrivateNotification({
+    eventId: event.id,
+    recipientUid,
+    type: "deal_proposed",
+    title: "Nouvelle proposition commerciale",
+    body: `Une proposition concernant ${String(deal.product || "un produit").slice(0, 160)} vous attend dans DealHunter.`,
+    relatedId: event.params.dealId
+  });
+});
+
+exports.notifyOnDealStatusChanged = onDocumentUpdated("deals/{dealId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!before || !after || before.status === after.status || !Array.isArray(after.participantUids)) return;
+  const statusLabels = {
+    agreed: "La proposition commerciale a été acceptée.",
+    completed: "La vente a été déclarée terminée. Vérifiez sa confirmation dans DealHunter.",
+    cancelled: "La proposition commerciale a été annulée."
+  };
+  const body = statusLabels[after.status];
+  if (!body) return;
+  const recipients = after.participantUids.filter(uid => typeof uid === "string");
+  await Promise.all(recipients.map(recipientUid => createPrivateNotification({
+    eventId: event.id,
+    recipientUid,
+    type: `deal_${after.status}`,
+    title: "Mise à jour de votre transaction",
+    body,
+    relatedId: event.params.dealId
+  })));
+});
