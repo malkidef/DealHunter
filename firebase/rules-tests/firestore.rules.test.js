@@ -96,6 +96,15 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(setDoc(doc(db, "users", "alice"), {
       company: { name: "Entreprise", country: "FR", phone: "0102030405", updatedAt: new Date() }
     }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), {
+      company: { name: "X", country: "FR", phone: "0102030405", updatedAt: new Date() }
+    }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), {
+      company: { name: "Entreprise", country: "fr", phone: "0102030405", updatedAt: new Date() }
+    }, { merge: true }));
+    await assertFails(setDoc(doc(db, "users", "alice"), {
+      company: { name: "Entreprise", country: "FR", phone: "1".repeat(31), updatedAt: new Date() }
+    }, { merge: true }));
   });
 
   it("interdit à un utilisateur de lire ou modifier le profil privé d'un autre", async () => {
