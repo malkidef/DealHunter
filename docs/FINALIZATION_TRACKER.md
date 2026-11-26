@@ -172,3 +172,16 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Les champs sont vidés lors d'une déconnexion ou d'un changement de compte.
 - Tests statiques ajoutés pour le rechargement, les verrous et le nettoyage du formulaire.
 - Code en branche de développement uniquement ; validation CI postérieure aux derniers commits et essais réels multi-comptes encore requis.
+
+
+### Mise à jour — 26 novembre 2026 : transparence de l'export et CI finale
+
+- L'interface d'export annonce désormais clairement qu'il s'agit d'un export initial et partiel, et énumère les conversations, demandes partagées, transactions et avis qui ne sont pas inclus.
+- Un test statique vérifie la présence de cet avertissement.
+- Commit contrôlé : `bce0f98f0aa25ba64f6e7ea7088c4eaa8720d936`.
+- Workflow `Tests DealHunter` : run `45901984594`, succès ; étapes Python, matching, vérification des fonctions Firebase et validation JavaScript réussies.
+- Workflow `Tests des règles Firestore` : run `45901984723`, succès ; synchronisation des règles et tests de l'émulateur Firestore réussis.
+- La PR #28 a été mise à jour pour refléter ces résultats ; elle reste en brouillon, non fusionnée et non déployée.
+- La comparaison avec `main` indique 97 commits en avance et 5 en retard. Aucun réalignement ni merge n'a été effectué ; les cinq commits présents uniquement sur `main` doivent être préservés.
+- Restent bloquants : export complet des données personnelles détenues dans les espaces partagés, procédure d'effacement, sauvegarde/restauration testée, essais multi-comptes et validation opérationnelle avant toute ouverture publique.
+- Aucun service payant, aucun paiement réel, aucune suppression de données et aucun déploiement ne sont activés.
