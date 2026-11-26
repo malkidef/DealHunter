@@ -240,3 +240,15 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Commit documentaire : `0e1d957b06f25cf2184871df4b648a023d6b4743`.
 - Les suggestions automatiques restent distinctes des demandes envoyées et des transactions.
 - CI non confirmée pour ces commits ; aucune réussite n'est revendiquée.
+
+
+### Revue complémentaire — lecture sécurisée des coordonnées partagées (26 novembre 2026)
+
+- Le test de requêtes d'export partagé a été affiné : aucune requête de collection `matchContacts where ownerUid == uid` n'est revendiquée.
+- Motif : la règle `matchContacts` vérifie aussi que `resource.data.requestId` pointe vers une demande acceptée dont le compte est participant. Un simple filtre `ownerUid` ne démontre pas cette condition à l'analyse des règles Firestore.
+- Stratégie retenue : depuis chaque demande produit acceptée et autorisée, lire le document déterministe `requestId + "_" + uid`, puis contrôler `ownerUid == uid`. Le document de l'autre participant est exclu.
+- Le test qui aurait pu supposer une requête de collection autorisée a été retiré avant validation ; les lectures par identifiant sont conservées.
+- Commit test corrigé : `264d465b7d4c6ebefa26886f790c5a00056705e5`.
+- Commit documentaire : `8fb1da47198a608fafeff1307a21a0f76ed68469`.
+- CI non confirmée pour ces commits ; aucune réussite de tests n'est revendiquée.
+- Aucun code d'export ni aucune règle Firestore modifiés.
