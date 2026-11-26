@@ -159,6 +159,8 @@ test("l’export personnel filtre les données par UID et plafonne chaque collec
 });
 
 test("l’export indique explicitement les données partagées et les limites", () => {
+  assert.match(auth, /Export initial téléchargé/);
+  assert.match(auth, /Il reste partiel : conversations, demandes partagées, transactions et avis ne sont pas inclus/);
   assert.match(auth, /Conversations et messages partagés/);
   assert.match(auth, /Transactions et avis partagés/);
   assert.match(auth, /export administratif exhaustif ni une sauvegarde/);
