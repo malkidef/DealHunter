@@ -209,3 +209,17 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - La requête négative équivalente des demandes de services filtre déjà sur l'UID d'un autre participant.
 - Le workflow `Tests DealHunter` est configuré sur les push de `main` et les pull requests vers `main`. L'exécution verte sur les derniers commits de la PR reste à confirmer ; ne pas extrapoler les résultats précédents.
 - Aucun élargissement des règles Firestore, aucun déploiement et aucune donnée utilisateur modifiée.
+
+
+### Mise à jour — matrice des données partagées pour l'export (26 novembre 2026)
+
+- Revue statique des règles Firestore pour `matchRequests`, `serviceMatchRequests`, `workMatchRequests`, les trois collections de messages, `deals`, `dealReviews`, `matchContacts` et `matches`.
+- Ajout d'une matrice dans `docs/ACCOUNT_DATA_EXPORT_DESIGN.md` : requêtes filtrées, données du titulaire, champs de tiers, pseudonymisation et décisions de minimisation.
+- Les messages et commentaires libres restent soumis à une politique dédiée avant inclusion ; leur contenu peut contenir des données personnelles de tiers.
+- Pour `matchContacts`, la conception impose de ne récupérer que les documents dont `ownerUid` est le titulaire, même si les règles permettent à l'autre participant de lire les coordonnées partagées.
+- Les demandes, transactions et suggestions doivent être projetées champ par champ ; aucun document partagé ne doit être sérialisé brut.
+- Tests existants confirmés à la lecture du fichier de test : accès aux demandes produit et messages après acceptation, requêtes filtrées service/emploi, messages de service/emploi, transactions réservées aux participants, avis réservés aux reviewer/subject, coordonnées accessibles seulement dans une demande acceptée.
+- Les tests de requête filtrée sur les avis et les contacts, ainsi que la projection de l'export, restent à ajouter avant toute implémentation.
+- Commit documentaire : `23b9eaaa72d3fc1a1a2064f2082206783b19ec43`.
+- L'interrogation du wrapper Actions sur ce commit n'a retourné aucun run exploitable. Ce résultat ne prouve ni l'absence de workflow ni un succès : la CI du commit documentaire reste non confirmée.
+- Aucun code d'export partagé ni règle Firestore n'a été modifié ; aucun déploiement, merge ou changement de données réelles.
