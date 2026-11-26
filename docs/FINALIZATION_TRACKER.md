@@ -223,3 +223,13 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Commit documentaire : `23b9eaaa72d3fc1a1a2064f2082206783b19ec43`.
 - L'interrogation du wrapper Actions sur ce commit n'a retourné aucun run exploitable. Ce résultat ne prouve ni l'absence de workflow ni un succès : la CI du commit documentaire reste non confirmée.
 - Aucun code d'export partagé ni règle Firestore n'a été modifié ; aucun déploiement, merge ou changement de données réelles.
+
+
+### Mise à jour — tests des requêtes d'export partagé (26 novembre 2026)
+
+- Ajout d'un test de règles multi-comptes pour les requêtes participant des demandes produit, messages produit, transactions et avis.
+- Le test vérifie également que les coordonnées de l'autre participant sont lisibles dans le contexte d'une demande acceptée, mais qu'elles ne doivent pas être incluses dans l'export du titulaire (contrôle de `ownerUid`).
+- Les avis sont interrogés séparément via `reviewerUid` et `subjectUid`, sans lecture globale.
+- Commit : `17501d9a9fbf4c3bd030d6ec8f0601abe707e655`.
+- Le résultat CI de ce commit reste non confirmé ; le wrapper Actions et le statut de commit n'ont retourné aucun résultat exploitable.
+- Aucun code d'export, aucune règle Firestore, aucun paiement et aucune configuration de déploiement modifiés.
