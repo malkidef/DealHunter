@@ -185,3 +185,12 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - La comparaison avec `main` indique 97 commits en avance et 5 en retard. Aucun réalignement ni merge n'a été effectué ; les cinq commits présents uniquement sur `main` doivent être préservés.
 - Restent bloquants : export complet des données personnelles détenues dans les espaces partagés, procédure d'effacement, sauvegarde/restauration testée, essais multi-comptes et validation opérationnelle avant toute ouverture publique.
 - Aucun service payant, aucun paiement réel, aucune suppression de données et aucun déploiement ne sont activés.
+
+
+### Complément — tests de requêtes participant pour l'export (26 novembre 2026)
+
+- Ajout de tests Firestore sur les requêtes filtrées par `participantUids array-contains uid` pour `serviceMatchRequests` et `workMatchRequests`.
+- Les tests vérifient qu'un participant peut interroger les demandes qui le concernent, qu'une lecture de collection non filtrée est refusée et qu'un tiers sans participation ne peut pas interroger ces demandes.
+- Commit de tests : `9bd57c4a08ed90dfbc2e6193107c57cf81707215`.
+- Les règles n'ont pas été élargies : il s'agit de vérifier les requêtes compatibles avec les règles existantes.
+- Résultat CI pour ce commit : non encore confirmé par les informations Actions accessibles dans ce contrôle ; ne pas considérer ces nouveaux tests comme exécutés avant une exécution verte.
