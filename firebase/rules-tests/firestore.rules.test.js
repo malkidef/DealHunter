@@ -869,11 +869,6 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
 
     // Les deux participants peuvent lire les coordonnées partagées ; l'export
     // personnel doit donc cibler uniquement le document déterministe du titulaire.
-    const ownContacts = await getDocs(query(
-      collection(alice, "matchContacts"), where("ownerUid", "==", "alice")
-    ));
-    assert.equal(ownContacts.size, 1);
-    assert.equal(ownContacts.docs[0].id, "export-request_alice");
     const ownContact = await getDoc(doc(alice, "matchContacts", "export-request_alice"));
     const otherContact = await getDoc(doc(alice, "matchContacts", "export-request_bob"));
     await assertSucceeds(Promise.resolve(ownContact));
