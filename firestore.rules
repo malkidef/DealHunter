@@ -22,9 +22,19 @@ service cloud.firestore {
         && (!("company" in request.resource.data) || (
           request.resource.data.company is map
           && request.resource.data.company.keys().hasOnly(["name", "country", "phone", "updatedAt"])
-          && (!("name" in request.resource.data.company) || request.resource.data.company.name is string)
-          && (!("country" in request.resource.data.company) || request.resource.data.company.country is string)
-          && (!("phone" in request.resource.data.company) || request.resource.data.company.phone is string)
+          && (!("name" in request.resource.data.company) || (
+            request.resource.data.company.name is string
+            && request.resource.data.company.name.size() >= 2
+            && request.resource.data.company.name.size() <= 120
+          ))
+          && (!("country" in request.resource.data.company) || (
+            request.resource.data.company.country is string
+            && request.resource.data.company.country.matches("^[A-Z]{2}$")
+          ))
+          && (!("phone" in request.resource.data.company) || (
+            request.resource.data.company.phone is string
+            && request.resource.data.company.phone.size() <= 30
+          ))
           && (!("updatedAt" in request.resource.data.company) || request.resource.data.company.updatedAt is timestamp)
         ));
       }
