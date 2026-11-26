@@ -162,3 +162,21 @@ Cette matrice décrit les schémas actuellement présents dans `firebase/firesto
 - Les tests de lecture des demandes produit, messages produit, transactions, avis et contacts doivent être vérifiés séparément avant d'implémenter les requêtes d'export correspondantes.
 - Aucun code d'export partagé n'est ajouté dans cette étape. Aucun test réel multi-comptes, examen de texte libre, ni validation juridique n'est revendiqué.
 - Prochaine étape avant codage : vérifier les schémas producteurs et les tests de lecture restants, puis définir la projection JSON attendue et ses cas de test avec deux participants et un tiers.
+
+
+### 8.4 Tests ciblés ajoutés — requêtes de l'export partagé
+
+Le test `autorise les requêtes d'export partagées uniquement avec les filtres du titulaire` a été ajouté à `firebase/rules-tests/firestore.rules.test.js`.
+
+Il prépare des documents de test pour deux participants et un tiers, puis vérifie :
+- demandes produit : requête filtrée par `participantUids array-contains uid`, refus de la requête globale et d'une requête filtrée sur l'UID d'un autre participant ;
+- messages produit : requête par `requestId` sur une demande acceptée ;
+- transactions : requête filtrée par `participantUids array-contains uid` et refus de la lecture globale ;
+- avis : deux requêtes distinctes filtrées par `reviewerUid` et `subjectUid`, et refus de la lecture globale ;
+- coordonnées : lecture autorisée par les deux participants mais assertion explicite que le document du tiers porte un `ownerUid` différent ; l'export devra donc sélectionner seulement le document déterministe `requestId + "_" + uid`.
+
+Le test ne prouve pas encore la projection JSON finale, ne vérifie pas les contenus de messages et commentaires libres et n'ajoute aucune donnée partagée à l'export utilisateur.
+
+Commit de test : `17501d9a9fbf4c3bd030d6ec8f0601abe707e655`.
+
+La CI de ce commit n'est pas confirmée : le contrôle disponible n'a retourné aucun run ni statut exploitable. Ne pas interpréter cette absence de résultat comme une réussite ou comme la preuve qu'aucun workflow n'a tourné.
