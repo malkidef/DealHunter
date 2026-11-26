@@ -118,3 +118,47 @@ Limites importantes :
 - le code est en branche de développement, pas encore sur le site public.
 
 Statut : **implémentation initiale réalisée, validation en attente**. Aucune suppression, anonymisation ou modification de données réelles n’est exécutée par cette fonction.
+
+
+## 8. Matrice de traitement des données partagées — revue du 26 novembre 2026
+
+Cette matrice décrit les schémas actuellement présents dans `firebase/firestore.rules`. Elle constitue une règle de conception, pas une autorisation juridique définitive ni une implémentation de l'export. Aucun document partagé n'est ajouté à l'export dans cette étape.
+
+| Collection | Requête techniquement cohérente avec les règles | Données concernant le titulaire | Données de tiers / précautions | Décision de conception |
+|---|---|---|---|---|
+| `matchRequests` | `participantUids array-contains uid` | rôle vendeur/acheteur, rôle demandeur/destinataire, décision, dates, produit et contexte de sa demande | UID et nom d'entreprise de l'autre partie ; IDs des annonces liées | Inclure une projection en liste blanche ; remplacer l'UID du tiers par un identifiant local stable du type `other_participant`. Ne pas recopier le document brut. |
+| `serviceMatchRequests` | `participantUids array-contains uid` | rôle prestataire/client, demandeur/destinataire, statut, titres du service et du besoin, date | UID et nom d'entreprise de l'autre partie, IDs des annonces | Même traitement que `matchRequests` ; projection en liste blanche et pseudonymisation du tiers. |
+| `workMatchRequests` | `participantUids array-contains uid` | rôle candidat/employeur, engagement, titres du profil et du poste, statut, date | UID et intitulé professionnel de l'autre partie, IDs du profil et du poste | Projection en liste blanche ; pseudonymiser l'UID tiers et évaluer les intitulés s'ils identifient une personne physique. |
+| `matchMessages` | Une requête `requestId == id` par demande produit acceptée appartenant au titulaire | messages envoyés et reçus, dates, contexte de la conversation | texte rédigé par l'autre personne, identifiant de l'expéditeur, éventuelles coordonnées ou informations de tiers dans le texte | Ne pas exclure automatiquement une conversation ni exporter le document brut. Prévoir une restitution par message avec expéditeur pseudonymisé et revue des contenus susceptibles de révéler des données de tiers ; cette politique doit être validée avant codage. |
+| `serviceMatchMessages` | Une requête `requestId == id` par demande de service acceptée | même nature de données de conversation | mêmes risques que les messages produit | Même règle que `matchMessages`. |
+| `workMatchMessages` | Une requête `requestId == id` par demande emploi acceptée | messages du candidat ou de l'employeur et contexte de recrutement | données personnelles éventuellement sensibles communiquées dans un échange libre | Même règle, avec vigilance renforcée sur les données de candidature et informations personnelles. |
+| `deals` | `participantUids array-contains uid` | rôle dans la transaction, produit, quantité, prix, total, statut, confirmations et dates | UID de l'autre participant ; montants et éléments commerciaux communs | Inclure les éléments nécessaires à l'historique du titulaire ; pseudonymiser l'UID du tiers et signaler que les données transactionnelles sont partagées. Ne jamais présenter la commission indicative comme encaissée. |
+| `dealReviews` | Deux requêtes distinctes : `reviewerUid == uid` et `subjectUid == uid` | avis rédigés par le titulaire ; avis reçus qui le concernent | identité UID de l'auteur ou du destinataire tiers, commentaire pouvant contenir des données de tiers | Inclure séparément les avis rédigés et reçus ; pseudonymiser l'identifiant tiers. Les commentaires reçus nécessitent une politique de minimisation/revue avant restitution. |
+| `matchContacts` | `ownerUid == uid` uniquement | coordonnées que le titulaire a lui-même enregistrées et partagées | les documents dont `ownerUid` est l'autre participant contiennent les coordonnées de ce tiers | Inclure uniquement les documents dont le titulaire est `ownerUid`. Ne jamais utiliser le simple droit de lecture du participant pour exporter les coordonnées de l'autre personne. |
+| `matches` | `participantUids array-contains uid` | suggestion et statut de rapprochement concernant le titulaire | schéma complet à confirmer dans le code producteur ; identifiants du partenaire potentiels | Ne pas exporter avant inspection du schéma producteur ; appliquer une liste blanche et pseudonymiser le partenaire. |
+
+### 8.1 Contrôles de requête et d'autorisation
+
+- Les demandes produit, service et emploi sont lisibles par leurs participants. Les tests existants vérifient les requêtes filtrées par `participantUids array-contains uid` pour les collections de service et d'emploi, y compris le refus d'une requête non filtrée et d'une requête d'un tiers filtrée sur l'UID d'un participant.
+- Les messages ne sont lisibles que si la demande référencée est acceptée et que le compte connecté figure parmi ses participants. Le chargement doit donc partir des demandes autorisées du titulaire, puis interroger les messages séparément par `requestId`.
+- Les transactions sont lisibles par leurs participants ; la requête doit rester filtrée sur `participantUids`.
+- Les avis ont deux sujets d'accès distincts (`reviewerUid` et `subjectUid`) : lancer deux requêtes filtrées, puis dédupliquer par identifiant. Ne pas lire toute la collection.
+- Pour `matchContacts`, les règles permettent à un participant de lire les coordonnées partagées dans le cadre de la demande acceptée. Cette permission de lecture ne signifie pas que les coordonnées du tiers doivent figurer dans son export personnel : le filtre doit rester `ownerUid == uid`.
+- Toute requête doit utiliser exclusivement `auth.currentUser.uid`. Un refus de permission doit être signalé dans le manifeste ; ne pas contourner les règles ni basculer vers une lecture globale.
+
+### 8.2 Politique de projection et de minimisation
+
+- Ne jamais sérialiser directement un document partagé complet. Construire une projection explicite champ par champ à partir du schéma vérifié.
+- Conserver les champs qui décrivent directement la participation du titulaire et le contexte nécessaire à la compréhension de ses propres données.
+- Remplacer les UID des autres participants par un pseudonyme local non réversible dans le fichier exporté ; ne pas inclure d'adresse e-mail, téléphone ou identifiant de compte d'un tiers par défaut.
+- Les textes libres de conversation et les commentaires d'avis ne peuvent pas être considérés comme sûrs par une simple suppression de champs : ils peuvent eux-mêmes contenir des données personnelles de tiers. Une règle de revue, de masquage ou d'accès au cas par cas doit être arrêtée avant leur inclusion.
+- Ne pas confondre pseudonymisation et anonymisation : les données pseudonymisées restent des données personnelles lorsqu'une ré-identification reste possible.
+- Le manifeste doit distinguer les catégories exportées, exclues, pseudonymisées, nécessitant une revue et non accessibles. Il doit afficher les erreurs et limites de volume sans prétendre que le fichier est exhaustif.
+
+### 8.3 État de validation
+
+- Revue statique des règles effectuée pour les neuf collections ci-dessus ; les champs listés sont ceux autorisés par les règles observées, pas une validation de chaque chemin d'écriture dans l'application.
+- Tests de requêtes participant déjà présents pour `serviceMatchRequests` et `workMatchRequests`. Les tests de lecture des messages de service/emploi couvrent les demandes acceptées et le refus des tiers.
+- Les tests de lecture des demandes produit, messages produit, transactions, avis et contacts doivent être vérifiés séparément avant d'implémenter les requêtes d'export correspondantes.
+- Aucun code d'export partagé n'est ajouté dans cette étape. Aucun test réel multi-comptes, examen de texte libre, ni validation juridique n'est revendiqué.
+- Prochaine étape avant codage : vérifier les schémas producteurs et les tests de lecture restants, puis définir la projection JSON attendue et ses cas de test avec deux participants et un tiers.
