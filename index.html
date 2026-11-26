@@ -105,7 +105,7 @@ window.dealhunterShowTab = function(target, button) {
 <h3>Entreprise</h3>
 <p class="muted" id="companyProfileHint">Après connexion, renseigne le nom et le pays de ton entreprise pour créer ou rectifier ton espace sécurisé.</p>
 <form id="companyForm">
-<div class="field"><label for="companyName">Nom de l’entreprise</label><input id="companyName" required maxlength="120" placeholder="Mon entreprise"></div>
+<div class="field"><label for="companyName">Nom de l’entreprise</label><input id="companyName" required minlength="2" maxlength="120" placeholder="Mon entreprise"></div>
 <div class="field"><label for="companyPhone">Téléphone professionnel</label><input id="companyPhone" type="tel" autocomplete="tel" maxlength="30" placeholder="+33 6 12 34 56 78"></div>
 <div class="field"><label for="companyCountry">Pays</label><select id="companyCountry"><option value="FR">France</option><option value="BE">Belgique</option><option value="LU">Luxembourg</option><option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option><option value="NL">Pays-Bas</option><option value="GB">Royaume-Uni</option><option value="US">États-Unis</option><option value="CA">Canada</option><option value="CH">Suisse</option></select></div>
 <button type="submit" id="createCompany">Créer mon espace entreprise</button>
