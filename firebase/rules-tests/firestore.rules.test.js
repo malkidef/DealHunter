@@ -451,7 +451,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(setDoc(doc(alice,"workMatchRequests","work-1"),req));
     await assertSucceeds(getDocs(query(collection(bob,"workMatchRequests"),where("participantUids","array-contains","bob"))));
     await assertFails(getDocs(collection(bob,"workMatchRequests")));
-    await assertFails(getDocs(query(collection(outsider,"workMatchRequests"),where("participantUids","array-contains","charlie"))));
+    await assertFails(getDocs(query(collection(outsider,"workMatchRequests"),where("participantUids","array-contains","bob"))));
     await assertFails(setDoc(doc(alice,"workMatchRequests","self-recipient"),{...req,recipientUid:"alice"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","extra"),{...req,privateEmail:"alice@example.test"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","wrong-type"),{...req,openingId:"opening-2"}));
