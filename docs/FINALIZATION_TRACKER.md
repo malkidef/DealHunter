@@ -199,3 +199,13 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Correction du test tiers : la requête d'un tiers est maintenant filtrée sur l'UID d'un autre participant (`bob`), ce qui doit être refusé. Une requête filtrée sur son propre UID serait légitimement autorisée même si elle ne retourne aucun document.
 - Commit de correction : `1a09c6e90bcc7e3232d94cd54a324af3558f0b56`.
 - CI toujours non confirmée sur ce commit.
+
+
+### Revue complémentaire — cohérence des tests tiers (26 novembre 2026)
+
+- Contrôle du test des requêtes Firestore de demandes d'emploi : le scénario tiers filtrait initialement sur l'UID du tiers lui-même. Cette requête peut être autorisée tout en retournant zéro résultat ; elle ne démontrait donc pas le refus d'accès à des documents d'un autre participant.
+- Correction : le tiers tente désormais une requête filtrée sur l'UID `bob`, qui est participant à la demande mais n'est pas le tiers connecté.
+- Commit correctif : `c172c72dc0a5304acd984d521c7d36a8b73591b8`.
+- La requête négative équivalente des demandes de services filtre déjà sur l'UID d'un autre participant.
+- Le workflow `Tests DealHunter` est configuré sur les push de `main` et les pull requests vers `main`. L'exécution verte sur les derniers commits de la PR reste à confirmer ; ne pas extrapoler les résultats précédents.
+- Aucun élargissement des règles Firestore, aucun déploiement et aucune donnée utilisateur modifiée.
