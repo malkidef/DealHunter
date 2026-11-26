@@ -1295,8 +1295,8 @@ if (!ready) {
       status.textContent = "Préparation de ton export personnel…";
       try {
         const result = await exportAccountData(auth.currentUser);
-        status.textContent = "Export téléchargé : " + result.totalDocuments + " document(s)." +
-          (result.errors.length ? " Attention : " + result.errors.length + " limite(s) ou erreur(s) sont indiquées dans le fichier." : "");
+        status.textContent = "Export initial téléchargé : " + result.totalDocuments + " document(s). Il reste partiel : conversations, demandes partagées, transactions et avis ne sont pas inclus." +
+          (result.errors.length ? " " + result.errors.length + " limite(s) ou erreur(s) sont également indiquées dans le fichier." : "");
       } catch (error) {
         status.textContent = "Export impossible : " + (error.message || error.code || "erreur inconnue");
       } finally {
