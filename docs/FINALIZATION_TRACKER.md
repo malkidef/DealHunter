@@ -194,3 +194,8 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Commit de tests : `9bd57c4a08ed90dfbc2e6193107c57cf81707215`.
 - Les règles n'ont pas été élargies : il s'agit de vérifier les requêtes compatibles avec les règles existantes.
 - Résultat CI pour ce commit : non encore confirmé par les informations Actions accessibles dans ce contrôle ; ne pas considérer ces nouveaux tests comme exécutés avant une exécution verte.
+
+
+- Correction du test tiers : la requête d'un tiers est maintenant filtrée sur l'UID d'un autre participant (`bob`), ce qui doit être refusé. Une requête filtrée sur son propre UID serait légitimement autorisée même si elle ne retourne aucun document.
+- Commit de correction : `1a09c6e90bcc7e3232d94cd54a324af3558f0b56`.
+- CI toujours non confirmée sur ce commit.
