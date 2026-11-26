@@ -1311,6 +1311,9 @@ if (!ready) {
       getDoc(doc(db, "companyProfiles", user.uid)),
       getDoc(doc(db, "companyVerifications", user.uid))
     ]);
+    // Un changement de compte peut survenir pendant les lectures Firestore.
+    // Ne jamais laisser l'ancien profil écraser le formulaire du nouvel utilisateur.
+    if (auth.currentUser?.uid !== user.uid) return;
     const privateCompany = privateSnapshot.exists() ? privateSnapshot.data().company || {} : {};
     const publicCompany = publicSnapshot.exists() ? publicSnapshot.data() : {};
     const nameInput = document.getElementById("companyName");
@@ -1515,7 +1518,7 @@ if (!ready) {
       }, { merge: true });
       await profileBatch.commit();
       status.textContent = "Espace entreprise enregistré avec succès.";
-      companyForm.reset();
+      if (auth.currentUser?.uid === user.uid) await loadCompanyProfile(user);
     } catch (error) {
       console.error("Enregistrement de l’entreprise impossible :", error);
       status.textContent = "Enregistrement impossible : " + (error.message || error.code);
