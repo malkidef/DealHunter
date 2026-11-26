@@ -804,6 +804,13 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       await setDoc(doc(db, "matchMessages", "export-message"), {
         requestId: "export-request", senderUid: "bob", text: "Échange partagé", createdAt: new Date()
       });
+      await setDoc(doc(db, "matches", "export-match"), {
+        listingId: "offer-1", requestId: "need-1", sellerId: "offer-1", buyerId: "need-1",
+        sellerUid: "alice", buyerUid: "bob", participantUids: ["alice", "bob"],
+        sellerCompany: "Entreprise A", buyerCompany: "Entreprise B", product: "Cartons",
+        compatibilityScore: 0.9, status: "suggested", source: "scheduled_matching_v1",
+        createdAt: new Date()
+      });
       await setDoc(doc(db, "deals", "export-deal"), {
         requestId: "export-request", sellerUid: "alice", buyerUid: "bob",
         participantUids: ["alice", "bob"], proposerUid: "alice", accepterUid: "bob",
@@ -846,6 +853,10 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(getDocs(query(
       collection(alice, "deals"), where("participantUids", "array-contains", "alice")
     )));
+    await assertSucceeds(getDocs(query(
+      collection(alice, "matches"), where("participantUids", "array-contains", "alice")
+    )));
+    await assertFails(getDocs(collection(alice, "matches")));
     await assertFails(getDocs(collection(alice, "deals")));
 
     await assertSucceeds(getDocs(query(
