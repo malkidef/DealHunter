@@ -796,4 +796,75 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
       phone: "0102030406", company: "Entreprise A", sharedAt: new Date()
     }));
   });
+
+  it("autorise les requêtes d'export partagées uniquement avec les filtres du titulaire", async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, "matchRequests", "export-request"), requestData("alice", "bob", "accepted"));
+      await setDoc(doc(db, "matchMessages", "export-message"), {
+        requestId: "export-request", senderUid: "bob", text: "Échange partagé", createdAt: new Date()
+      });
+      await setDoc(doc(db, "deals", "export-deal"), {
+        requestId: "export-request", sellerUid: "alice", buyerUid: "bob",
+        participantUids: ["alice", "bob"], proposerUid: "alice", accepterUid: "bob",
+        product: "Cartons", quantity: 2, unitPrice: 3, totalAmount: 6,
+        commissionRate: 5, commissionAmount: 0.3, status: "completed",
+        sellerConfirmed: true, buyerConfirmed: true, createdAt: new Date(), updatedAt: new Date()
+      });
+      await setDoc(doc(db, "dealReviews", "export-deal_alice"), {
+        dealId: "export-deal", reviewerUid: "alice", subjectUid: "bob",
+        rating: 5, comment: "Avis rédigé par Alice", createdAt: new Date()
+      });
+      await setDoc(doc(db, "dealReviews", "other-review"), {
+        dealId: "export-deal", reviewerUid: "bob", subjectUid: "alice",
+        rating: 4, comment: "Avis reçu par Alice", createdAt: new Date()
+      });
+      await setDoc(doc(db, "matchContacts", "export-request_alice"), {
+        requestId: "export-request", ownerUid: "alice", email: "alice@example.test",
+        phone: "0102030405", company: "Entreprise A", sharedAt: new Date()
+      });
+      await setDoc(doc(db, "matchContacts", "export-request_bob"), {
+        requestId: "export-request", ownerUid: "bob", email: "bob@example.test",
+        phone: "0607080910", company: "Entreprise B", sharedAt: new Date()
+      });
+    });
+
+    const alice = verifiedContext("alice").firestore();
+    const outsider = verifiedContext("charlie").firestore();
+
+    await assertSucceeds(getDocs(query(
+      collection(alice, "matchRequests"), where("participantUids", "array-contains", "alice")
+    )));
+    await assertFails(getDocs(collection(alice, "matchRequests")));
+    await assertFails(getDocs(query(
+      collection(outsider, "matchRequests"), where("participantUids", "array-contains", "alice")
+    )));
+
+    await assertSucceeds(getDocs(query(
+      collection(alice, "matchMessages"), where("requestId", "==", "export-request")
+    )));
+    await assertSucceeds(getDocs(query(
+      collection(alice, "deals"), where("participantUids", "array-contains", "alice")
+    )));
+    await assertFails(getDocs(collection(alice, "deals")));
+
+    await assertSucceeds(getDocs(query(
+      collection(alice, "dealReviews"), where("reviewerUid", "==", "alice")
+    )));
+    await assertSucceeds(getDocs(query(
+      collection(alice, "dealReviews"), where("subjectUid", "==", "alice")
+    )));
+    await assertFails(getDocs(collection(alice, "dealReviews")));
+
+    // Les deux participants peuvent lire les coordonnées partagées ; l'export
+    // personnel doit donc cibler uniquement le document déterministe du titulaire.
+    const ownContact = await getDoc(doc(alice, "matchContacts", "export-request_alice"));
+    const otherContact = await getDoc(doc(alice, "matchContacts", "export-request_bob"));
+    await assertSucceeds(Promise.resolve(ownContact));
+    await assertSucceeds(Promise.resolve(otherContact));
+    if (ownContact.data().ownerUid !== "alice") throw new Error("Le contact propre doit appartenir à Alice.");
+    if (otherContact.data().ownerUid === "alice") throw new Error("Le contact du tiers ne doit pas être inclus dans l'export d'Alice.");
+    await assertFails(getDoc(doc(outsider, "matchContacts", "export-request_alice")));
+  });
+
 });
