@@ -368,7 +368,7 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     await assertSucceeds(getDoc(doc(bob,"serviceMatchRequests","svc-1")));
     await assertSucceeds(getDocs(query(collection(bob,"serviceMatchRequests"),where("participantUids","array-contains","bob"))));
     await assertFails(getDocs(collection(bob,"serviceMatchRequests")));
-    await assertFails(getDocs(query(collection(verifiedContext("charlie").firestore(),"serviceMatchRequests"),where("participantUids","array-contains","charlie"))));
+    await assertFails(getDocs(query(collection(verifiedContext("charlie").firestore(),"serviceMatchRequests"),where("participantUids","array-contains","bob"))));
     await assertFails(updateDoc(doc(alice,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",providerUid:"bob",respondedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
