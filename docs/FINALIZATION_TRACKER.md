@@ -252,3 +252,15 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Commit documentaire : `8fb1da47198a608fafeff1307a21a0f76ed68469`.
 - CI non confirmée pour ces commits ; aucune réussite de tests n'est revendiquée.
 - Aucun code d'export ni aucune règle Firestore modifiés.
+
+
+### Contrôle de cohérence de branche et CI — 26 novembre 2026
+
+- Tête actuelle de la branche : `b05cd7b6d6ae03dbe8c4a15981edb46d9ef8a23e`.
+- Comparaison GitHub avec `main` : branche divergente, 116 commits en avance et 5 en retard.
+- Les cinq changements présents uniquement sur `main` concernent les instantanés JSON de sources BOAMP, BODACC, GSA, SAM et TED (`data/*.json`). Aucun fichier applicatif ou de règles n'apparaît dans cette comparaison inverse.
+- Ces instantanés de données sont conservés ; aucun réalignement, rebase ou fusion n'a été tenté.
+- Le workflow `Tests des règles Firestore` existe bien et s'exécute sur les événements `pull_request` vers `main`. Le workflow vérifie d'abord l'identité des fichiers `firestore.rules` et `firebase/firestore.rules`, puis lance l'émulateur Firestore et Mocha.
+- Les copies des règles sont actuellement identiques (même blob SHA `6b354a5f2746a2f67f8296e26bd1bb37feca2490`).
+- Le contrôle CI sur la tête actuelle ne retourne aucun run ni statut exploitable via les outils disponibles. Le succès des nouveaux tests reste donc non confirmé ; ne pas considérer ce commit comme validé.
+- Aucun rebase, merge, déploiement, changement de données ou service payant.
