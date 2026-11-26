@@ -366,6 +366,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     };
     await assertSucceeds(setDoc(doc(alice,"serviceMatchRequests","svc-1"),request));
     await assertSucceeds(getDoc(doc(bob,"serviceMatchRequests","svc-1")));
+    await assertSucceeds(getDocs(query(collection(bob,"serviceMatchRequests"),where("participantUids","array-contains","bob"))));
+    await assertFails(getDocs(collection(bob,"serviceMatchRequests")));
+    await assertFails(getDocs(query(collection(verifiedContext("charlie").firestore(),"serviceMatchRequests"),where("participantUids","array-contains","charlie"))));
     await assertFails(updateDoc(doc(alice,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
     await assertFails(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",providerUid:"bob",respondedAt:new Date()}));
     await assertSucceeds(updateDoc(doc(bob,"serviceMatchRequests","svc-1"),{status:"accepted",respondedAt:new Date()}));
@@ -446,6 +449,9 @@ describe("Règles Firestore DealHunter — schéma actuellement utilisé", () =>
     });
     const req={candidateProfileId:"candidate-1",openingId:"opening-1",candidateUid:"alice",employerUid:"bob",participantUids:["alice","bob"],requesterUid:"alice",recipientUid:"bob",engagementType:"employment",candidateTitle:"Électricien câbleur",openingTitle:"Monteur câbleur",status:"pending",createdAt:new Date()};
     await assertSucceeds(setDoc(doc(alice,"workMatchRequests","work-1"),req));
+    await assertSucceeds(getDocs(query(collection(bob,"workMatchRequests"),where("participantUids","array-contains","bob"))));
+    await assertFails(getDocs(collection(bob,"workMatchRequests")));
+    await assertFails(getDocs(query(collection(outsider,"workMatchRequests"),where("participantUids","array-contains","charlie"))));
     await assertFails(setDoc(doc(alice,"workMatchRequests","self-recipient"),{...req,recipientUid:"alice"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","extra"),{...req,privateEmail:"alice@example.test"}));
     await assertFails(setDoc(doc(alice,"workMatchRequests","wrong-type"),{...req,openingId:"opening-2"}));
