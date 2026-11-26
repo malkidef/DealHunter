@@ -233,3 +233,10 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Commit : `17501d9a9fbf4c3bd030d6ec8f0601abe707e655`.
 - Le résultat CI de ce commit reste non confirmé ; le wrapper Actions et le statut de commit n'ont retourné aucun résultat exploitable.
 - Aucun code d'export, aucune règle Firestore, aucun paiement et aucune configuration de déploiement modifiés.
+
+
+- Complément de couverture : test de la requête `matches` filtrée par `participantUids array-contains uid` et refus de la lecture globale ; schéma du producteur vérifié dans `firebase/functions/src/matching-batch.js` et chargement UI confirmé dans `auth.js`.
+- Commit de test : `4f6adc09db1fb4d2efd0dbb13e50552122d270df`.
+- Commit documentaire : `0e1d957b06f25cf2184871df4b648a023d6b4743`.
+- Les suggestions automatiques restent distinctes des demandes envoyées et des transactions.
+- CI non confirmée pour ces commits ; aucune réussite n'est revendiquée.
