@@ -180,3 +180,12 @@ Le test ne prouve pas encore la projection JSON finale, ne vérifie pas les cont
 Commit de test : `17501d9a9fbf4c3bd030d6ec8f0601abe707e655`.
 
 La CI de ce commit n'est pas confirmée : le contrôle disponible n'a retourné aucun run ni statut exploitable. Ne pas interpréter cette absence de résultat comme une réussite ou comme la preuve qu'aucun workflow n'a tourné.
+
+
+### Complément — suggestions automatiques `matches`
+
+Le producteur réel `firebase/functions/src/matching-batch.js` crée les suggestions avec les champs `listingId`, `requestId`, `sellerId`, `buyerId`, `sellerUid`, `buyerUid`, `participantUids`, `sellerCompany`, `buyerCompany`, `product`, `compatibilityScore`, `status`, `source` et `createdAt`. L'interface charge cette collection via `participantUids array-contains uid`.
+
+La suggestion est un objet distinct d'une demande envoyée et d'une transaction. Si elle est incluse dans l'export, elle doit être nommée comme suggestion automatique, conserver uniquement le contexte nécessaire au titulaire et pseudonymiser les identifiants du partenaire. Les noms d'entreprise et les identifiants d'annonces doivent être considérés comme informations commerciales partagées, pas comme des données privées du titulaire.
+
+Le test multi-comptes couvre désormais également la requête filtrée sur `matches` et refuse la lecture globale. Commit : `4f6adc09db1fb4d2efd0dbb13e50552122d270df`. La CI de ce commit reste à confirmer.
