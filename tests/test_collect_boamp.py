@@ -32,5 +32,41 @@ class TestBoampClassification(unittest.TestCase):
         self.assert_kind("Avis d’attribution du marché de fournitures", "attribution")
 
 
+class TestBoampPagination(unittest.TestCase):
+    def test_fetches_multiple_pages_until_total(self):
+        from unittest.mock import patch
+        calls=[]
+        def fake_get_json(url):
+            calls.append(url)
+            offset=int(url.split("offset=")[1].split("&")[0])
+            if offset==0:
+                return {"total_count":101,"results":[{"id":str(i)} for i in range(100)]}
+            return {"total_count":101,"results":[{"id":"100"}]}
+        with patch.object(BOAMP,"get_json",side_effect=fake_get_json):
+            rows,total,truncated=BOAMP.fetch_records()
+        self.assertEqual(len(rows),101)
+        self.assertEqual(total,101)
+        self.assertFalse(truncated)
+        self.assertEqual(len(calls),2)
+        self.assertIn("offset=100",calls[1])
+
+    def test_reports_truncation_at_safety_cap(self):
+        from unittest.mock import patch
+        def fake_get_json(url):
+            offset=int(url.split("offset=")[1].split("&")[0])
+            return {"total_count":250,"results":[{"id":str(i)} for i in range(offset,offset+100)]}
+        with patch.object(BOAMP,"MAX_RECORDS",150), patch.object(BOAMP,"get_json",side_effect=fake_get_json):
+            rows,total,truncated=BOAMP.fetch_records()
+        self.assertEqual(len(rows),150)
+        self.assertEqual(total,250)
+        self.assertTrue(truncated)
+
+    def test_invalid_page_is_rejected(self):
+        from unittest.mock import patch
+        with patch.object(BOAMP,"get_json",return_value={"unexpected":[]}):
+            with self.assertRaises(RuntimeError):
+                BOAMP.fetch_records()
+
+
 if __name__ == "__main__":
     unittest.main()
