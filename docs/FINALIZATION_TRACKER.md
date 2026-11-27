@@ -299,3 +299,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - `Tests des règles Firestore`, run `45921099159` (#580) : **in_progress** au dernier contrôle. La parité des règles est réussie ; installation des dépendances en cours, émulateur pas encore lancé.
 - La réussite du workflow général ne remplace pas les tests Firestore. Ne pas déclarer la CI complète verte tant que le run #580 n'est pas terminé.
 - La revue de l'export est statique et documentaire ; aucun code d'export, aucune règle et aucune donnée utilisateur n'ont été modifiés.
+
+
+### Revue complémentaire du téléchargement d'export — 27 novembre 2026
+
+- Inspection statique de `exportAccountData` : erreurs isolées par collection et consignées dans `limits`, requêtes filtrées par UID pour les collections publiques, sous-collections privées lues sous `users/{uid}`, plafond dur de 500 documents détecté par lecture de 501.
+- Le JSON est généré localement par Blob/ObjectURL ; l'ObjectURL est révoquée une seconde après le clic. La fiabilité de ce délai sur Android et ordinateur reste à tester en conditions réelles.
+- Un échec partiel n'empêche pas le téléchargement ; le manifeste et le message d'interface signalent les limites. Une liste vide doit être interprétée avec les erreurs du manifeste.
+- Ajout documentaire dans `docs/ACCOUNT_DATA_EXPORT_DESIGN.md`, commit `ccd1f621fe585f7f0d100d2892d1a93c666b3d9e`.
+- Sur le commit parent `967c7b3abfafd0e98960726ef303f76a1876ab20`, `Tests DealHunter` (#731, run `45921173654`) est **success**. `Tests des règles Firestore` (#581, run `45921173659`) est toujours **in_progress** au dernier contrôle ; les tests de l'émulateur sont en cours.
+- Aucune modification du code applicatif, des règles, des données réelles ou des services activés. La CI du nouveau commit documentaire reste à vérifier.
