@@ -173,6 +173,10 @@ def main() -> int:
             print(str(exc), file=sys.stderr)
             return 1
 
+    if not results:
+        print("Réponse GSA vide : publication refusée pour préserver le flux existant.", file=sys.stderr)
+        return 1
+    results, duplicate_count = deduplicate_results(results)
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     normalized = [
         normalize_listing(item, collected_at)
