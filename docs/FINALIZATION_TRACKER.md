@@ -511,3 +511,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Workflow `Tests des règles Firestore` #623 : **success**, contrôle de parité des règles et tests de l'émulateur réussis.
 - Ces résultats valident la tête testée de la PR #28, pas les essais réels multi-comptes, l'export Android, une sauvegarde/restauration ou les paiements.
 - PR #28 reste en brouillon, non fusionnée et non déployée. Aucun accès aux données Firestore réelles, aucune dépense, aucune activation Blaze/Stripe et aucun paiement.
+
+
+## Confirmation CI — commit bde43045 (27 novembre 2026, 14:52 UTC)
+
+- Tête de PR contrôlée : `bde43045ccd230517ca85a26b12d3c45c15b93f5`.
+- Workflow `Tests DealHunter` #774 (run `46019701625`) : **completed / success**.
+- Workflow `Tests des règles Firestore` #624 (run `46019701572`) : **completed / success** ; le job `firestore-rules`, la vérification de parité et les tests de l'émulateur sont réussis.
+- Cette confirmation remplace l'état « en cours » indiqué dans la description précédente de la PR. Elle ne vaut pas test réel multi-comptes, export Android, restauration de sauvegarde ou validation de paiements.
+- PR #28 reste ouverte, en brouillon, non fusionnée et non déployée. Aucun accès aux données Firestore réelles, aucune dépense et aucun service payant activé.
