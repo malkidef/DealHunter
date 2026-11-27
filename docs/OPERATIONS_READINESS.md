@@ -51,3 +51,31 @@ Limites :
 6. Procédure d'intervention humaine documentée.
 
 Statut : **continuité de service non certifiée — ouverture publique bloquée** jusqu'à mise en place et test d'une sauvegarde restaurable.
+
+
+## 7. Décision de continuité sans dépense — 27 novembre 2026
+
+### Ce qui est disponible et ce qui ne l'est pas
+
+- Le projet reste sur Firebase Spark. Aucun export/import Firestore géré n'est configuré ; l'option documentée par Firebase nécessite Blaze et un bucket Cloud Storage.
+- Les workflows GitHub Actions existants utilisent un secret de compte de service pour exécuter les workers matching et notifications. Ce secret donne un accès serveur à Firestore ; il ne doit jamais être réutilisé à la légère pour produire une archive contenant toutes les données personnelles et commerciales.
+- Un artefact GitHub Actions, un fichier JSON téléchargé depuis le navigateur ou les fichiers des collecteurs publics ne constituent pas une sauvegarde complète restaurable.
+- Aucun export de la base, dépôt d'archive, clé de chiffrement, copie hors site ou restauration n'a été effectué ni vérifié dans cette étape.
+
+### Option gratuite envisageable, mais non autorisée/validée à ce stade
+
+Une sauvegarde administrative ponctuelle pourrait être étudiée sans Blaze en utilisant un poste local contrôlé par le propriétaire et un compte de service dédié, temporaire et strictement limité à la lecture des collections nécessaires. Avant toute exécution, il faudrait :
+
+1. Cartographier toutes les collections racines, sous-collections, documents de configuration et données dérivées ; vérifier les limites de pagination et les documents volumineux.
+2. Créer un compte de service distinct avec permissions minimales de lecture, sans réutiliser le compte des workers ; définir sa révocation après opération.
+3. Chiffrer localement l'archive avant toute copie, avec une clé créée et conservée hors du dépôt, des Actions, du fichier d'archive et du poste de travail partagé.
+4. Vérifier l'intégrité par inventaire, comptages et empreintes ; contrôler que les secrets et clés ne figurent pas dans l'archive.
+5. Stocker la copie chiffrée dans un emplacement privé contrôlé par le propriétaire, avec rétention et procédure de suppression définies.
+6. Restaurer dans un projet Firebase isolé, jamais dans la production, puis comparer les comptages et tester les parcours critiques.
+7. Révoquer le compte temporaire et documenter les limites, l'heure de sauvegarde et la fenêtre de perte de données.
+
+Cette option n'est pas encore un mécanisme disponible : elle dépend de la configuration IAM, de la capacité à protéger la clé et d'un test de restauration réel. Aucun outil de sauvegarde gratuit et restaurable n'est certifié à ce jour.
+
+### Décision de sécurité
+
+Ne pas lancer de dump Firestore via GitHub Actions, ne pas publier d'archive en artefact de workflow, ne pas placer de clé de chiffrement dans le dépôt ou les secrets Actions et ne pas activer Blaze. Tant qu'une méthode de sauvegarde complète et de restauration isolée n'a pas été exécutée et vérifiée, la continuité reste non certifiée et l'ouverture publique demeure bloquée.
