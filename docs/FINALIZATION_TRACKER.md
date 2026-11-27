@@ -264,3 +264,21 @@ Ces documents sont des spécifications préparatoires, pas des fonctions opérat
 - Les copies des règles sont actuellement identiques (même blob SHA `6b354a5f2746a2f67f8296e26bd1bb37feca2490`).
 - Le contrôle CI sur la tête actuelle ne retourne aucun run ni statut exploitable via les outils disponibles. Le succès des nouveaux tests reste donc non confirmé ; ne pas considérer ce commit comme validé.
 - Aucun rebase, merge, déploiement, changement de données ou service payant.
+
+
+### Résultat CI confirmé sur le commit de tête — 27 novembre 2026
+
+Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
+
+- Workflow `Tests DealHunter`, run `45904007315` (#726) : **completed / success**.
+  - Tests Python : succès.
+  - Tests du moteur de matching : succès.
+  - Vérification des fonctions Firebase : succès.
+  - Vérification du JavaScript de l'application : succès.
+- Workflow `Tests des règles Firestore`, run `45904007436` (#576) : **completed / success**.
+  - Synchronisation des règles : succès.
+  - Installation des dépendances : succès.
+  - Tests dans l'émulateur Firestore : succès.
+- Les deux workflows ont terminé sans étape en échec selon les résultats GitHub Actions consultés.
+- Cette validation concerne précisément le commit ci-dessus. Tout nouveau commit nécessitera une nouvelle vérification CI.
+- La PR #28 reste en brouillon et non fusionnée. Aucun déploiement ni service payant.
