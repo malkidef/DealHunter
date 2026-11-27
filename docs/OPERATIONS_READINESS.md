@@ -79,3 +79,26 @@ Cette option n'est pas encore un mécanisme disponible : elle dépend de la conf
 ### Décision de sécurité
 
 Ne pas lancer de dump Firestore via GitHub Actions, ne pas publier d'archive en artefact de workflow, ne pas placer de clé de chiffrement dans le dépôt ou les secrets Actions et ne pas activer Blaze. Tant qu'une méthode de sauvegarde complète et de restauration isolée n'a pas été exécutée et vérifiée, la continuité reste non certifiée et l'ouverture publique demeure bloquée.
+
+
+## Contrôle de finalisation — 27 novembre 2026
+
+- La branche de finalisation a été comparée à `main` : état divergent, 181 commits en avance et 5 en retard au contrôle. Ne pas fusionner ni rebaser sans examiner les cinq commits de retard et leurs éventuels conflits de données/snapshots.
+- Les workflows applicatifs et Firestore sur le commit `ce2f0ca55e923f5c8d74df40bbf7f21b4bfcbc7e` sont terminés avec succès : Tests DealHunter et Tests des règles Firestore, y compris le job de l'émulateur.
+- Un test statique supplémentaire a ensuite été ajouté pour empêcher l'export direct de collections partagées (commit `99c92d9e61bdbe4d11993dad4f2190d149daef0c`). Aucun workflow n'est associé à ce commit au dernier contrôle ; ce test n'est donc pas encore validé par CI.
+- Le contrôle de session, l'export personnel filtré et les règles Firestore ont été examinés statiquement. Aucun export réel, test Android, test multi-comptes réel, test de restauration ou paiement sandbox n'est revendiqué.
+- La sauvegarde restaurable reste un bloqueur : aucune méthode gratuite n'a été exécutée et certifiée. Ne pas réutiliser le compte de service des workers, ne pas créer d'archive d'export via Actions et ne pas activer Blaze sans accord explicite et estimation préalable des frais.
+- Aucun lancement public, merge, déploiement, accès aux données de production, changement de compte de service, paiement ou dépense n'a été effectué.
+
+### Portes restantes avant lancement public
+
+1. Déclencher et obtenir une CI verte sur le dernier commit de la PR, incluant le nouveau test d'exclusion des collections partagées.
+2. Examiner les cinq commits de retard par rapport à `main`, résoudre les éventuels conflits, puis obtenir une nouvelle CI complète.
+3. Faire réaliser par le propriétaire les essais Android et multi-comptes sur comptes de test, sans données réelles sensibles.
+4. Concevoir, autoriser et exécuter une sauvegarde chiffrée avec compte temporaire en lecture seule ; restaurer dans un projet isolé et vérifier l'intégrité.
+5. Terminer l'export des données personnelles et le processus de rectification/effacement avec essais réels et revue des droits des tiers.
+6. Migrer et tester Stripe en environnement sandbox, aligner le modèle de transaction, traiter les litiges/transferts et valider les parcours de bout en bout avant toute activation réelle.
+7. Publier un contact officiel, valider les textes et obligations applicables, définir les rôles d'administration et réaliser la revue de sécurité finale.
+8. Obtenir l'accord explicite du propriétaire pour fusion, déploiement et toute dépense éventuelle.
+
+**Conclusion :** la branche contient des améliorations et des tests réussis sur un commit antérieur au dernier test ajouté, mais DealHunter n'est pas certifié prêt pour une ouverture publique. La sauvegarde/restauration, les essais réels, la conformité opérationnelle et les paiements restent des bloqueurs non simulables par une simple modification de code.
