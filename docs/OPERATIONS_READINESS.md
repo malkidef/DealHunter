@@ -102,3 +102,13 @@ Ne pas lancer de dump Firestore via GitHub Actions, ne pas publier d'archive en 
 8. Obtenir l'accord explicite du propriétaire pour fusion, déploiement et toute dépense éventuelle.
 
 **Conclusion :** la branche contient des améliorations et des tests réussis sur un commit antérieur au dernier test ajouté, mais DealHunter n'est pas certifié prêt pour une ouverture publique. La sauvegarde/restauration, les essais réels, la conformité opérationnelle et les paiements restent des bloqueurs non simulables par une simple modification de code.
+
+
+### Résultat de validation CI — 27 novembre 2026, contrôle après mise à jour documentaire
+
+Commit testé : `79f4fdf8d161d5d881791ce8653e31c80fbd67a3`.
+
+- Workflow **Tests DealHunter** : terminé, résultat `success`.
+- Workflow **Tests des règles Firestore** : terminé, résultat `success`, job `firestore-rules` compris.
+- Le test statique qui vérifie que l'export personnel n'interroge pas directement les collections partagées est inclus dans ce commit et couvert par le workflow applicatif.
+- Ces résultats valident les suites automatisées exécutées, pas les parcours de production, la sauvegarde, les paiements, ni la conformité juridique.
