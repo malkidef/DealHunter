@@ -448,3 +448,11 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Commits : collecteur `52421d69051ba0f6c876afcc2b5b94b49d98eed4`, tests `ad88776edff4a3f2b71927c88bcd65771860917e`.
 - Les tests BOAMP ont réussi sur la version antérieure ; les tests BODACC avaient échoué sur l'absence de la fonction `fetch_records`, corrigée dans `c0dc6f3d51b770acc347a41fa843fcf1c60c17f8`. La CI de ce correctif et des nouveaux tests GSA doit encore confirmer le résultat.
 - Aucune collecte GSA réelle, publication de snapshot ou utilisation de clé API n'a été effectuée.
+
+
+## Export personnel — pagination — 27 novembre 2026
+
+- `auth.js` utilise désormais une pagination Firestore par curseur (`orderBy(documentId())`, `startAfter`) et des pages de 250 documents.
+- Plafond de 1 000 documents par collection avec détection du document excédentaire ; les erreurs en cours de lecture conservent les documents déjà récupérés et sont signalées dans le manifeste.
+- Version du format d'export portée à 2. Les données partagées/tiers restent exclues : il ne s'agit toujours pas d'un export RGPD exhaustif.
+- Commit : `61bf667ff9719dc7e43dabca4a17b51840167868`. Validation CI et test réel de téléchargement Android encore requis.
