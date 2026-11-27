@@ -466,3 +466,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Export personnel paginé : tests applicatifs complets réussis sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33` (#762), y compris le contrôle de syntaxe JavaScript et les tests du moteur de matching.
 - Firestore rules #612 : encore en cours au dernier contrôle ; les étapes d'installation sont en cours, l'émulateur n'a pas encore rendu son résultat.
 - Les commits suivants de documentation ont déclenché des exécutions supplémentaires ; ne considérer que les résultats liés au SHA concerné.
+
+
+## État de finalisation général — 27 novembre 2026
+
+- PR #28 toujours ouverte, brouillon et non fusionnée ; comparaison `main...branch` : 160 commits en avance, 5 en retard. Les 5 commits en retard concernent des snapshots de données plus récents sur `main` ; les cinq JSON ne figurent pas dans les 26 fichiers de la comparaison PR, donc aucune synchronisation destructive n'est nécessaire.
+- CI applicative #762 : succès sur le code d'export Firestore paginé et les tests applicatifs associés.
+- CI Firestore #612 : émulateur encore en cours au dernier contrôle.
+- Les collecteurs BOAMP/BODACC/GSA ont leurs tests applicatifs validés sur des commits respectifs ; TED était déjà validé.
+- Bloqueurs : test réel Android/multi-comptes de l'export, effacement complet, sauvegarde chiffrée restaurable testée, paiements Stripe E2E et interface d'arbitrage, coordonnées de contact et cadre juridique.
+- Aucune dépense, activation Blaze, collecte live GSA, écriture de données Firebase, fusion PR, déploiement production ou opération de paiement.
