@@ -105,18 +105,14 @@ class TedCollectorPaginationTests(unittest.TestCase):
 
     def test_invalid_response_keeps_failure_explicit(self):
         import scripts.collect_ted as collector
-        original = collector.urlopen
         class FakeResponse:
             def __enter__(self): return self
             def __exit__(self, *args): return False
             def read(self): return json.dumps({"timedOut": True}).encode()
+        original_open = collector.urllib.request.urlopen
         try:
-            original_open = collector.urllib.request.urlopen
             collector.urllib.request.urlopen = lambda request, timeout: FakeResponse()
-            try:
-                with self.assertRaises(RuntimeError):
-                    collector.fetch_page("PD>=20261101", 1)
-            finally:
-                collector.urllib.request.urlopen = original_open
+            with self.assertRaises(RuntimeError):
+                collector.fetch_page("PD>=20261101", 1)
         finally:
-            pass
+            collector.urllib.request.urlopen = original_open
