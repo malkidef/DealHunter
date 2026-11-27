@@ -318,3 +318,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Aucun formulaire utilisateur, aucune purge automatisée, aucun accès ou changement de données réelles ; cette documentation ne remplace pas la validation juridique ni un canal de contact publié.
 - Commit documentaire : `4d00becf5b2bc01bf9e564f37486faad08165ebc`.
 - CI confirmée sur commit documentaire précédent `dfa5b0303b455bb2fba39d995434ae87914e4f86` : `Tests DealHunter` #733 et `Tests des règles Firestore` #583 sont **success**. Ces runs ne couvrent pas le nouveau commit de checklist.
+
+
+### Revue sauvegarde gratuite / Spark — 27 novembre 2026
+
+- Inspection des workflows matching et notifications : ils utilisent le secret serveur `FIREBASE_SERVICE_ACCOUNT` pour accéder à Firestore. Il n'est pas réutilisé pour créer une archive de données.
+- Conclusion sécurité : ne pas produire de dump complet via GitHub Actions ni publier une archive sensible en artefact ; aucun chiffrement hors dépôt ni restauration isolée n'est actuellement vérifié.
+- Ajout dans `docs/OPERATIONS_READINESS.md` d'une option locale gratuite à étudier : compte de service distinct en lecture seule et temporaire, chiffrement local avec clé hors dépôt, inventaire/intégrité, stockage privé contrôlé, restauration dans un projet isolé et révocation du compte temporaire.
+- Cette option est une piste, pas une sauvegarde opérationnelle. Pas de dump lancé, pas de clé créée, pas de compte de service créé/modifié, pas de donnée Firestore lue, pas de coût engagé et pas d'activation Blaze.
+- Commit documentaire : `79836c462f4df8a01b71fa15ac8eae252dcf5e8c`.
+- Dernière validation CI confirmée avant cet ajout : commit `dfa5b0303b455bb2fba39d995434ae87914e4f86`, workflows `Tests DealHunter` #733 et `Tests des règles Firestore` #583 : **success**. Aucun run exploitable n'est encore retourné pour le nouveau commit documentaire.
