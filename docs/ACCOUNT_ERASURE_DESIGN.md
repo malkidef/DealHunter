@@ -100,3 +100,29 @@ Une première interface de rectification est maintenant présente sur la branche
 - les champs entreprise sont réinitialisés lors d'une déconnexion ou d'un changement de compte pour éviter l'affichage des informations du compte précédent.
 
 Cette étape ne traite pas encore les rectifications des annonces, messages, transactions, demandes partagées ni données conservées par les fournisseurs. Elle doit être validée par des essais réels sur plusieurs comptes avant intégration.
+
+
+## 9. Préparation d'un dossier d'effacement — protocole de triage sans suppression automatique
+
+Cette étape formalise un protocole d'accueil et de triage à appliquer manuellement tant que l'effacement automatisé n'est pas implémenté. Elle n'ajoute aucune interface, ne crée aucun dossier utilisateur et n'exécute aucune opération Firebase.
+
+### Liste de contrôle pour le responsable
+
+- [ ] Vérifier l'identité de manière proportionnée (sans collecter de pièce d'identité par défaut).
+- [ ] Consigner un identifiant de dossier non parlant, la date de réception et les catégories demandées.
+- [ ] Vérifier l'état des annonces, demandes, mises en relation, transactions, avis, signalements et vérifications entreprise.
+- [ ] Distinguer les données publiques à retirer immédiatement, les données privées à rectifier/supprimer, les données partagées à examiner et les preuves à conserver si une base légale est définie.
+- [ ] Inventorier les sous-collections, notifications, suggestions, données dérivées, journaux et copies éventuelles.
+- [ ] Définir et documenter la décision de conservation pour chaque famille avant toute action.
+- [ ] Préparer une simulation (compte fictif uniquement), avec décompte et liste de chemins/documents ciblés ; aucune écriture.
+- [ ] Faire relire le plan par une seconde personne habilitée avant toute suppression réelle.
+- [ ] Si la suppression réelle est approuvée, exécuter par étapes idempotentes, vérifier chaque étape et conserver un journal minimal sans contenu supprimé.
+- [ ] Vérifier que matching/notifications ne recréent pas les données neutralisées ; contrôler l'effet des sauvegardes/restaurations.
+- [ ] Supprimer le compte Auth en dernier, si cela est approprié et autorisé ; vérifier les sessions et le résultat final.
+- [ ] Communiquer la réponse au demandeur et consigner la clôture.
+
+### Séparation des états
+
+reçue → identité vérifiée → inventaire → décisions de conservation → simulation → approbation distincte → exécution contrôlée → vérification → réponse → clôturée.
+
+Un dossier ne doit jamais avancer automatiquement de la simulation à l'exécution. Une demande n'autorise pas à elle seule la destruction des documents transactionnels, des données de tiers ou des preuves de modération. Les délais de réponse, bases légales et exceptions doivent être validés par le responsable et son conseil.
