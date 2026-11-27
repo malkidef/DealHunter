@@ -223,3 +223,20 @@ test("l’export des demandes de vérification exclut les notes et métadonnées
   assert.match(auth, /Object\.fromEntries\(verificationRequestExportFields/);
   assert.doesNotMatch(auth.slice(auth.indexOf("const verificationRequestExportFields"), auth.indexOf("const normalize = value")), /reviewerNote|reviewedAt|revokedAt/);
 });
+
+test("l’export personnel n’interroge pas les collections de données partagées", () => {
+  const exportStart = auth.indexOf("const exportAccountData = async user =>");
+  const exportEnd = auth.indexOf("if (exportAccountDataButton)", exportStart);
+  assert.ok(exportStart >= 0 && exportEnd > exportStart, "Fonction d’export introuvable");
+  const exporter = auth.slice(exportStart, exportEnd);
+  for (const sharedCollection of [
+    "matchRequests", "matchMessages", "matchContacts", "deals", "dealReviews",
+    "serviceMatchRequests", "workMatchRequests"
+  ]) {
+    assert.doesNotMatch(exporter, new RegExp('["\\\\x27]' + sharedCollection + '["\\\\x27]'),
+      "La collection partagée " + sharedCollection + " ne doit pas être exportée sans projection dédiée");
+  }
+  assert.match(exporter, /Demandes de mise en relation impliquant d’autres personnes/);
+  assert.match(exporter, /Transactions et avis partagés/);
+  assert.match(exporter, /Conversations et messages partagés/);
+});
