@@ -47,3 +47,14 @@
 - Ne jamais présenter Stripe Connect comme un compte séquestre.
 
 Le code backend d'arbitrage est présent, mais les scénarios Stripe de bout en bout décrits ici restent à exécuter en environnement de test. Le document ne signifie pas que les paiements, remboursements ou transferts ont déjà été réalisés.
+
+
+## Audit complémentaire du code de paiement — 27 novembre 2026
+
+- Le flux métier implémenté dans `payments.js` correspond à un paiement sur la plateforme suivi d'un transfert différé au vendeur après confirmations bilatérales : il s'agit d'un modèle « separate charges and transfers ». La commission indicative est calculée par retenue de 5 % sur le montant brut ; le vendeur reçoit 95 % avant prise en compte des frais Stripe, qui peuvent réduire la marge nette de DealHunter.
+- Le code ne doit jamais être décrit comme un compte séquestre. Les règles Stripe et le cadre juridique du rôle de marchand/intermédiaire doivent être validés avant tout lancement.
+- Deux corrections sûres ont été faites dans la branche : la callable d'arbitrage utilise désormais le claim `dealhunterAdmin` déjà utilisé par les règles Firestore et l'interface de vérification ; Checkout ne force plus `payment_method_types: [card]` et laisse Stripe sélectionner dynamiquement les moyens éligibles.
+- Le code de création de compte connecté reste basé sur l'ancienne API Connect v1 (`stripe.accounts.create({ type: 'express' })`) et sur les anciens Account Links. Les contrôles de capacité s'appuient également sur les champs v1 `payouts_enabled`/`charges_enabled`. Une migration vers Accounts v2, les responsabilités de compte et les contrôles de capacité v2 est requise avant toute activation.
+- Le package Stripe est actuellement `^18.0.0`; la mise à niveau vers la version SDK actuelle doit être traitée avec la migration Connect et validée dans un environnement Stripe de test isolé.
+- Le webhook de litige bloque les transferts non encore effectués, mais ne déclenche pas actuellement de reversal automatique lorsqu'un transfert vendeur a déjà été exécuté. Le traitement de contestation après versement reste donc un bloqueur financier ; le plan de test doit couvrir reversal, échec de reversal et réconciliation manuelle.
+- L'interface d'administration des litiges n'existe pas ; la callable backend ne suffit pas à exploiter le processus. Aucun test Stripe de bout en bout, aucune clé, aucun webhook, aucune Cloud Function et aucun paiement réel n'ont été activés.

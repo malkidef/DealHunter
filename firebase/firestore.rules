@@ -9,8 +9,39 @@ service cloud.firestore {
 
     // Profil privé : chaque entreprise ne lit et ne modifie que son propre profil.
     match /users/{userId} {
-      allow read, create, update: if request.auth != null
-        && request.auth.uid == userId;
+      function validPrivateUserProfile() {
+        return request.resource.data.keys().hasOnly([
+          "uid", "email", "displayName", "photoURL", "createdAt", "updatedAt", "company"
+        ])
+        && (!("uid" in request.resource.data) || request.resource.data.uid == userId)
+        && (!("email" in request.resource.data) || request.resource.data.email == null || request.resource.data.email is string)
+        && (!("displayName" in request.resource.data) || request.resource.data.displayName == null || request.resource.data.displayName is string)
+        && (!("photoURL" in request.resource.data) || request.resource.data.photoURL == null || request.resource.data.photoURL is string)
+        && (!("createdAt" in request.resource.data) || request.resource.data.createdAt is timestamp)
+        && (!("updatedAt" in request.resource.data) || request.resource.data.updatedAt is timestamp)
+        && (!("company" in request.resource.data) || (
+          request.resource.data.company is map
+          && request.resource.data.company.keys().hasOnly(["name", "country", "phone", "updatedAt"])
+          && (!("name" in request.resource.data.company) || (
+            request.resource.data.company.name is string
+            && request.resource.data.company.name.size() >= 2
+            && request.resource.data.company.name.size() <= 120
+          ))
+          && (!("country" in request.resource.data.company) || (
+            request.resource.data.company.country is string
+            && request.resource.data.company.country.matches("^[A-Z]{2}$")
+          ))
+          && (!("phone" in request.resource.data.company) || (
+            request.resource.data.company.phone is string
+            && request.resource.data.company.phone.size() <= 30
+          ))
+          && (!("updatedAt" in request.resource.data.company) || request.resource.data.company.updatedAt is timestamp)
+        ));
+      }
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && validPrivateUserProfile();
       allow delete: if false;
 
       match /sellerOffers/{offerId} {
@@ -38,11 +69,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.unitPrice is number
+        && request.resource.data.unitPrice > 0
+        && request.resource.data.unitPrice <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -56,6 +99,7 @@ service cloud.firestore {
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == resource.data.createdAt
         && validOffer();
       allow delete: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid;
@@ -73,11 +117,23 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.product is string
+        && request.resource.data.product.size() > 0
+        && request.resource.data.product.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.maxUnitBudget is number
+        && request.resource.data.maxUnitBudget > 0
+        && request.resource.data.maxUnitBudget <= 1000000000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.status == "active"
         && (!("unit" in request.resource.data) || (request.resource.data.unit is string && request.resource.data.unit.size() > 0 && request.resource.data.unit.size() <= 20))
         && (!("currency" in request.resource.data) || (request.resource.data.currency is string && request.resource.data.currency.matches("^[A-Z]{3}$")))
@@ -91,6 +147,7 @@ service cloud.firestore {
       allow update: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid
         && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt == resource.data.createdAt
         && validNeed();
       allow delete: if hasVerifiedEmail()
         && resource.data.ownerUid == request.auth.uid;
@@ -134,8 +191,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.status == "active"
         && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.ownerUid == request.resource.data.buyerUid
         && get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.status == "active"
+        // Les informations affichées dans la demande doivent provenir des annonces réelles.
+        && request.resource.data.product == get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.product
         && request.resource.data.requesterCompany is string
+        && request.resource.data.requesterCompany == (
+          request.resource.data.requesterUid == request.resource.data.sellerUid
+            ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+            : get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+        )
         && request.resource.data.recipientCompany is string
+        && request.resource.data.recipientCompany == (
+          request.resource.data.recipientUid == request.resource.data.sellerUid
+            ? get(/databases/$(database)/documents/publicOffers/$(request.resource.data.sellerId)).data.company
+            : get(/databases/$(database)/documents/publicNeeds/$(request.resource.data.buyerId)).data.company
+        )
         && request.resource.data.product is string
         && request.resource.data.createdAt is timestamp;
       // Seuls les deux participants peuvent lire une demande.
@@ -185,7 +254,9 @@ service cloud.firestore {
       function acceptedDealRequest() {
         return exists(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId))
           && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.status == "accepted"
-          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids;
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.participantUids == request.resource.data.participantUids
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.sellerUid == request.resource.data.sellerUid
+          && get(/databases/$(database)/documents/matchRequests/$(request.resource.data.requestId)).data.buyerUid == request.resource.data.buyerUid;
       }
       allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
       allow create: if hasVerifiedEmail()
@@ -215,14 +286,19 @@ service cloud.firestore {
         && request.resource.data.product.size() <= 160
         && request.resource.data.quantity is int
         && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= 1000000000
         && request.resource.data.unitPrice is number
         && request.resource.data.unitPrice > 0
+        && request.resource.data.unitPrice <= 1000000000
         && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount > 0
+        && request.resource.data.totalAmount <= 1000000000000
         // Le total est arrondi au centime côté interface : tolérance de 0,005 €.
         && request.resource.data.totalAmount >= request.resource.data.quantity * request.resource.data.unitPrice - 0.005
         && request.resource.data.totalAmount <= request.resource.data.quantity * request.resource.data.unitPrice + 0.005
         && request.resource.data.commissionRate == 5
         && request.resource.data.commissionAmount is number
+        && request.resource.data.commissionAmount <= 50000000000
         // La commission reste indicative et doit correspondre à 5 % du total, au centime près.
         && request.resource.data.commissionAmount >= request.resource.data.totalAmount * 0.05 - 0.005
         && request.resource.data.commissionAmount <= request.resource.data.totalAmount * 0.05 + 0.005
@@ -348,12 +424,26 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid is string
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
+        && (!("requiredQualifications" in request.resource.data)
+          || (request.resource.data.requiredQualifications is list
+            && request.resource.data.requiredQualifications.size() <= 30))
+        && (!("remoteAccepted" in request.resource.data) || request.resource.data.remoteAccepted is bool)
         && request.resource.data.remote is bool
         && request.resource.data.coverageRadiusKm is number
         && request.resource.data.coverageRadiusKm >= 0
@@ -391,7 +481,9 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 30
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 30
         && request.resource.data.remote is bool
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.coverageRadiusKm is number
@@ -441,10 +533,22 @@ service cloud.firestore {
         && request.resource.data.requesterUid == request.auth.uid
         && request.resource.data.recipientUid in request.resource.data.participantUids
         && request.resource.data.recipientUid != request.auth.uid
-        && request.resource.data.requesterCompany is string
-        && request.resource.data.recipientCompany is string
-        && request.resource.data.serviceTitle is string
-        && request.resource.data.needTitle is string
+        && request.resource.data.recipientUid == (
+          request.resource.data.requesterUid == request.resource.data.providerUid
+            ? request.resource.data.clientUid : request.resource.data.providerUid
+        )
+        && request.resource.data.requesterCompany == (
+          request.resource.data.requesterUid == request.resource.data.providerUid
+            ? get(/databases/$(database)/documents/publicServiceOffers/$(request.resource.data.offerId)).data.company
+            : get(/databases/$(database)/documents/publicServiceRequests/$(request.resource.data.serviceRequestId)).data.company
+        )
+        && request.resource.data.recipientCompany == (
+          request.resource.data.recipientUid == request.resource.data.providerUid
+            ? get(/databases/$(database)/documents/publicServiceOffers/$(request.resource.data.offerId)).data.company
+            : get(/databases/$(database)/documents/publicServiceRequests/$(request.resource.data.serviceRequestId)).data.company
+        )
+        && request.resource.data.serviceTitle == get(/databases/$(database)/documents/publicServiceOffers/$(request.resource.data.offerId)).data.title
+        && request.resource.data.needTitle == get(/databases/$(database)/documents/publicServiceRequests/$(request.resource.data.serviceRequestId)).data.title
         && request.resource.data.status == "pending"
         && request.resource.data.createdAt is timestamp;
       allow read: if request.auth != null && request.auth.uid in resource.data.participantUids;
@@ -500,15 +604,25 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.skills is list
+        && request.resource.data.skills.size() <= 40
         && request.resource.data.qualifications is list
+        && request.resource.data.qualifications.size() <= 40
         && request.resource.data.engagementTypes is list
         && request.resource.data.engagementTypes.size() > 0
+        && request.resource.data.engagementTypes.size() <= 2
         && request.resource.data.engagementTypes.hasOnly(["employment","independent"])
         && request.resource.data.availableFrom is string
         && request.resource.data.remote is bool
@@ -538,16 +652,28 @@ service cloud.firestore {
         ])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.company is string
+        && request.resource.data.company.size() > 0
+        && request.resource.data.company.size() <= 120
         && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 160
         && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() <= 80
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 4000
         && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 120
         && request.resource.data.countryCode is string
         && request.resource.data.countryCode.matches("^[A-Z]{2}$")
         && request.resource.data.requiredSkills is list
+        && request.resource.data.requiredSkills.size() <= 40
         && request.resource.data.requiredQualifications is list
+        && request.resource.data.requiredQualifications.size() <= 40
         && request.resource.data.engagementType in ["employment","independent"]
         && request.resource.data.startDate is string
+        && request.resource.data.startDate.size() <= 40
         && request.resource.data.remoteAccepted is bool
         && request.resource.data.status == "active"
         && request.resource.data.createdAt is timestamp
@@ -617,6 +743,80 @@ service cloud.firestore {
     }
 
     // Vérification manuelle des entreprises et qualifications, sans dépôt de pièces privées.
+    match /companyProfiles/{ownerUid} {
+      function validCompanyProfile() {
+        return request.resource.data.keys().hasOnly(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.keys().hasAll(["ownerUid","companyName","countryCode","updatedAt"])
+          && request.resource.data.ownerUid == ownerUid
+          && request.resource.data.companyName is string
+          && request.resource.data.companyName.size() >= 2
+          && request.resource.data.companyName.size() <= 120
+          && request.resource.data.countryCode is string
+          && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+          && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.uid == ownerUid
+        && validCompanyProfile();
+      allow update: if request.auth != null
+        && request.auth.uid == ownerUid
+        && validCompanyProfile()
+        && (!exists(/databases/$(database)/documents/companyVerifications/$(ownerUid))
+          || (request.resource.data.companyName == resource.data.companyName
+            && request.resource.data.countryCode == resource.data.countryCode));
+      allow delete: if false;
+    }
+
+    // Preuve publique minimale de vérification d'une entreprise.
+    // Seul un réviseur autorisé peut la créer/modifier ; l'approbation et la preuve sont atomiques.
+    match /companyVerifications/{ownerUid} {
+      function isDealHunterAdmin() {
+        return request.auth != null && request.auth.token.dealhunterAdmin == true;
+      }
+      function validCompanyVerification() {
+        let verificationPath = /databases/$(database)/documents/verificationRequests/$(request.resource.data.verificationRequestId);
+        let companyProfilePath = /databases/$(database)/documents/companyProfiles/$(ownerUid);
+        return request.resource.data.keys().hasOnly([
+          "ownerUid","companyName","countryCode","verificationRequestId","status","verifiedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "ownerUid","companyName","countryCode","verificationRequestId","status","verifiedAt"
+        ])
+        && request.resource.data.ownerUid == ownerUid
+        && request.resource.data.companyName is string
+        && request.resource.data.companyName.size() >= 2
+        && request.resource.data.companyName.size() <= 160
+        && request.resource.data.countryCode is string
+        && request.resource.data.countryCode.matches("^[A-Z]{2}$")
+        && request.resource.data.status == "verified"
+        && request.resource.data.verifiedAt is timestamp
+        && existsAfter(verificationPath)
+        && getAfter(verificationPath).data.ownerUid == ownerUid
+        && getAfter(verificationPath).data.subjectType == "company"
+        && getAfter(verificationPath).data.subjectName == request.resource.data.companyName
+        && getAfter(verificationPath).data.countryCode == request.resource.data.countryCode
+        && getAfter(verificationPath).data.status == "verified"
+        && exists(companyProfilePath)
+        && get(companyProfilePath).data.companyName == request.resource.data.companyName
+        && get(companyProfilePath).data.countryCode == request.resource.data.countryCode;
+      }
+      allow read: if request.auth != null
+        && (ownerUid == request.auth.uid || resource.data.status == "verified" || isDealHunterAdmin());
+      allow create: if isDealHunterAdmin()
+        && !exists(/databases/$(database)/documents/companyVerifications/$(ownerUid))
+        && validCompanyVerification();
+      allow update: if isDealHunterAdmin()
+        && resource.data.verificationRequestId == request.resource.data.verificationRequestId
+        && validCompanyVerification();
+      allow delete: if isDealHunterAdmin()
+        && existsAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId))
+        && getAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId)).data.status == "revoked"
+        && getAfter(/databases/$(database)/documents/verificationRequests/$(resource.data.verificationRequestId)).data.ownerUid == ownerUid
+        && !existsAfter(/databases/$(database)/documents/companyVerifications/$(ownerUid));
+    }
+
+    // Vérification manuelle des entreprises et qualifications, sans dépôt de pièces privées.
     match /verificationRequests/{verificationId} {
       function isDealHunterAdmin() {
         return request.auth != null && request.auth.token.dealhunterAdmin == true;
@@ -645,7 +845,9 @@ service cloud.firestore {
         && request.resource.data.publicEvidenceUrl.size() <= 500
         && request.resource.data.status == "pending"
         && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && (request.resource.data.subjectType != "company"
+          || !exists(/databases/$(database)/documents/companyVerifications/$(request.auth.uid)));
       }
       allow create: if request.auth != null && validVerificationRequest();
       allow read: if request.auth != null
@@ -656,7 +858,19 @@ service cloud.firestore {
           && request.resource.data.status in ["verified","rejected"]
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","reviewedAt"])
           && request.resource.data.reviewedAt is timestamp
-          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500)))
+          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500))
+          && (request.resource.data.status != "verified" || resource.data.subjectType != "company"
+            || (existsAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid))
+              && getAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid)).data.verificationRequestId == verificationId)))
+        ||
+        (isDealHunterAdmin()
+          && resource.data.status == "verified"
+          && resource.data.subjectType == "company"
+          && request.resource.data.status == "revoked"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status","reviewerNote","revokedAt"])
+          && request.resource.data.revokedAt is timestamp
+          && (!("reviewerNote" in request.resource.data) || (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() <= 500))
+          && !existsAfter(/databases/$(database)/documents/companyVerifications/$(resource.data.ownerUid)))
         ||
         (resource.data.ownerUid == request.auth.uid
           && resource.data.status == "pending"

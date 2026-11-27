@@ -1,4 +1,4 @@
-name: TED — avis acheteurs publics (automatique + manuel)
+name: TED — actualisation manuelle des avis acheteurs publics
 
 on:
   workflow_dispatch:
@@ -12,15 +12,18 @@ on:
         required: false
         default: "100"
         type: string
-  schedule:
-    - cron: "30 11 */2 * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: ted-feed-publication
+  cancel-in-progress: false
+
 jobs:
   fetch-ted-notices:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4

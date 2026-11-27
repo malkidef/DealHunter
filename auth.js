@@ -5,7 +5,7 @@ import {
   sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit
+  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot, orderBy, documentId, startAfter
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -32,6 +32,7 @@ const googleButton = document.getElementById("googleSignIn");
 const appleButton = document.getElementById("appleSignIn");
 const signOutButton = document.getElementById("signOut");
 const resendVerificationButton = document.getElementById("resendVerification");
+const exportAccountDataButton = document.getElementById("exportAccountData");
 const ready = Object.values(firebaseConfig).every(value =>
   typeof value === "string" && value.length > 0 && !value.includes("A_REMPLACER")
 );
@@ -74,11 +75,24 @@ if (!ready) {
     password: document.getElementById("authPassword").value
   });
 
-  const loadNotifications = async user => {
-    const snapshot = await getDocs(query(collection(db, "notifications"), where("recipientUid", "==", user.uid), limit(50)));
-    const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
-      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-    window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
+  let unsubscribeNotifications = null;
+  const startNotificationsListener = user => {
+    if (unsubscribeNotifications) unsubscribeNotifications();
+    const notificationsQuery = query(
+      collection(db, "notifications"),
+      where("recipientUid", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
+    unsubscribeNotifications = onSnapshot(notificationsQuery, snapshot => {
+      const notifications = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications } }));
+    }, error => {
+      console.error("Écoute des notifications Firestore interrompue :", error);
+      status.append(document.createTextNode(" · Notifications indisponibles : " +
+        (error.code || error.message || "erreur Firestore") + "."));
+    });
   };
 
   window.addEventListener("dealhunter-mark-notification-read", async event => {
@@ -86,7 +100,7 @@ if (!ready) {
     if (!auth.currentUser || !notificationId || notificationId.length > 180) return;
     try {
       await updateDoc(doc(db, "notifications", notificationId), { readAt: serverTimestamp() });
-      await loadNotifications(auth.currentUser);
+      // L'écoute temps réel répercute automatiquement le changement de readAt.
     } catch (error) {
       console.error("Impossible de marquer la notification comme lue :", error);
       status.textContent = "Impossible de mettre à jour cette notification. Réessaie.";
@@ -571,6 +585,15 @@ if (!ready) {
       ...[...staleOfferIds].map(id => doc(db, "publicOffers", id)),
       ...[...staleNeedIds].map(id => doc(db, "publicNeeds", id))
     ];
+    const companyVerificationRead = await getDocs(
+      query(collection(db, "companyVerifications"), where("status", "==", "verified"), limit(500))
+    ).catch(error => {
+      console.warn("Statuts de vérification entreprise indisponibles :", error);
+      return null;
+    });
+    const verifiedCompanies = companyVerificationRead
+      ? companyVerificationRead.docs.map(item => ({ id: item.id, ...item.data() }))
+      : [];
     const sellers = publicSellerSnapshot.docs.filter(item => !staleOfferIds.has(item.id)).map(item => {
       const data = item.data();
       return {
@@ -598,7 +621,7 @@ if (!ready) {
     // Publie immédiatement le catalogue produits : les modules optionnels (services,
     // emploi, vérification) ne doivent jamais laisser l'écran produit sur « Chargement… ».
     window.dispatchEvent(new CustomEvent("dealhunter-cloud-data", {
-      detail: { sellers, buyers }
+      detail: { sellers, buyers, verifiedCompanies }
     }));
 
     // Le nettoyage est secondaire : une erreur de suppression ne bloque pas l'affichage.
@@ -937,6 +960,15 @@ if (!ready) {
       return;
     }
     try {
+      const existingRequests = await getDocs(query(
+        collection(db, "verificationRequests"),
+        where("ownerUid", "==", user.uid),
+        limit(500)
+      ));
+      if (existingRequests.docs.some(item => item.data().subjectType === subjectType &&
+          ["pending", "verified"].includes(item.data().status))) {
+        throw new Error("Une demande est déjà en attente ou une vérification est déjà active pour ce sujet.");
+      }
       await addDoc(collection(db, "verificationRequests"), {
         ownerUid: user.uid, subjectType, subjectName, countryCode, evidenceLabel,
         publicEvidenceUrl, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
@@ -953,24 +985,73 @@ if (!ready) {
   window.addEventListener("dealhunter-review-verification-request", async event => {
     const user = auth.currentUser, { requestId, decision } = event.detail || {};
     const finish=(success,message)=>{status.textContent=message;window.dispatchEvent(new CustomEvent("dealhunter-verification-review-result",{detail:{success,message,requestId,decision}}));};
-    if (!user || !requestId || !["verified", "rejected", "withdrawn"].includes(decision)) { finish(false,"Action de vérification invalide."); return; }
+    if (!user || !requestId || !["verified", "rejected", "withdrawn", "revoked"].includes(decision)) { finish(false,"Action de vérification invalide."); return; }
     try {
       const token = await user.getIdTokenResult();
       const ref = doc(db, "verificationRequests", requestId);
       const snapshot = await getDoc(ref);
-      if (!snapshot.exists() || snapshot.data().status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+      if (!snapshot.exists()) throw new Error("Demande introuvable.");
+      const requestData = snapshot.data();
       if (decision === "withdrawn") {
-        if (snapshot.data().ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
+        if (requestData.status !== "pending") throw new Error("Seule une demande en attente peut être retirée.");
+        if (requestData.ownerUid !== user.uid) throw new Error("Seul le propriétaire peut retirer sa demande.");
         await updateDoc(ref, { status: "withdrawn", updatedAt: serverTimestamp() });
       } else {
         if (token.claims.dealhunterAdmin !== true) throw new Error("Réservé aux réviseurs autorisés.");
-        await updateDoc(ref, {
-          status: decision,
-          reviewerNote: "Décision enregistrée par un réviseur autorisé.",
-          reviewedAt: serverTimestamp()
-        });
+        if (decision === "revoked") {
+          if (requestData.status !== "verified" || requestData.subjectType !== "company") throw new Error("Seule une entreprise vérifiée peut être révoquée.");
+          const verificationRef = doc(db, "companyVerifications", requestData.ownerUid);
+          const verificationSnapshot = await getDoc(verificationRef);
+          if (!verificationSnapshot.exists() || verificationSnapshot.data().verificationRequestId !== requestId) throw new Error("Preuve de vérification absente ou non liée à cette demande.");
+          const batch = writeBatch(db);
+          batch.delete(verificationRef);
+          batch.update(ref, {
+            status: "revoked",
+            reviewerNote: "Vérification révoquée par un réviseur autorisé.",
+            revokedAt: serverTimestamp()
+          });
+          await batch.commit();
+        } else {
+          if (requestData.status !== "pending") throw new Error("Cette demande n'est plus en attente.");
+          if (decision === "verified" && requestData.subjectType === "company") {
+          const requestData = snapshot.data();
+          const profileSnapshot = await getDoc(doc(db, "companyProfiles", requestData.ownerUid));
+          const companyProfile = profileSnapshot.exists() ? profileSnapshot.data() : null;
+          const companyName = String(companyProfile?.companyName || "").trim();
+          const companyCountry = String(companyProfile?.countryCode || "").trim().toUpperCase();
+          if (!companyName || companyName !== requestData.subjectName || companyCountry !== requestData.countryCode) {
+            throw new Error("Le nom et le pays du profil entreprise doivent correspondre exactement à la demande avant validation.");
+          }
+          const verificationRef = doc(db, "companyVerifications", requestData.ownerUid);
+          const existingVerification = await getDoc(verificationRef);
+          if (existingVerification.exists() && existingVerification.data().verificationRequestId !== requestId) {
+            throw new Error("Une autre demande a déjà validé cette entreprise. Révoque d'abord la vérification active.");
+          }
+          const batch = writeBatch(db);
+          batch.set(verificationRef, {
+            ownerUid: requestData.ownerUid,
+            companyName,
+            countryCode: companyCountry,
+            verificationRequestId: requestId,
+            status: "verified",
+            verifiedAt: serverTimestamp()
+          });
+          batch.update(ref, {
+            status: "verified",
+            reviewerNote: "Entreprise contrôlée par un réviseur autorisé.",
+            reviewedAt: serverTimestamp()
+          });
+          await batch.commit();
+          } else {
+            await updateDoc(ref, {
+              status: decision,
+              reviewerNote: "Décision enregistrée par un réviseur autorisé.",
+              reviewedAt: serverTimestamp()
+            });
+          }
+        }
       }
-      finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
+      finish(true,decision === "withdrawn" ? "Demande retirée." : decision === "revoked" ? "Vérification révoquée." : decision === "verified" ? "Vérification validée." : "Demande refusée.");
       try{await loadCloudRecords(user);}catch(refreshError){console.error("Décision enregistrée, actualisation impossible :",refreshError);}
     } catch (error) {
       console.error("Décision de vérification impossible :", error);
@@ -1115,6 +1196,182 @@ if (!ready) {
     }
   });
 
+  const exportAccountData = async user => {
+    if (!user || auth.currentUser?.uid !== user.uid) throw new Error("Compte non connecté.");
+    if (!user.emailVerified) throw new Error("Vérifie ton adresse e-mail avant de demander l’export.");
+    const lastSignIn = Date.parse(user.metadata?.lastSignInTime || "");
+    if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > 15 * 60 * 1000) {
+      throw new Error("Pour protéger tes données, déconnecte-toi puis reconnecte-toi avant de relancer l’export.");
+    }
+
+    const generatedAt = new Date().toISOString();
+    const collections = {};
+    const errors = [];
+    const MAX_EXPORT_DOCUMENTS_PER_COLLECTION = 1000;
+    const EXPORT_PAGE_SIZE = 250;
+    const readOwnedCollection = async (label, collectionPath, field) => {
+      const docs = [];
+      let cursor = null;
+      let truncated = false;
+      try {
+        const baseCollection = collection(db, ...collectionPath);
+        while (docs.length <= MAX_EXPORT_DOCUMENTS_PER_COLLECTION) {
+          const pageLimit = Math.min(EXPORT_PAGE_SIZE, MAX_EXPORT_DOCUMENTS_PER_COLLECTION + 1 - docs.length);
+          const constraints = [];
+          if (field) constraints.push(where(field, "==", user.uid));
+          constraints.push(orderBy(documentId()));
+          if (cursor) constraints.push(startAfter(cursor));
+          constraints.push(limit(pageLimit));
+          const snapshot = await getDocs(query(baseCollection, ...constraints));
+          if (!snapshot.docs.length) break;
+          docs.push(...snapshot.docs);
+          cursor = snapshot.docs[snapshot.docs.length - 1];
+          if (snapshot.size < pageLimit) break;
+          if (docs.length > MAX_EXPORT_DOCUMENTS_PER_COLLECTION) break;
+        }
+        truncated = docs.length > MAX_EXPORT_DOCUMENTS_PER_COLLECTION;
+        collections[label] = docs.slice(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION)
+          .map(item => ({ id: item.id, ...item.data() }));
+        if (truncated) {
+          errors.push(label + " : plus de " + MAX_EXPORT_DOCUMENTS_PER_COLLECTION +
+            " documents ; export partiel plafonné après pagination.");
+        }
+      } catch (error) {
+        collections[label] = docs.slice(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION)
+          .map(item => ({ id: item.id, ...item.data() }));
+        errors.push(label + " : lecture interrompue après " + docs.length +
+          " document(s) (" + (error.code || error.message || "erreur inconnue") + ").");
+      }
+    };
+    const readOwnDocument = async (label, path) => {
+      try {
+        const snapshot = await getDoc(doc(db, ...path));
+        collections[label] = snapshot.exists() ? [{ id: snapshot.id, ...snapshot.data() }] : [];
+      } catch (error) {
+        collections[label] = [];
+        errors.push(label + " : " + (error.code || error.message || "lecture impossible"));
+      }
+    };
+
+    await readOwnDocument("profil_prive", ["users", user.uid]);
+    await readOwnedCollection("stocks_prives", ["users", user.uid, "sellerOffers"], null);
+    await readOwnedCollection("besoins_prives", ["users", user.uid, "buyerNeeds"], null);
+    await Promise.all([
+      readOwnedCollection("annonces_produits", ["publicOffers"], "ownerUid"),
+      readOwnedCollection("besoins_produits", ["publicNeeds"], "ownerUid"),
+      readOwnedCollection("offres_services", ["publicServiceOffers"], "ownerUid"),
+      readOwnedCollection("demandes_services", ["publicServiceRequests"], "ownerUid"),
+      readOwnedCollection("profils_professionnels", ["publicWorkerProfiles"], "ownerUid"),
+      readOwnedCollection("offres_emploi_mission", ["publicWorkOpenings"], "ownerUid"),
+      readOwnedCollection("demandes_verification", ["verificationRequests"], "ownerUid"),
+      readOwnedCollection("signalements_deposes", ["trustReports"], "reporterUid"),
+      readOwnedCollection("notifications_recues", ["notifications"], "recipientUid"),
+      readOwnDocument("profil_entreprise_public", ["companyProfiles", user.uid]),
+      readOwnDocument("verification_entreprise", ["companyVerifications", user.uid])
+    ]);
+
+    // Les demandes de vérification peuvent contenir des notes internes de revue.
+    // Ne restituer que les champs soumis par le titulaire et l'état de sa demande.
+    const verificationRequestExportFields = [
+      "ownerUid", "subjectType", "subjectName", "countryCode", "evidenceLabel",
+      "publicEvidenceUrl", "status", "createdAt", "updatedAt"
+    ];
+    collections.demandes_verification = (collections.demandes_verification || []).map(item => ({
+      id: item.id,
+      ...Object.fromEntries(verificationRequestExportFields
+        .filter(field => Object.prototype.hasOwnProperty.call(item, field))
+        .map(field => [field, item[field]]))
+    }));
+
+    const normalize = value => {
+      if (value && typeof value.toDate === "function") return value.toDate().toISOString();
+      if (Array.isArray(value)) return value.map(normalize);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalize(item)]));
+      }
+      return value;
+    };
+    const totalDocuments = Object.values(collections).reduce((sum, items) => sum + items.length, 0);
+    const payload = {
+      export: {
+        product: "DealHunter",
+        generatedAt,
+        accountUid: user.uid,
+        accountEmail: user.email || null,
+        formatVersion: 2,
+        totalDocuments,
+        limits: errors,
+        excluded: [
+          "Conversations et messages partagés",
+          "Demandes de mise en relation impliquant d’autres personnes",
+          "Transactions et avis partagés",
+          "Coordonnées de tiers, journaux internes et données fournisseurs",
+          "Caches locaux du navigateur et données non synchronisées"
+        ],
+        note: "Export personnel filtré et paginé. Chaque collection est plafonnée à 1 000 documents ; les erreurs et plafonds figurent dans limits. Les données partagées exclues et les limites techniques signifient que ce fichier ne constitue pas un export administratif exhaustif ni une sauvegarde."
+      },
+      data: normalize(collections)
+    };
+    // Un changement de compte pendant les lectures ne doit jamais déclencher
+    // le téléchargement des données de l'ancien utilisateur dans la session du nouveau.
+    if (auth.currentUser?.uid !== user.uid) {
+      throw new Error("Le compte a changé pendant la préparation. Relance l’export depuis le bon compte.");
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "dealhunter-export-personnel-" + generatedAt.slice(0, 10) + ".json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return { totalDocuments, errors };
+  };
+
+  if (exportAccountDataButton) {
+    exportAccountDataButton.addEventListener("click", async () => {
+      exportAccountDataButton.disabled = true;
+      status.textContent = "Préparation de ton export personnel…";
+      try {
+        const result = await exportAccountData(auth.currentUser);
+        status.textContent = "Export initial téléchargé : " + result.totalDocuments + " document(s). Il reste partiel : conversations, demandes partagées, transactions et avis ne sont pas inclus." +
+          (result.errors.length ? " " + result.errors.length + " limite(s) ou erreur(s) sont également indiquées dans le fichier." : "");
+      } catch (error) {
+        status.textContent = "Export impossible : " + (error.message || error.code || "erreur inconnue");
+      } finally {
+        exportAccountDataButton.disabled = false;
+      }
+    });
+  }
+
+  const loadCompanyProfile = async user => {
+    const [privateSnapshot, publicSnapshot, verificationSnapshot] = await Promise.all([
+      getDoc(doc(db, "users", user.uid)),
+      getDoc(doc(db, "companyProfiles", user.uid)),
+      getDoc(doc(db, "companyVerifications", user.uid))
+    ]);
+    // Un changement de compte peut survenir pendant les lectures Firestore.
+    // Ne jamais laisser l'ancien profil écraser le formulaire du nouvel utilisateur.
+    if (auth.currentUser?.uid !== user.uid) return;
+    const privateCompany = privateSnapshot.exists() ? privateSnapshot.data().company || {} : {};
+    const publicCompany = publicSnapshot.exists() ? publicSnapshot.data() : {};
+    const nameInput = document.getElementById("companyName");
+    const phoneInput = document.getElementById("companyPhone");
+    const countryInput = document.getElementById("companyCountry");
+    if (nameInput) nameInput.value = publicCompany.companyName || privateCompany.name || "";
+    if (phoneInput) phoneInput.value = privateCompany.phone || "";
+    if (countryInput) countryInput.value = publicCompany.countryCode || privateCompany.country || "FR";
+    const locked = verificationSnapshot.exists();
+    if (nameInput) nameInput.readOnly = locked;
+    if (countryInput) countryInput.disabled = locked;
+    const hint = document.getElementById("companyProfileHint");
+    if (hint) hint.textContent = locked
+      ? "Profil entreprise vérifié : le nom et le pays sont verrouillés pendant la vérification active. Contacte l’équipe DealHunter pour demander une correction."
+      : "Tu peux modifier ces informations à tout moment. Les corrections sont enregistrées dans ton espace entreprise.";
+    const button = document.getElementById("createCompany");
+    if (button) button.textContent = publicCompany.companyName || privateCompany.name ? "Enregistrer les modifications" : "Créer mon espace entreprise";
+  };
   const saveUserProfile = async user => {
     const userRef = doc(db, "users", user.uid);
     const existing = await getDoc(userRef);
@@ -1132,12 +1389,29 @@ if (!ready) {
   getRedirectResult(auth).catch(showError);
 
   onAuthStateChanged(auth, async user => {
-    window.dealhunterUserUid = user?.uid || ''; 
+    if (unsubscribeNotifications) {
+      unsubscribeNotifications();
+      unsubscribeNotifications = null;
+    }
+    window.dispatchEvent(new CustomEvent("dealhunter-notifications", { detail: { notifications: [] } }));
+    window.dealhunterUserUid = user?.uid || '';
+    const companyForm = document.getElementById("companyForm");
+    if (companyForm) companyForm.reset();
+    const companyNameInput = document.getElementById("companyName");
+    const companyCountryInput = document.getElementById("companyCountry");
+    if (companyNameInput) companyNameInput.readOnly = false;
+    if (companyCountryInput) companyCountryInput.disabled = false;
+    const companyHint = document.getElementById("companyProfileHint");
+    if (companyHint) companyHint.textContent = "Après connexion, renseigne le nom et le pays de ton entreprise pour créer ou rectifier ton espace sécurisé.";
+    const companyButton = document.getElementById("createCompany");
+    if (companyButton) companyButton.textContent = "Créer mon espace entreprise";
     status.replaceChildren();
     if (accountStatus) accountStatus.textContent = user
       ? "Utilisateur connecté : " + (user.email || user.displayName || "compte utilisateur")
       : "Aucun utilisateur connecté.";
+    if (exportAccountDataButton) exportAccountDataButton.classList.toggle("hidden", !user);
     if (user) {
+      startNotificationsListener(user);
       const label = document.createElement("span");
       label.className = "auth-user";
       label.textContent = "Connecté : " + (user.email || user.displayName || "compte utilisateur");
@@ -1155,9 +1429,9 @@ if (!ready) {
         saveUserProfile(user),
         loadCloudRecords(user),
         loadMatchRequests(user),
-        loadNotifications(user)
+        loadCompanyProfile(user)
       ]);
-      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions", "notifications"];
+      const startupLabels = ["profil", "catalogue produits/services", "demandes et suggestions", "profil entreprise"];
       const startupErrors = startupTasks.flatMap((result, index) => {
         if (result.status === "fulfilled") return [];
         console.error("Erreur Firestore (" + startupLabels[index] + ") :", result.reason);
@@ -1266,7 +1540,8 @@ if (!ready) {
     submitButton.disabled = true;
     status.textContent = "Enregistrement de ton espace entreprise…";
     try {
-      await setDoc(doc(db, "users", user.uid), {
+      const profileBatch = writeBatch(db);
+      profileBatch.set(doc(db, "users", user.uid), {
         company: {
           name: companyName,
           country: companyCountry,
@@ -1275,8 +1550,15 @@ if (!ready) {
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
+      profileBatch.set(doc(db, "companyProfiles", user.uid), {
+        ownerUid: user.uid,
+        companyName,
+        countryCode: companyCountry,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await profileBatch.commit();
       status.textContent = "Espace entreprise enregistré avec succès.";
-      companyForm.reset();
+      if (auth.currentUser?.uid === user.uid) await loadCompanyProfile(user);
     } catch (error) {
       console.error("Enregistrement de l’entreprise impossible :", error);
       status.textContent = "Enregistrement impossible : " + (error.message || error.code);

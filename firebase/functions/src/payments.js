@@ -133,7 +133,6 @@ exports.createDealCheckoutSession = onCall({ secrets: [stripeSecret] }, async (r
   if (!base) throw new HttpsError("failed-precondition", "DEALHUNTER_APP_URL doit être configurée.");
   const session = await stripeClient().checkout.sessions.create({
     mode: "payment",
-    payment_method_types: ["card"],
     line_items: [{
       quantity: 1,
       price_data: {
@@ -214,8 +213,8 @@ exports.openDealDispute = onCall(async (request) => {
 
 function requireAdmin(request) {
   const uid = requireAuth(request);
-  if (request.auth.token.admin !== true) {
-    throw new HttpsError("permission-denied", "Accès réservé à l'administration DealHunter.");
+  if (request.auth.token.dealhunterAdmin !== true) {
+    throw new HttpsError("permission-denied", "Accès réservé à un réviseur DealHunter autorisé.");
   }
   return uid;
 }

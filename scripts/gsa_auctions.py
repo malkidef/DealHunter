@@ -125,6 +125,27 @@ def fetch_listings(api_key: str) -> list[dict]:
     return results
 
 
+
+def deduplicate_results(results: list[dict]) -> tuple[list[dict], int]:
+    """Deduplicate only records with an explicit sale/lot identifier."""
+    unique = []
+    seen = set()
+    duplicates = 0
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        sale_no = str(field(item, "saleNo") or "").strip()
+        lot_no = str(field(item, "lotNo") or "").strip()
+        key = (sale_no, lot_no) if sale_no and lot_no else None
+        if key is not None and key in seen:
+            duplicates += 1
+            continue
+        if key is not None:
+            seen.add(key)
+        unique.append(item)
+    return unique, duplicates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default="gsa-auctions-pending.json")
@@ -152,6 +173,10 @@ def main() -> int:
             print(str(exc), file=sys.stderr)
             return 1
 
+    if not results:
+        print("Réponse GSA vide : publication refusée pour préserver le flux existant.", file=sys.stderr)
+        return 1
+    results, duplicate_count = deduplicate_results(results)
     collected_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     normalized = [
         normalize_listing(item, collected_at)
@@ -168,8 +193,12 @@ def main() -> int:
         "source": "GSA Auctions",
         "source_url": "https://www.gsaauctions.gov/",
         "collected_at": collected_at,
-        "raw_count": len(results),
+        "raw_count": len(results) + duplicate_count,
+        "duplicate_count": duplicate_count,
         "count": len(usable),
+        "completeness": "unknown",
+        "pagination_supported_by_published_api_spec": False,
+        "completeness_note": "La spécification publique consultée expose un seul endpoint sans paramètres de pagination ni total de résultats ; ce flux ne peut donc pas être déclaré exhaustif.",
         "api_field_names": sorted(str(key) for key in sample.keys()),
         "review_status": "pending",
         "listings": usable,

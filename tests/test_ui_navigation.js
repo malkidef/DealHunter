@@ -4,6 +4,19 @@ import { test } from "node:test";
 
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const auth = fs.readFileSync(new URL("../auth.js", import.meta.url), "utf8");
+const payments = fs.readFileSync(new URL("../firebase/functions/src/payments.js", import.meta.url), "utf8");
+
+test("les fonctions Stripe utilisent le même claim administrateur que les règles Firestore", () => {
+  assert.match(payments, /request\.auth\.token\.dealhunterAdmin !== true/);
+  assert.doesNotMatch(payments, /request\.auth\.token\.admin !== true/);
+});
+
+test("Checkout Stripe laisse Stripe sélectionner dynamiquement les moyens de paiement", () => {
+  assert.match(payments, /checkout\.sessions\.create/);
+  assert.doesNotMatch(payments, /payment_method_types/);
+  assert.match(payments, /stripeClient\(\)\.webhooks\.constructEvent/);
+});
+
 
 test("chaque onglet visible possède une destination réelle", () => {
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map(match => match[1]);
@@ -137,4 +150,93 @@ test("les boîtes de réception services et emploi distinguent une erreur Firest
 test("auth transmet les erreurs de lecture aux boîtes de réception services et emploi", () => {
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("serviceMatchRequests:"))'));
   assert.ok(auth.includes('failedCollections:failedReads.filter(item=>item.startsWith("workMatchRequests:"))'));
+});
+
+test("l’export personnel est accessible uniquement depuis le compte connecté", () => {
+  assert.match(html, /id="exportAccountData"/);
+  assert.match(auth, /exportAccountDataButton\.classList\.toggle\("hidden", !user\)/);
+  assert.match(auth, /auth\.currentUser\?\.uid !== user\.uid/);
+  assert.match(auth, /user\.emailVerified/);
+  assert.match(auth, /lastSignInTime/);
+  assert.match(auth, /15 \* 60 \* 1000/);
+});
+
+test("l’export personnel filtre par UID et pagine chaque collection avec un plafond explicite", () => {
+  assert.match(auth, /where\(field, "==", user\.uid\)/);
+  assert.match(auth, /EXPORT_PAGE_SIZE = 250/);
+  assert.match(auth, /MAX_EXPORT_DOCUMENTS_PER_COLLECTION = 1000/);
+  assert.match(auth, /orderBy\(documentId\(\)\)/);
+  assert.match(auth, /startAfter\(cursor\)/);
+  assert.match(auth, /limit\(pageLimit\)/);
+  assert.match(auth, /docs\.slice\(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION\)/);
+  assert.match(auth, /users", user\.uid, "sellerOffers"/);
+  assert.match(auth, /users", user\.uid, "buyerNeeds"/);
+  assert.match(auth, /reporterUid/);
+  assert.match(auth, /recipientUid/);
+});
+
+test("l’export indique explicitement les données partagées et les limites", () => {
+  assert.match(auth, /Export initial téléchargé/);
+  assert.match(auth, /formatVersion: 2/);
+  assert.match(auth, /Il reste partiel : conversations, demandes partagées, transactions et avis ne sont pas inclus/);
+  assert.match(auth, /Conversations et messages partagés/);
+  assert.match(auth, /Transactions et avis partagés/);
+  assert.match(auth, /export administratif exhaustif ni une sauvegarde/);
+  assert.match(auth, /application\/json;charset=utf-8/);
+});
+
+test("le profil entreprise existant est rechargé pour permettre sa rectification", () => {
+  assert.match(auth, /const loadCompanyProfile = async user =>/);
+  assert.match(auth, /companyProfiles", user\.uid/);
+  assert.match(auth, /privateCompany\.phone/);
+  assert.match(auth, /nameInput\.value = publicCompany\.companyName/);
+  assert.match(auth, /nameInput\.readOnly = locked/);
+  assert.match(auth, /countryInput\.disabled = locked/);
+  assert.match(auth, /loadCompanyProfile\(user\)/);
+  assert.match(auth, /auth\.currentUser\?\.uid !== user\.uid/);
+  assert.match(auth, /await loadCompanyProfile\(user\)/);
+  assert.match(html, /id="companyProfileHint"/);
+  assert.match(html, /id="companyName" required minlength="2" maxlength="120"/);
+});
+
+test("les champs entreprise sont réinitialisés lors d’un changement de compte", () => {
+  assert.match(auth, /if \(companyForm\) companyForm\.reset\(\)/);
+  assert.match(auth, /companyNameInput\.readOnly = false/);
+  assert.match(auth, /companyCountryInput\.disabled = false/);
+});
+
+test("l’export personnel est annulé si le compte change pendant sa préparation", () => {
+  const exportStart = auth.indexOf("const exportAccountData = async user =>");
+  const exportEnd = auth.indexOf("if (exportAccountDataButton)", exportStart);
+  assert.ok(exportStart >= 0 && exportEnd > exportStart, "Fonction d’export introuvable");
+  const exporter = auth.slice(exportStart, exportEnd);
+  assert.match(exporter, /if \(auth\.currentUser\?\.uid !== user\.uid\) \{[\s\S]*Le compte a changé pendant la préparation/);
+  assert.ok(exporter.indexOf("Le compte a changé pendant la préparation") < exporter.indexOf("const blob = new Blob"),
+    "Le contrôle de session doit précéder le téléchargement du fichier");
+});
+
+
+test("l’export des demandes de vérification exclut les notes et métadonnées internes de revue", () => {
+  assert.match(auth, /verificationRequestExportFields = \[/);
+  assert.match(auth, /"evidenceLabel",\s*"publicEvidenceUrl",\s*"status",\s*"createdAt",\s*"updatedAt"/);
+  assert.match(auth, /collections\.demandes_verification = \(collections\.demandes_verification \|\| \[\]\)\.map/);
+  assert.match(auth, /Object\.fromEntries\(verificationRequestExportFields/);
+  assert.doesNotMatch(auth.slice(auth.indexOf("const verificationRequestExportFields"), auth.indexOf("const normalize = value")), /reviewerNote|reviewedAt|revokedAt/);
+});
+
+test("l’export personnel n’interroge pas les collections de données partagées", () => {
+  const exportStart = auth.indexOf("const exportAccountData = async user =>");
+  const exportEnd = auth.indexOf("if (exportAccountDataButton)", exportStart);
+  assert.ok(exportStart >= 0 && exportEnd > exportStart, "Fonction d’export introuvable");
+  const exporter = auth.slice(exportStart, exportEnd);
+  for (const sharedCollection of [
+    "matchRequests", "matchMessages", "matchContacts", "deals", "dealReviews",
+    "serviceMatchRequests", "workMatchRequests"
+  ]) {
+    assert.ok(!exporter.includes('"' + sharedCollection + '"') && !exporter.includes("'" + sharedCollection + "'"),
+      "La collection partagée " + sharedCollection + " ne doit pas être exportée sans projection dédiée");
+  }
+  assert.match(exporter, /Demandes de mise en relation impliquant d’autres personnes/);
+  assert.match(exporter, /Transactions et avis partagés/);
+  assert.match(exporter, /Conversations et messages partagés/);
 });

@@ -11,6 +11,8 @@ DATASET = "annonces-commerciales"
 OUT = "data/bodacc-business-sales.json"
 SOURCE_URL = "https://www.bodacc.fr/"
 API_URL = "https://bodacc-datadila.opendatasoft.com/explore/dataset/annonces-commerciales/api/"
+PAGE_SIZE = 100
+MAX_RECORDS = 5000
 HEADERS = {"User-Agent": "DealHunter/0.1 (BODACC open-data reuse)"}
 
 
@@ -20,14 +22,38 @@ def get_json(url):
         return json.loads(response.read().decode("utf-8-sig"))
 
 
-def build_api_url(limit=100):
+def build_api_url(limit=PAGE_SIZE, offset=0):
     params = {
         "select": "id,familleavis,familleavis_lib,ville,departement_nom_officiel,numerodepartement,dateparution,url_complete",
         "limit": str(limit),
+        "offset": str(offset),
         "order_by": "dateparution desc",
         "where": "familleavis = 'vente'",
     }
     return f"{BASE}/catalog/datasets/{DATASET}/records?{urllib.parse.urlencode(params)}"
+
+
+def fetch_records():
+    """Fetch bounded Opendatasoft pages and report completeness."""
+    rows = []
+    total_available = 0
+    offset = 0
+    while offset < MAX_RECORDS:
+        payload = get_json(build_api_url(limit=PAGE_SIZE, offset=offset))
+        page = payload.get("results") if isinstance(payload, dict) else None
+        if not isinstance(page, list):
+            raise RuntimeError("Réponse BODACC invalide : résultats absents; ancien flux conservé.")
+        try:
+            total_available = max(total_available, int(payload.get("total_count", total_available) or 0))
+        except (TypeError, ValueError):
+            pass
+        if not page:
+            break
+        rows.extend(page)
+        offset += len(page)
+        if len(page) < PAGE_SIZE or (total_available and offset >= total_available):
+            break
+    return rows[:MAX_RECORDS], total_available, (total_available > MAX_RECORDS and len(rows) >= MAX_RECORDS)
 
 
 def normalize_notice(row, collected_at):
@@ -63,10 +89,7 @@ def normalize_notice(row, collected_at):
 
 def main():
     collected_at = datetime.now(timezone.utc).isoformat()
-    payload = get_json(build_api_url())
-    rows = payload.get("results", [])
-    if not isinstance(rows, list):
-        raise RuntimeError("Réponse BODACC invalide : résultats absents; ancien flux conservé.")
+    rows, total_available, truncated = fetch_records()
     notices = []
     seen = set()
     for row in rows:
@@ -88,6 +111,8 @@ def main():
         "attribution": "Données : DILA / BODACC",
         "collected_at": collected_at,
         "count": len(notices),
+        "total_available": total_available,
+        "truncated": truncated,
         "notice_type": "Ventes et cessions d'entreprises ou de fonds",
         "important_notice": "Ces annonces légales signalent des ventes ou cessions. Elles ne décrivent pas des stocks disponibles et ne constituent pas des offres de marchandises.",
         "notices": notices,

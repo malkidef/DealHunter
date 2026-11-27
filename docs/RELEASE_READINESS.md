@@ -1,6 +1,6 @@
 # État de préparation au lancement — DealHunter
 
-Dernière revue : 24 novembre 2026. Branche principale : `main`.
+Dernière revue : 25 novembre 2026. Branche principale auditée : `main` (`dd5c234e` avant les branches de finalisation). Les corrections complémentaires restent dans des PR brouillon non fusionnées.
 
 ## Vérifications GitHub du 24 novembre 2026
 
@@ -15,8 +15,9 @@ Dernière revue : 24 novembre 2026. Branche principale : `main`.
 
 - Les dernières corrections intégrées à `main` couvrent la publication et l'édition des offres/besoins, le chargement des demandes de mise en relation, le retour d'état des actions Firebase, la confirmation des transactions, ainsi que la reprise après échec des actions de modération et de messagerie privée.
 - GitHub Pages a été construit et publié avec succès sur le commit audité.
-- Le projet Firebase `dealhunter-3747b` a été confirmé par son propriétaire comme étant le bon projet.
-- Cette confirmation ne prouve pas que Authentication, Firestore, les règles ou les index sont activés/déployés. Aucun déploiement Firebase n'est confirmé.
+- Le projet Firebase `dealhunter-3747b` a été confirmé par son propriétaire.
+- Le déploiement Firestore (règles et index uniquement) a été confirmé par le workflow dédié, exécution [45650187934](https://github.com/malkidef/DealHunter/actions/runs/45650187934), avec `Deploy complete!`.
+- Ce déploiement ne déploie pas de Cloud Functions et ne prouve pas à lui seul tous les parcours réels côté client.
 
 ## Fonctionnalités présentes dans le code
 
@@ -41,10 +42,10 @@ Dernière revue : 24 novembre 2026. Branche principale : `main`.
 
 ## Bloqueurs avant ouverture publique
 
-- **Firebase** : le compte de service Admin a réussi une exécution réelle du matching le 24 novembre ; l'activation et le déploiement des règles/index côté client restent non vérifiés ; tests de bout en bout non réalisés.
+- **Firebase** : le matching serveur a réussi une exécution réelle (2 offres, 2 besoins, 1 correspondance) et le déploiement Firestore règles/index a été confirmé. Les essais de bout en bout restent à compléter sur plusieurs comptes et appareils.
 - **Matching planifié** : au moins une exécution réelle a réussi. Il reste à vérifier les volumes de suggestions produits, leur affichage côté comptes utilisateurs et la régularité du déclenchement planifié.
 - **Modération** : attribuer le custom claim `dealhunterAdmin: true` à un réviseur de confiance via Firebase Admin SDK.
-- **Préproduction** : tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait et effacement.
+- **Préproduction** : l'inscription e-mail/mot de passe, vérification e-mail, connexion Google/Apple, réinitialisation du mot de passe et déconnexion sont présentes dans le code ; elles ne sont pas toutes validées en conditions réelles. Tester inscription, publication, matching, consentement, messagerie, transaction, avis, signalements, retrait, export et effacement. Aucun parcours complet de suppression de compte n'est implémenté à ce jour.
 - **Protection des données** : finaliser bases légales, durées, accès/export/rectification/effacement, incidents et contrats sous-traitants. Voir `docs/PRIVACY_OPERATIONS.md`.
 - **Cadre légal** : examiner pays par pays le courtage, l'emploi, la sous-traitance, les qualifications, la consommation, les sanctions et les transferts internationaux.
 - **Sources** : vérifier licences et conditions de chaque source ; une annonce collectée n'est jamais un stock confirmé.
@@ -58,7 +59,7 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 
 ## Décision de lancement
 
-**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, les workflows CI sont verts et le matching serveur a réussi au moins une exécution réelle ; le parcours client Firebase, les règles/index déployés et les tests de bout en bout restent à vérifier. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant levée des bloqueurs.
+**DealHunter n'est pas prêt pour une ouverture publique ni pour le traitement de vraies données personnelles.** GitHub Pages est publié, le matching serveur a réussi au moins une exécution réelle et le déploiement Firestore règles/index est confirmé. Les corrections de sécurité et d'interface en cours sont encore dans des PR non fusionnées ; les essais réels complets, la sauvegarde restaurable, les droits RGPD opérationnels, les documents juridiques et la validation du cadre commercial restent des bloqueurs. Ne pas prendre de paiements ni annoncer une couverture mondiale complète avant leur levée.
 
 ## Mise à jour de l'audit — 25 novembre 2026
 
@@ -211,3 +212,56 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 ### Extension des notifications aux services et à l'emploi
 
 Le worker périodique couvre désormais aussi `serviceMatchRequests` et `workMatchRequests` : création d'une demande, acceptation ou refus. Il traite également les messages de `serviceMatchMessages` et `workMatchMessages`, en vérifiant que la demande associée est acceptée et que l'expéditeur appartient aux participants. Les notifications restent privées, dédupliquées par identifiant déterministe et créées côté serveur via Admin SDK. La validation CI de syntaxe et les tests existants doivent être vérifiés sur le commit qui porte cette extension ; un essai fonctionnel avec deux comptes reste requis.
+
+
+## Mise à jour de finalisation — 27 novembre 2026
+
+### CI de la branche de finalisation
+
+Sur le commit `e29de7a9365574ee680c653a3e6f7d5c01a70d20`, les deux workflows GitHub Actions ont terminé avec succès :
+- `Tests DealHunter` — run `45904007315` (#726) : tests Python, matching, fonctions Firebase et syntaxe JavaScript.
+- `Tests des règles Firestore` — run `45904007436` (#576) : parité des règles et tests de l'émulateur Firestore.
+Ces résultats valident le commit testé, pas les commits ultérieurs.
+
+### Blocage concret du parcours de droits RGPD
+
+- L'interface fournit un export personnel initial, explicitement partiel.
+- L'effacement de compte n'est pas implémenté ; aucune suppression globale côté navigateur ne doit être ajoutée.
+- Les documents consultés ne définissent pas encore de canal de contact officiel DealHunter ni d'adresse dédiée aux demandes d'accès, rectification, opposition ou effacement. Le texte « contacte l'équipe DealHunter » ne suffit pas à fournir un canal opérationnel.
+- Ne pas inventer d'adresse e-mail, de formulaire ni de promesse de délai. Avant de publier un parcours de demande, le propriétaire doit choisir et confirmer un canal de contact qu'il contrôle et définir qui traite les demandes.
+- En attendant, les droits RGPD ne sont pas considérés comme opérationnels et l'ouverture publique reste bloquée.
+- Toute future procédure d'effacement doit traiter les données partagées, les obligations de conservation, les sous-collections et les workers qui pourraient recréer des suggestions ou notifications. Aucun effacement destructif ne doit être lancé sans validation distincte.
+
+### Décision
+
+La réussite CI est une validation technique utile, mais ne lève pas les blocages de déploiement, de droits RGPD, de contact officiel, de tests réels multi-comptes et de cadre légal. Aucun merge, déploiement ou paiement n'est effectué dans cette étape.
+
+
+## Contrôle CI complémentaire — 27 novembre 2026
+
+Sur le commit `662ec48da02c91a9d8040bf0bd9dcdde20dfe86b`, les workflows `Tests DealHunter` (run `45920762974`, #728) et `Tests des règles Firestore` (run `45920762959`, #578) sont tous deux terminés avec succès. Le second a exécuté avec succès le contrôle de parité et les tests de l'émulateur Firestore. Cette validation CI ne lève pas les bloqueurs de préproduction : parcours réels multi-comptes, export/effacement RGPD complets, sauvegarde restaurable, canal de contact officiel et validation juridique/commerciale restent à traiter. La PR #28 demeure en brouillon, non fusionnée et non déployée.
+
+
+## Mise à jour de finalisation — 27 novembre 2026
+
+La branche de finalisation `finalization/company-verification-current` contient des corrections et tests supplémentaires, mais la PR #28 reste ouverte en brouillon et n'est pas fusionnée. L'écart constaté avec `main` est de 160 commits en avance et 5 en retard ; les cinq commits en retard concernent des instantanés de données plus récents sur `main`. Ces fichiers de données ne figurent pas dans les 26 fichiers de la comparaison PR : ne pas les écraser ni effectuer de rebase automatique.
+
+### Avancées techniques dans la branche non fusionnée
+
+- TED : pagination API avec déduplication, plafond de sécurité et tests ; CI applicative réussie sur le commit de code.
+- BOAMP : pagination bornée (100 par page, plafond 5 000), déduplication et signalement de troncature ; tests applicatifs réussis.
+- BODACC : pagination bornée, filtre strict ventes/cessions, protection des données personnelles et tests ; correctif du point d'entrée de pagination validé par CI applicative.
+- GSA : la spécification publique ne documente pas de pagination ; la complétude est marquée inconnue, les doublons identifiables sont éliminés et une réponse vide ne remplace plus le flux existant. Tests applicatifs réussis sur le code corrigé.
+- Export personnel : pagination Firestore par curseur, plafond explicite de 1 000 documents par collection et conservation des résultats partiels en cas d'erreur ; tests applicatifs réussis sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33`.
+
+### Bloqueurs inchangés
+
+- Le test de téléchargement réel Android et le test multi-comptes de l'export restent à faire.
+- L'export personnel n'est pas un export RGPD exhaustif ; les données partagées et certaines catégories restent exclues.
+- L'effacement complet d'un compte n'est pas implémenté ; les règles interdisent les suppressions client de nombreuses collections.
+- Aucune sauvegarde Firestore complète, chiffrée, restaurable et testée n'a été exécutée.
+- Stripe reste désactivé/non déployé ; le modèle de données et les parcours d'administration/réconciliation ne sont pas validés de bout en bout.
+- Les coordonnées officielles de contact, les documents juridiques, bases légales et durées de conservation doivent être fournis/validés par le responsable du traitement.
+- Les tests Firestore de la dernière tête restent à confirmer après fin de l'émulateur ; aucun déploiement, fusion ou paiement n'a été réalisé.
+
+**Décision :** pas d'ouverture publique ni de paiement réel. Les tests applicatifs réussis ne remplacent pas la validation Firebase multi-comptes, la sauvegarde restaurable, la conformité juridique et l'approbation finale du propriétaire.

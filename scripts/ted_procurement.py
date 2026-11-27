@@ -58,19 +58,36 @@ def normalize_notice(item: dict, collected_at: str) -> dict | None:
     title = first_value(item.get("notice-title"))
     if not publication_number and not title:
         return None
+    buyer = first_value(item.get("buyer-name"))
+    country = first_value(item.get("buyer-country"))
+    publication_date = first_value(item.get("publication-date"))
+    deadline = first_value(item.get("deadline-date"))
+    notice_type = first_value(item.get("notice-type"))
+    source_url = (
+        f"https://ted.europa.eu/en/notice/-/detail/{publication_number}"
+        if publication_number else None
+    )
+    # Keep the canonical field names consumed by index.html while retaining
+    # the explicit review metadata used by the source qualification workflow.
     return {
+        "id": publication_number,
+        "title": title or "Avis TED sans titre",
+        "buyer": buyer,
+        "country": country,
+        "deadline": deadline,
+        "publicationDate": publication_date,
+        "noticeType": notice_type,
+        "url": source_url,
+        "source": "TED / Publications Office of the European Union",
+        "verified": False,
         "source_id": "ted_eu",
         "source_notice_id": publication_number,
-        "title": title or "Avis TED sans titre",
-        "buyer_name": first_value(item.get("buyer-name")),
-        "buyer_country": first_value(item.get("buyer-country")),
-        "publication_date": first_value(item.get("publication-date")),
-        "deadline_date": first_value(item.get("deadline-date")),
-        "notice_type": first_value(item.get("notice-type")),
-        "source_url": (
-            f"https://ted.europa.eu/en/notice/-/detail/{publication_number}"
-            if publication_number else None
-        ),
+        "buyer_name": buyer,
+        "buyer_country": country,
+        "publication_date": publication_date,
+        "deadline_date": deadline,
+        "notice_type": notice_type,
+        "source_url": source_url,
         "direction": "buyer",
         "opportunity_type": "public_procurement_notice",
         "demand_status": "unverified",
@@ -159,7 +176,7 @@ def main() -> int:
         if (row := normalize_notice(item, collected_at)) is not None
     ]
     output = {
-        "source": "TED — Tenders Electronic Daily",
+        "source": "TED — API officielle de recherche",
         "source_url": "https://ted.europa.eu/",
         "api_url": API_URL,
         "query": args.query,

@@ -88,8 +88,8 @@ window.dealhunterShowTab = function(target, button) {
 </script>
 <section id="account" class="panel hidden">
 <h2>Compte entreprise</h2>
-<p class="muted">Crée un compte ou connecte-toi pour préparer ton espace DealHunter. L’authentification sera active après configuration du projet Firebase.</p>
-<div class="status-note" id="authStatus" role="status" aria-live="polite">Firebase n’est pas encore configuré. Aucun compte ne peut être créé pour le moment.</div>
+<p class="muted">Crée un compte ou connecte-toi pour accéder à ton espace DealHunter. Tu peux aussi exporter les données personnelles de ton compte après reconnexion récente.</p>
+<div class="status-note" id="authStatus" role="status" aria-live="polite">Vérification de la configuration Firebase…</div>
 <div class="auth-layout">
 <section class="item">
 <h3>Connexion / création par e-mail</h3>
@@ -103,15 +103,16 @@ window.dealhunterShowTab = function(target, button) {
 </section>
 <section class="item">
 <h3>Entreprise</h3>
-<p class="muted">Après connexion, renseigne le nom et le pays de ton entreprise pour créer son espace sécurisé.</p>
+<p class="muted" id="companyProfileHint">Après connexion, renseigne le nom et le pays de ton entreprise pour créer ou rectifier ton espace sécurisé.</p>
 <form id="companyForm">
-<div class="field"><label for="companyName">Nom de l’entreprise</label><input id="companyName" required maxlength="160" placeholder="Mon entreprise"></div>
+<div class="field"><label for="companyName">Nom de l’entreprise</label><input id="companyName" required minlength="2" maxlength="120" placeholder="Mon entreprise"></div>
 <div class="field"><label for="companyPhone">Téléphone professionnel</label><input id="companyPhone" type="tel" autocomplete="tel" maxlength="30" placeholder="+33 6 12 34 56 78"></div>
 <div class="field"><label for="companyCountry">Pays</label><select id="companyCountry"><option value="FR">France</option><option value="BE">Belgique</option><option value="LU">Luxembourg</option><option value="DE">Allemagne</option><option value="ES">Espagne</option><option value="IT">Italie</option><option value="NL">Pays-Bas</option><option value="GB">Royaume-Uni</option><option value="US">États-Unis</option><option value="CA">Canada</option><option value="CH">Suisse</option></select></div>
 <button type="submit" id="createCompany">Créer mon espace entreprise</button>
 </form>
 <div class="auth-account" id="authAccount"><div class="muted">Aucun utilisateur connecté.</div></div>
-<div class="auth-actions"><button type="button" class="secondary hidden" id="resendVerification">Renvoyer l’e-mail de vérification</button><button type="button" class="secondary" id="signOut">Se déconnecter</button></div>
+<div class="auth-actions"><button type="button" class="secondary hidden" id="resendVerification">Renvoyer l’e-mail de vérification</button><button type="button" class="secondary hidden" id="exportAccountData">Exporter mes données personnelles (JSON)</button><button type="button" class="secondary" id="signOut">Se déconnecter</button></div>
+<p class="muted">L’export télécharge les données directement sur cet appareil. Les conversations, transactions et données concernant d’autres participants sont exclues de cette première version.</p>
 </section>
 </div>
 </section>
@@ -390,7 +391,7 @@ window.dealhunterShowTab = function(target, button) {
 <script>
 const $=id=>document.getElementById(id);
 const load=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
-let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings');
+let sellers=load('dh_sellers'),buyers=load('dh_buyers'),pendingImports=load('dh_pending_imports'),sources=load('dh_sources'),gsaListings=load('dh_gsa_listings'),verifiedCompanies=[];
 let samNotices=[],samFeedMeta=null,tedNotices=[],tedFeedMeta=null,bodaccNotices=[],bodaccFeedMeta=null;
 let gsaVisible=30;
 const save=()=>{localStorage.setItem('dh_sellers',JSON.stringify(sellers));localStorage.setItem('dh_buyers',JSON.stringify(buyers));localStorage.setItem('dh_pending_imports',JSON.stringify(pendingImports));localStorage.setItem('dh_sources',JSON.stringify(sources));localStorage.setItem('dh_gsa_listings',JSON.stringify(gsaListings));render()};
@@ -432,6 +433,7 @@ function score(s,b){
 }
 function matches(){const out=[];sellers.forEach(s=>buyers.forEach(b=>{const n=score(s,b);if(n)out.push({s,b,score:n})}));return out.sort((a,b)=>b.score-a.score)}
 function card(title,sub,meta,actions=''){return '<article class="item"><span class="pill">'+escapeHtml(meta)+'</span><h3>'+escapeHtml(title)+'</h3><div class="muted">'+escapeHtml(sub)+'</div>'+actions+'</article>'}
+function isCompanyVerified(ownerUid,companyName){return !!ownerUid&&verifiedCompanies.some(v=>v.ownerUid===ownerUid&&v.companyName===companyName&&v.status==='verified')}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function classifyGsaSector(x){
  const title=norm(x.title),t=norm([x.title,x.description].filter(Boolean).join(' '));
@@ -472,6 +474,7 @@ window.addEventListener('dealhunter-cloud-data',event=>{
  const data=event.detail||{};
  sellers=Array.isArray(data.sellers)?data.sellers:[];
  buyers=Array.isArray(data.buyers)?data.buyers:[];
+ verifiedCompanies=Array.isArray(data.verifiedCompanies)?data.verifiedCompanies:[];
  const info=$('matchingDataStatus');
  if(info)info.textContent=window.dealhunterUserUid
   ?'Données synchronisées depuis Firebase · '+sellers.length+' offre(s) vendeur · '+buyers.length+' besoin(s) acheteur. Les correspondances restent indicatives.'
@@ -484,7 +487,7 @@ window.addEventListener('dealhunter-cloud-data',event=>{
 });
 function render(){
  const importList=$('importList');
- if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Valider et ajouter aux stocks</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
+ if(importList) importList.innerHTML=pendingImports.length?pendingImports.map((x,i)=>'<article class="item"><span class="pill">À vérifier</span><h3>'+escapeHtml(x.product)+'</h3><div class="muted">'+escapeHtml(x.category)+' · '+x.qty+' '+escapeHtml(x.unit)+' · '+Number(x.price).toFixed(2)+' '+escapeHtml(x.currency)+' · '+escapeHtml(x.city||x.countryCode||'Lieu non précisé')+'</div><div class="muted">'+(x.sourceUrl?'<a href="'+escapeHtml(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Source originale</a>':'Source URL absente')+'</div><p><button type="button" data-approve-import="'+i+'">Examiner et ajouter aux stocks locaux</button> <button type="button" class="secondary" data-reject-import="'+i+'">Écarter</button></p></article>').join(''):'<div class="empty">Aucune ligne en attente.</div>';
  const gsaList=$('gsaList');
  if(gsaList){
   const query=norm($('gsaSearch')?.value||'');
@@ -713,8 +716,8 @@ function render(){
  const dm=$('dashMatchCount');if(dm)dm.textContent=ms.length;
  $('sellerCount').textContent=sellers.length;$('buyerCount').textContent=buyers.length;$('matchCount').textContent=ms.length;
  const uid=window.dealhunterUserUid||'';
- $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,s.category,s.ownerUid===uid&&uid?'<p><button type="button" data-edit-business-record data-record-id="'+escapeHtml(s.id)+'">Modifier mon stock</button> <button type="button" class="secondary" data-remove-business-record data-collection="sellerOffers" data-record-id="'+escapeHtml(s.id)+'">Retirer mon stock</button></p>':'')).join(''):'<div class="empty">Aucun stock enregistré.</div>';
- $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,b.category,b.ownerUid===uid&&uid?'<p><button type="button" data-edit-buyer-record data-record-id="'+escapeHtml(b.id)+'">Modifier mon besoin</button> <button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
+ $('sellerList').innerHTML=sellers.length?sellers.map(s=>card(s.product,s.company+' · '+s.qty+' unités · '+Number(s.price).toFixed(2)+' € / unité · '+s.location,isCompanyVerified(s.ownerUid,s.company)?'Entreprise vérifiée · '+s.category:'Vérification non confirmée · '+s.category,s.ownerUid===uid&&uid?'<p><button type="button" data-edit-business-record data-record-id="'+escapeHtml(s.id)+'">Modifier mon stock</button> <button type="button" class="secondary" data-remove-business-record data-collection="sellerOffers" data-record-id="'+escapeHtml(s.id)+'">Retirer mon stock</button></p>':'')).join(''):'<div class="empty">Aucun stock enregistré.</div>';
+ $('buyerList').innerHTML=buyers.length?buyers.map(b=>card(b.product,b.company+' · '+b.qty+' unités · budget '+Number(b.budget).toFixed(2)+' € · '+b.location,isCompanyVerified(b.ownerUid,b.company)?'Entreprise vérifiée · '+b.category:'Vérification non confirmée · '+b.category,b.ownerUid===uid&&uid?'<p><button type="button" data-edit-buyer-record data-record-id="'+escapeHtml(b.id)+'">Modifier mon besoin</button> <button type="button" class="secondary" data-remove-business-record data-collection="buyerNeeds" data-record-id="'+escapeHtml(b.id)+'">Retirer mon besoin</button></p>':'')).join(''):'<div class="empty">Aucun besoin enregistré.</div>';
  $('matchList').innerHTML=ms.length?ms.map(m=>{const uid=window.dealhunterUserUid||'';const hasOwners=!!m.s.ownerUid&&!!m.b.ownerUid&&m.s.ownerUid!==m.b.ownerUid;const can=!!uid&&hasOwners&&(m.s.ownerUid===uid||m.b.ownerUid===uid);const unavailable=!hasOwners?'Cette annonce de test n’est pas encore rattachée à deux comptes Firebase distincts. Republie l’offre et le besoin depuis leurs comptes respectifs.':'Connecte-toi avec le compte vendeur ou acheteur concerné pour demander la mise en relation.';return '<article class="item match"><span class="pill">Correspondance détectée</span><h3>'+escapeHtml(m.s.company)+' <span class="muted">→</span> '+escapeHtml(m.b.company)+'</h3><div>'+escapeHtml(m.s.product)+' · '+m.s.qty+' disponibles / '+m.b.qty+' souhaités</div><div class="muted">Prix vendeur : '+Number(m.s.price).toFixed(2)+' € · Budget acheteur : '+Number(m.b.budget).toFixed(2)+' € · '+escapeHtml(m.s.location)+' / '+escapeHtml(m.b.location)+'</div><p class="match-score">Compatibilité indicative : '+Math.min(m.score,100)+' %</p>'+(can?'<button type="button" data-request-match data-seller="'+escapeHtml(m.s.id)+'" data-buyer="'+escapeHtml(m.b.id)+'" data-seller-uid="'+escapeHtml(m.s.ownerUid)+'" data-buyer-uid="'+escapeHtml(m.b.ownerUid)+'" data-seller-company="'+escapeHtml(m.s.company)+'" data-buyer-company="'+escapeHtml(m.b.company)+'" data-product="'+escapeHtml(m.s.product)+'">Demander la mise en relation</button>':'<div class="muted">'+unavailable+'</div>')+'</article>'}).join(''):'<div class="empty">Pas encore de correspondance. Ajoute un stock vendeur et un besoin acheteur compatibles pour tester le moteur.</div>';
 }
 
@@ -850,8 +853,8 @@ $('csvFile').addEventListener('change',async e=>{
    const price=Number((r.unit_price||r.price||'').replace(',','.'));
    const unit=r.unit||'unité',currency=(r.currency||'EUR').toUpperCase();
    const sourceUrl=r.source_url||r.url||'';
-   if(!product||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
-   if(sourceUrl&&!/^https?:\/\//i.test(sourceUrl)){skipped++;continue}
+   if(!product||!Number.isFinite(qty)||qty<=0||qty>1000000000||!Number.isFinite(price)||price<=0||price>1000000000||!['EUR','USD','GBP','CHF','CAD','AUD','JPY','CNY','INR'].includes(currency)){skipped++;continue}
+   if(sourceUrl&&!/^https:\/\//i.test(sourceUrl)){skipped++;continue}
    const key=sourceUrl?sourceUrl.toLowerCase():[product.toLowerCase(),category.toLowerCase(),qty,price,currency,(r.city||'').toLowerCase()].join('|');
    const exists=pendingImports.some(x=>x.dedupeKey===key)||sellers.some(x=>x.sourceUrl===sourceUrl&&sourceUrl);
    if(exists){skipped++;continue}
@@ -865,8 +868,8 @@ $('csvFile').addEventListener('change',async e=>{
 $('importList').addEventListener('click',e=>{
  const approve=e.target.closest('[data-approve-import]'),reject=e.target.closest('[data-reject-import]');
  if(approve){const i=Number(approve.dataset.approveImport),x=pendingImports[i];if(!x)return;
-  sellers.push({company:x.company,product:x.product,category:x.category,qty:x.qty,price:x.price,location:x.city||x.countryCode||'',sourceUrl:x.sourceUrl,verified:true});
-  pendingImports.splice(i,1);save();$('importMessage').textContent='Opportunité validée et ajoutée aux stocks locaux.';
+  sellers.push({company:x.company,product:x.product,category:x.category,qty:x.qty,price:x.price,location:x.city||x.countryCode||'',sourceUrl:x.sourceUrl,verified:false,sourceRowReviewed:true});
+  pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne examinée et ajoutée aux stocks locaux. Vendeur et stock non vérifiés.';
  }
  if(reject){const i=Number(reject.dataset.rejectImport);if(!pendingImports[i])return;pendingImports.splice(i,1);save();$('importMessage').textContent='Ligne écartée.'}
 });
@@ -1358,11 +1361,13 @@ window.addEventListener('dealhunter-verification-create-result',e=>{
 window.addEventListener('dealhunter-verification-data',e=>{
  const list=Array.isArray(e.detail?.requests)?e.detail.requests:[],isAdmin=e.detail?.isAdmin===true,el=$('verificationRequestList');
  if(!el)return;
- const statusLabel={pending:'En attente de contrôle humain',verified:'Vérifié après revue',rejected:'Refusé',withdrawn:'Retiré'};
+ const statusLabel={pending:'En attente de contrôle humain',verified:'Vérifié après revue',rejected:'Refusé',withdrawn:'Retiré',revoked:'Vérification révoquée'};
  el.innerHTML=list.length?list.map(r=>{
   const actions=isAdmin&&r.status==='pending'
    ?'<button type="button" data-verification-decision="verified" data-verification-id="'+escapeHtml(r.id)+'">Valider après contrôle</button><button type="button" class="secondary" data-verification-decision="rejected" data-verification-id="'+escapeHtml(r.id)+'">Refuser</button>'
-   :(!isAdmin&&r.status==='pending'?'<button type="button" class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':'');
+   :(isAdmin&&r.status==='verified'&&r.subjectType==='company'
+     ?'<button type="button" class="secondary" data-verification-decision="revoked" data-verification-id="'+escapeHtml(r.id)+'">Révoquer la vérification</button>'
+     :(!isAdmin&&r.status==='pending'?'<button type="button" class="secondary" data-verification-decision="withdrawn" data-verification-id="'+escapeHtml(r.id)+'">Retirer ma demande</button>':''));
   return '<article class="item"><span class="pill">'+escapeHtml(statusLabel[r.status]||'Statut inconnu')+'</span><strong>'+escapeHtml(r.subjectType==='company'?'Entreprise':'Qualification')+' : '+escapeHtml(r.subjectName)+'</strong><div>'+escapeHtml(r.countryCode)+' · '+escapeHtml(r.evidenceLabel)+'</div>'+actions+'</article>';
  }).join(''):'<div class="empty">Aucune demande de vérification.</div>';
 });
