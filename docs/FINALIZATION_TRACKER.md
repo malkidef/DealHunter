@@ -282,3 +282,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les deux workflows ont terminé sans étape en échec selon les résultats GitHub Actions consultés.
 - Cette validation concerne précisément le commit ci-dessus. Tout nouveau commit nécessitera une nouvelle vérification CI.
 - La PR #28 reste en brouillon et non fusionnée. Aucun déploiement ni service payant.
+
+
+### Vérification CI finale — 27 novembre 2026, commit 662ec48da02c91a9d8040bf0bd9dcdde20dfe86b
+
+- Workflow `Tests DealHunter`, run `45920762974` (#728) : **completed / success**.
+- Workflow `Tests des règles Firestore`, run `45920762959` (#578) : **completed / success**.
+- Le job `firestore-rules` a terminé avec succès : contrôle de parité des règles, installation des dépendances et tests dans l'émulateur Firestore sont tous réussis.
+- Cette validation porte sur le commit exact `662ec48da02c91a9d8040bf0bd9dcdde20dfe86b`. Elle ne valide ni les parcours réels Firebase multi-comptes, ni les droits RGPD complets, ni une restauration de sauvegarde.
+- La PR #28 reste en brouillon, non fusionnée et non déployée. Aucun paiement, service payant ou changement de données réelles.
