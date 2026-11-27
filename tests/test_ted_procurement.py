@@ -63,10 +63,6 @@ class TedNoticeTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TedCollectorPaginationTests(unittest.TestCase):
     def test_collects_multiple_pages_and_deduplicates(self):
         import scripts.collect_ted as collector
@@ -116,3 +112,7 @@ class TedCollectorPaginationTests(unittest.TestCase):
                 collector.fetch_page("PD>=20261101", 1)
         finally:
             collector.urllib.request.urlopen = original_open
+
+
+if __name__ == "__main__":
+    unittest.main()
