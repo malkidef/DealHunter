@@ -212,3 +212,26 @@ Le budget initial visé est de 0 €. Ne pas activer de Cloud Functions, Stripe,
 ### Extension des notifications aux services et à l'emploi
 
 Le worker périodique couvre désormais aussi `serviceMatchRequests` et `workMatchRequests` : création d'une demande, acceptation ou refus. Il traite également les messages de `serviceMatchMessages` et `workMatchMessages`, en vérifiant que la demande associée est acceptée et que l'expéditeur appartient aux participants. Les notifications restent privées, dédupliquées par identifiant déterministe et créées côté serveur via Admin SDK. La validation CI de syntaxe et les tests existants doivent être vérifiés sur le commit qui porte cette extension ; un essai fonctionnel avec deux comptes reste requis.
+
+
+## Mise à jour de finalisation — 27 novembre 2026
+
+### CI de la branche de finalisation
+
+Sur le commit `e29de7a9365574ee680c653a3e6f7d5c01a70d20`, les deux workflows GitHub Actions ont terminé avec succès :
+- `Tests DealHunter` — run `45904007315` (#726) : tests Python, matching, fonctions Firebase et syntaxe JavaScript.
+- `Tests des règles Firestore` — run `45904007436` (#576) : parité des règles et tests de l'émulateur Firestore.
+Ces résultats valident le commit testé, pas les commits ultérieurs.
+
+### Blocage concret du parcours de droits RGPD
+
+- L'interface fournit un export personnel initial, explicitement partiel.
+- L'effacement de compte n'est pas implémenté ; aucune suppression globale côté navigateur ne doit être ajoutée.
+- Les documents consultés ne définissent pas encore de canal de contact officiel DealHunter ni d'adresse dédiée aux demandes d'accès, rectification, opposition ou effacement. Le texte « contacte l'équipe DealHunter » ne suffit pas à fournir un canal opérationnel.
+- Ne pas inventer d'adresse e-mail, de formulaire ni de promesse de délai. Avant de publier un parcours de demande, le propriétaire doit choisir et confirmer un canal de contact qu'il contrôle et définir qui traite les demandes.
+- En attendant, les droits RGPD ne sont pas considérés comme opérationnels et l'ouverture publique reste bloquée.
+- Toute future procédure d'effacement doit traiter les données partagées, les obligations de conservation, les sous-collections et les workers qui pourraient recréer des suggestions ou notifications. Aucun effacement destructif ne doit être lancé sans validation distincte.
+
+### Décision
+
+La réussite CI est une validation technique utile, mais ne lève pas les blocages de déploiement, de droits RGPD, de contact officiel, de tests réels multi-comptes et de cadre légal. Aucun merge, déploiement ou paiement n'est effectué dans cette étape.
