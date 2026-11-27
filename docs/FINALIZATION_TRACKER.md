@@ -291,3 +291,11 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Le job `firestore-rules` a terminé avec succès : contrôle de parité des règles, installation des dépendances et tests dans l'émulateur Firestore sont tous réussis.
 - Cette validation porte sur le commit exact `662ec48da02c91a9d8040bf0bd9dcdde20dfe86b`. Elle ne valide ni les parcours réels Firebase multi-comptes, ni les droits RGPD complets, ni une restauration de sauvegarde.
 - La PR #28 reste en brouillon, non fusionnée et non déployée. Aucun paiement, service payant ou changement de données réelles.
+
+
+### CI du contrôle statique de l'export — commit `da9134e8d391e1ed5a4253e314b8c57876bc8d87` (27 novembre 2026)
+
+- `Tests DealHunter`, run `45921099192` (#730) : **completed / success**. Toutes les étapes Python, matching, vérification des fonctions Firebase et JavaScript sont réussies.
+- `Tests des règles Firestore`, run `45921099159` (#580) : **in_progress** au dernier contrôle. La parité des règles est réussie ; installation des dépendances en cours, émulateur pas encore lancé.
+- La réussite du workflow général ne remplace pas les tests Firestore. Ne pas déclarer la CI complète verte tant que le run #580 n'est pas terminé.
+- La revue de l'export est statique et documentaire ; aucun code d'export, aucune règle et aucune donnée utilisateur n'ont été modifiés.
