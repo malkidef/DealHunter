@@ -148,10 +148,14 @@ test("l’export personnel est accessible uniquement depuis le compte connecté"
   assert.match(auth, /15 \* 60 \* 1000/);
 });
 
-test("l’export personnel filtre les données par UID et plafonne chaque collection", () => {
+test("l’export personnel filtre par UID et pagine chaque collection avec un plafond explicite", () => {
   assert.match(auth, /where\(field, "==", user\.uid\)/);
-  assert.match(auth, /limit\(501\)/);
-  assert.match(auth, /snapshot\.docs\.slice\(0, 500\)/);
+  assert.match(auth, /EXPORT_PAGE_SIZE = 250/);
+  assert.match(auth, /MAX_EXPORT_DOCUMENTS_PER_COLLECTION = 1000/);
+  assert.match(auth, /orderBy\(documentId\(\)\)/);
+  assert.match(auth, /startAfter\(cursor\)/);
+  assert.match(auth, /limit\(pageLimit\)/);
+  assert.match(auth, /docs\.slice\(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION\)/);
   assert.match(auth, /users", user\.uid, "sellerOffers"/);
   assert.match(auth, /users", user\.uid, "buyerNeeds"/);
   assert.match(auth, /reporterUid/);
@@ -160,6 +164,7 @@ test("l’export personnel filtre les données par UID et plafonne chaque collec
 
 test("l’export indique explicitement les données partagées et les limites", () => {
   assert.match(auth, /Export initial téléchargé/);
+  assert.match(auth, /formatVersion: 2/);
   assert.match(auth, /Il reste partiel : conversations, demandes partagées, transactions et avis ne sont pas inclus/);
   assert.match(auth, /Conversations et messages partagés/);
   assert.match(auth, /Transactions et avis partagés/);
