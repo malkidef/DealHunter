@@ -240,3 +240,28 @@ La réussite CI est une validation technique utile, mais ne lève pas les blocag
 ## Contrôle CI complémentaire — 27 novembre 2026
 
 Sur le commit `662ec48da02c91a9d8040bf0bd9dcdde20dfe86b`, les workflows `Tests DealHunter` (run `45920762974`, #728) et `Tests des règles Firestore` (run `45920762959`, #578) sont tous deux terminés avec succès. Le second a exécuté avec succès le contrôle de parité et les tests de l'émulateur Firestore. Cette validation CI ne lève pas les bloqueurs de préproduction : parcours réels multi-comptes, export/effacement RGPD complets, sauvegarde restaurable, canal de contact officiel et validation juridique/commerciale restent à traiter. La PR #28 demeure en brouillon, non fusionnée et non déployée.
+
+
+## Mise à jour de finalisation — 27 novembre 2026
+
+La branche de finalisation `finalization/company-verification-current` contient des corrections et tests supplémentaires, mais la PR #28 reste ouverte en brouillon et n'est pas fusionnée. L'écart constaté avec `main` est de 160 commits en avance et 5 en retard ; les cinq commits en retard concernent des instantanés de données plus récents sur `main`. Ces fichiers de données ne figurent pas dans les 26 fichiers de la comparaison PR : ne pas les écraser ni effectuer de rebase automatique.
+
+### Avancées techniques dans la branche non fusionnée
+
+- TED : pagination API avec déduplication, plafond de sécurité et tests ; CI applicative réussie sur le commit de code.
+- BOAMP : pagination bornée (100 par page, plafond 5 000), déduplication et signalement de troncature ; tests applicatifs réussis.
+- BODACC : pagination bornée, filtre strict ventes/cessions, protection des données personnelles et tests ; correctif du point d'entrée de pagination validé par CI applicative.
+- GSA : la spécification publique ne documente pas de pagination ; la complétude est marquée inconnue, les doublons identifiables sont éliminés et une réponse vide ne remplace plus le flux existant. Tests applicatifs réussis sur le code corrigé.
+- Export personnel : pagination Firestore par curseur, plafond explicite de 1 000 documents par collection et conservation des résultats partiels en cas d'erreur ; tests applicatifs réussis sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33`.
+
+### Bloqueurs inchangés
+
+- Le test de téléchargement réel Android et le test multi-comptes de l'export restent à faire.
+- L'export personnel n'est pas un export RGPD exhaustif ; les données partagées et certaines catégories restent exclues.
+- L'effacement complet d'un compte n'est pas implémenté ; les règles interdisent les suppressions client de nombreuses collections.
+- Aucune sauvegarde Firestore complète, chiffrée, restaurable et testée n'a été exécutée.
+- Stripe reste désactivé/non déployé ; le modèle de données et les parcours d'administration/réconciliation ne sont pas validés de bout en bout.
+- Les coordonnées officielles de contact, les documents juridiques, bases légales et durées de conservation doivent être fournis/validés par le responsable du traitement.
+- Les tests Firestore de la dernière tête restent à confirmer après fin de l'émulateur ; aucun déploiement, fusion ou paiement n'a été réalisé.
+
+**Décision :** pas d'ouverture publique ni de paiement réel. Les tests applicatifs réussis ne remplacent pas la validation Firebase multi-comptes, la sauvegarde restaurable, la conformité juridique et l'approbation finale du propriétaire.
