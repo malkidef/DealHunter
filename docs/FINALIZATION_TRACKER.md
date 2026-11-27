@@ -501,3 +501,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - CI sur `cc2887b37b6b7d3bd289261e55132b7354b9f11f` : Tests DealHunter #771 **success** ; règles Firestore #621 **success**.
 - Aucune donnée utilisateur lue ou modifiée, aucun export réel exécuté.
 - Limite restante : essais Android et multi-comptes réels indispensables avant de considérer l’export validé en conditions d’usage.
+
+
+## Contrôle CI complémentaire — commit 31f4b0bd (27 novembre 2026)
+
+- Correction de maintenance dans `tests/test_ted_procurement.py` : le bloc `unittest.main()` est désormais placé après toutes les classes de tests, de sorte que l'exécution directe du fichier découvre également les tests de pagination.
+- Commit : `31f4b0bdc428f9b1efdf5d3307e337adbea597f0`.
+- Workflow `Tests DealHunter` #773 : **success**. Les journaux confirment 38 tests Python réussis et 81 tests Node réussis (0 échec), ainsi que les contrôles de syntaxe JavaScript.
+- Workflow `Tests des règles Firestore` #623 : **success**, contrôle de parité des règles et tests de l'émulateur réussis.
+- Ces résultats valident la tête testée de la PR #28, pas les essais réels multi-comptes, l'export Android, une sauvegarde/restauration ou les paiements.
+- PR #28 reste en brouillon, non fusionnée et non déployée. Aucun accès aux données Firestore réelles, aucune dépense, aucune activation Blaze/Stripe et aucun paiement.
