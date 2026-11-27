@@ -482,3 +482,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 
 - Opendatasoft Explore API v2.1 : paramètres `limit`/`offset`, `total_count`, limite de 100 lignes par page pour l'endpoint records et recommandation d'utiliser l'endpoint exports pour les volumes supérieurs : https://help.opendatasoft.com/apis/ods-explore-v2/explore_v2.1.html
 - GSA Auctions API : documentation des formats et limites de requêtes : https://gsa.github.io/auctions_api/basics ; référence des champs : https://gsa.github.io/auctions_api/fields ; spécification OpenAPI officielle : https://github.com/GSA/auctions_api/blob/gh-pages/openapi.yaml. La spécification ne définit pas de paramètres de pagination.
+
+
+## Audit Stripe — 27 novembre 2026
+
+- Le flux actuel utilise des charges séparées et transferts différés, avec commission calculée par retenue de 5 % sur le brut et versement vendeur de 95 % après confirmations. Les frais Stripe restent à la charge de la plateforme dans ce calcul de marge.
+- Correction du claim d'administration dans `firebase/functions/src/payments.js` : `dealhunterAdmin` remplace `admin`, aligné sur les règles Firestore et l'interface de vérification. Commit `c1125ca69de2290565eb3679d994cd9a8019c39c`.
+- Suppression du paramètre Checkout `payment_method_types` pour laisser Stripe gérer les moyens dynamiques. Tests statiques ajoutés dans `tests/test_ui_navigation.js`, commit `c3b76049682d24320e6dc40e32e0717948e0d81c`.
+- Bloqueurs Stripe : API Connect v1 encore utilisée, SDK `^18.0.0`, capacités v1, reversal de transfert non automatisé à l'ouverture d'un litige après paiement du vendeur, interface d'arbitrage absente, modèle Firestore deals/companies incompatible avec le parcours de vente actuel, tests E2E non exécutés.
+- Ne pas déployer ni activer Stripe avant migration Connect v2, alignement du modèle de données, tests sandbox complets, revue juridique et validation explicite du propriétaire.
