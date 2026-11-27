@@ -1299,6 +1299,11 @@ if (!ready) {
       },
       data: normalize(collections)
     };
+    // Un changement de compte pendant les lectures ne doit jamais déclencher
+    // le téléchargement des données de l'ancien utilisateur dans la session du nouveau.
+    if (auth.currentUser?.uid !== user.uid) {
+      throw new Error("Le compte a changé pendant la préparation. Relance l’export depuis le bon compte.");
+    }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
