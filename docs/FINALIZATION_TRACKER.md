@@ -464,7 +464,7 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - BODACC : correctif de fonction de pagination validé par les tests applicatifs (#755).
 - GSA : déduplication et protection contre le flux vide validées sur le code corrigé (#759).
 - Export personnel paginé : tests applicatifs complets réussis sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33` (#762), y compris le contrôle de syntaxe JavaScript et les tests du moteur de matching.
-- Firestore rules #612 : encore en cours au dernier contrôle ; les étapes d'installation sont en cours, l'émulateur n'a pas encore rendu son résultat.
+- Firestore rules #612 : succès sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33` ; l'émulateur Firestore a terminé sans échec.
 - Les commits suivants de documentation ont déclenché des exécutions supplémentaires ; ne considérer que les résultats liés au SHA concerné.
 
 
@@ -476,3 +476,9 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les collecteurs BOAMP/BODACC/GSA ont leurs tests applicatifs validés sur des commits respectifs ; TED était déjà validé.
 - Bloqueurs : test réel Android/multi-comptes de l'export, effacement complet, sauvegarde chiffrée restaurable testée, paiements Stripe E2E et interface d'arbitrage, coordonnées de contact et cadre juridique.
 - Aucune dépense, activation Blaze, collecte live GSA, écriture de données Firebase, fusion PR, déploiement production ou opération de paiement.
+
+
+### Sources API officielles utilisées
+
+- Opendatasoft Explore API v2.1 : paramètres `limit`/`offset`, `total_count`, limite de 100 lignes par page pour l'endpoint records et recommandation d'utiliser l'endpoint exports pour les volumes supérieurs : https://help.opendatasoft.com/apis/ods-explore-v2/explore_v2.1.html
+- GSA Auctions API : documentation des formats et limites de requêtes : https://gsa.github.io/auctions_api/basics ; référence des champs : https://gsa.github.io/auctions_api/fields ; spécification OpenAPI officielle : https://github.com/GSA/auctions_api/blob/gh-pages/openapi.yaml. La spécification ne définit pas de paramètres de pagination.
