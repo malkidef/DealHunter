@@ -216,3 +216,15 @@ Contrôle statique de `auth.js` sur la branche de finalisation :
 5. Ne pas modifier les règles Firestore pour contourner une requête refusée ; chaque ajout doit conserver les filtres démontrés par les tests de règles.
 
 Cette revue est statique : elle ne constitue pas un test multi-comptes réel ni une validation juridique. Aucun document utilisateur n'a été lu ou modifié et aucune donnée de production n'a été exportée.
+
+
+### 9.1 Contrôle complémentaire du comportement de lecture et de téléchargement — 27 novembre 2026
+
+- Chaque lecture de collection est isolée dans un `try/catch` : une erreur sur une famille ne bloque pas les autres ; le manifeste conserve le code/message d'erreur et la catégorie reçoit une liste vide. L'interface doit donc être lue avec le manifeste, car une liste vide seule ne distingue pas absence de données et échec de lecture.
+- Les lectures des collections publiques sont filtrées par l'UID courant sur le champ propriétaire/déclarant/destinataire prévu ; les deux sous-collections privées sont sous `users/{uid}`. Aucun parcours de lecture globale de collection n'a été observé dans la fonction d'export auditée.
+- Le seuil de 501 sert à détecter un dépassement, mais seuls les 500 premiers documents sont exportés. Il n'y a ni curseur ni pagination ; les données au-delà sont omises et signalées dans `limits`.
+- La création du JSON et du lien de téléchargement se fait côté navigateur via Blob/ObjectURL ; aucune transmission du fichier à un serveur n'est faite par cette fonction.
+- Le lien est déclenché puis l'ObjectURL est révoquée après une seconde. Ce comportement doit être vérifié sur Android et sur ordinateur avant de considérer le téléchargement fiable sur toutes les plateformes ; aucune validation réelle de navigateur n'est revendiquée.
+- Une erreur de lecture partielle n'empêche pas le téléchargement du reste : le message d'interface signale le nombre d'erreurs et le manifeste les détaille. Il faut conserver cet avertissement visible dans toute évolution de l'export.
+
+Cette section est une inspection statique du code existant, pas une modification de l'export ni une preuve de fonctionnement sur appareils réels.
