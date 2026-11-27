@@ -419,4 +419,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - GSA Auctions (`scripts/gsa_auctions.py`) : l'appel observé ne met pas en œuvre de pagination ; l'instantané historique de 591 annonces ne prouve pas l'exhaustivité du catalogue.
 - SAM.gov (`scripts/sam_opportunities.py`) : pagination par offset, 1 000 avis maximum par page et plafond de 5 000 par exécution ; le total API est conservé pour diagnostic.
 - Aucun de ces constats ne prouve une perte de données à chaque exécution, mais BOAMP/BODACC/GSA ne doivent pas être présentés comme exhaustifs. À traiter ensuite avec pagination bornée, déduplication, métadonnées de complétude et tests, sans écraser les snapshots existants.
-- Les tests Python de la tête `b3f20b332e4495abede38f9d7d7b4fa0eb193d9f` (run DealHunter #747) sont **success** : la pagination TED et ses tests ont passé. Les tests Firestore #597 sont encore en cours au dernier contrôle.
+- Les tests Python de la tête `b3f20b332e4495abede38f9d7d7b4fa0eb193d9f` (run DealHunter #747) sont **success** : la pagination TED et ses tests ont passé. Les tests Firestore #597 ont depuis terminé avec succès.
+
+
+## Pagination BOAMP — 27 novembre 2026
+
+- `scripts/collect_boamp.py` utilise désormais les paramètres `limit=100` et `offset` pour lire les pages successives de l'API Opendatasoft, jusqu'à un plafond de sécurité de 5 000 lignes.
+- Le script conserve le total API lorsqu'il est fourni, expose `total_available` et `truncated`, déduplique les avis et rejette les réponses sans tableau `results`. L'écriture du fichier reste atomique et le flux historique n'est pas touché tant que le collecteur n'est pas exécuté.
+- Tests ajoutés à `tests/test_collect_boamp.py` : multi-pages, plafond/troncature et réponse invalide.
+- Commits : collecteur `c3859caa73b45b21ee2497d7835f4ac914fc1b94`, tests `50f516707185c2f351b3179b1fa568d3cc357257`.
+- Validation CI de ces nouveaux commits en attente. Aucun appel réel à l'API BOAMP et aucune publication de snapshot n'ont été lancés.
