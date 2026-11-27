@@ -336,3 +336,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - `Tests des règles Firestore`, run `45921505522` (#587) : **in_progress** au dernier relevé. Parité des règles réussie ; installation des dépendances en cours ; l'émulateur Firestore n'a pas encore démarré.
 - Le commit documentaire `d2c51ed...` n'est donc que partiellement validé à cet instant. Ne pas annoncer une CI complète verte.
 - Aucun test réel de sauvegarde ou restauration n'a été exécuté ; aucun dump, compte de service supplémentaire, clé ou stockage d'archive créé.
+
+
+### Résultats CI actualisés — 27 novembre 2026
+
+- Le workflow Firestore #587 (run `45921505522`) a terminé **success** ; les tests de l'émulateur Firestore ont réussi.
+- Sur le commit documentaire suivant `48c2b8e6cf2fc771516fafd2f1a85c90c61868cf`, `Tests DealHunter` #738 (run `45921588193`) est **success** ; `Tests des règles Firestore` #588 (run `45921588205`) était **in_progress** au moment de cette mise à jour. Ce commit ne doit pas être présenté comme entièrement validé tant que #588 n'est pas terminé.
+- Les tests verts #737/#587 valident le commit précédent `d2c51ed...`, pas automatiquement tous les commits ultérieurs.
+- PR #28 reste en brouillon. La branche est divergente de `main` (130 commits en avance, 5 en retard au dernier compare) ; aucun rebase, merge ou déploiement effectué.
+- Budget inchangé : aucune dépense ni activation d'un service payant. Stripe et Firebase Blaze restent désactivés.
