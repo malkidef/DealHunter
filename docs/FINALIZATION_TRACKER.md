@@ -355,3 +355,21 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les SHA de blobs sur `main` diffèrent de ceux de la branche pour les cinq fichiers. Les tailles/versions ne sont donc pas interchangeables ; ils ne doivent pas être copiés ou remplacés sans comparaison de contenu et validation de fraîcheur/source. Les instantanés de données sont préservés des deux côtés.
 - Cette vérification ne prouve pas la fraîcheur ni la qualité des cinq flux ; elle identifie seulement un conflit de versions de fichiers. Les cinq commits en retard ne sont pas intégrés.
 - La tête documentaire suivante doit recevoir ses propres contrôles CI. Aucune action sur les données Firestore, aucune dépense, aucun service payant, aucun déploiement.
+
+
+### CI et audit de fraîcheur des cinq flux — 27 novembre 2026
+
+- Commit documentaire contrôlé : `d31268ed01b6e8dd0691c48af27ac4e4c7b001a4`.
+- `Tests DealHunter`, run `45990544578` (#740) : **completed / success**.
+- `Tests des règles Firestore`, run `45990544500` (#590) : **completed / success** ; job `firestore-rules` terminé avec succès.
+- L'historique GitHub confirme que les cinq commits en retard sur `main` sont des publications automatiques de flux, et non cinq modifications applicatives à fusionner sans examen :
+  - BOAMP : `main` publié le 26 novembre à 15:26 UTC ; branche de finalisation le 25 novembre à 15:46 UTC.
+  - BODACC : `main` publié le 26 novembre à 15:47 UTC ; branche de finalisation le 25 novembre à 16:04 UTC.
+  - GSA Auctions : `main` publié le 25 novembre à 20:26 UTC ; branche de finalisation le 23 novembre à 22:30 UTC.
+  - SAM.gov : `main` publié le 25 novembre à 20:50 UTC ; branche de finalisation le 23 novembre à 23:04 UTC.
+  - TED : `main` publié le 26 novembre à 15:38 UTC ; branche de finalisation le 25 novembre à 15:56 UTC.
+- Les métadonnées BOAMP, BODACC et TED indiquent également des dates de collecte plus récentes sur `main`. Les historiques de commits confirment le même ordre pour GSA et SAM. Les instantanés de `main` sont donc les publications les plus récentes à cette date ; les blobs divergents ne sont pas des versions équivalentes.
+- Décision prudente : conserver les cinq instantanés des deux côtés jusqu'à validation de compatibilité des schémas avec le code de la branche. Ne pas écraser `main`, ne pas copier les fichiers à l'aveugle, ne pas rebaser ni fusionner automatiquement.
+- Les collecteurs BOAMP/BODACC/TED publient quotidiennement ; GSA et SAM publient selon leurs calendriers configurés. Les workflows ont des permissions `contents: write` pour publier leurs fichiers de flux. Les collectes produisent des signaux d'opportunités, pas des stocks confirmés ni des commandes fermes.
+- Cette revue est basée sur le code, les métadonnées et l'historique GitHub ; aucune nouvelle collecte API n'a été déclenchée et aucune donnée Firestore n'a été lue ou modifiée.
+- PR #28 reste non fusionnée et non déployée. Aucun paiement, service payant ou coût engagé.
