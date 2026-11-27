@@ -544,3 +544,8 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 ### CI sur la tête courante au 27 novembre 2026
 
 Sur le commit `79f4fdf8d161d5d881791ce8653e31c80fbd67a3`, les workflows **Tests DealHunter** et **Tests des règles Firestore** sont terminés avec le résultat `success`. Le job d'émulation Firestore est inclus. Cette validation ne remplace pas les essais Android, la restauration d'une sauvegarde, les essais Stripe sandbox ou les vérifications externes avant ouverture publique.
+
+
+### Analyse du retard sur main — 27 novembre 2026
+
+Les cinq commits de retard ont été comparés depuis le merge-base : ils ne touchent qu'aux cinq instantanés JSON des flux BOAMP, BODACC, GSA Auctions, SAM et TED. Aucun code, test, workflow ou règle Firestore n'est concerné. Pas de rebase/merge automatique : conserver les données collectées dans leur cycle d'actualisation et de validation propre.
