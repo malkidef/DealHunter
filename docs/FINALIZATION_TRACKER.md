@@ -328,3 +328,11 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Cette option est une piste, pas une sauvegarde opérationnelle. Pas de dump lancé, pas de clé créée, pas de compte de service créé/modifié, pas de donnée Firestore lue, pas de coût engagé et pas d'activation Blaze.
 - Commit documentaire : `79836c462f4df8a01b71fa15ac8eae252dcf5e8c`.
 - Dernière validation CI confirmée avant cet ajout : commit `dfa5b0303b455bb2fba39d995434ae87914e4f86`, workflows `Tests DealHunter` #733 et `Tests des règles Firestore` #583 : **success**. Aucun run exploitable n'est encore retourné pour le nouveau commit documentaire.
+
+
+### Contrôle CI sur la tête documentaire `d2c51ed881d80abaa6b6463a26741bd025008ced` — 27 novembre 2026
+
+- `Tests DealHunter`, run `45921506074` (#737) : **completed / success**.
+- `Tests des règles Firestore`, run `45921505522` (#587) : **in_progress** au dernier relevé. Parité des règles réussie ; installation des dépendances en cours ; l'émulateur Firestore n'a pas encore démarré.
+- Le commit documentaire `d2c51ed...` n'est donc que partiellement validé à cet instant. Ne pas annoncer une CI complète verte.
+- Aucun test réel de sauvegarde ou restauration n'a été exécuté ; aucun dump, compte de service supplémentaire, clé ou stockage d'archive créé.
