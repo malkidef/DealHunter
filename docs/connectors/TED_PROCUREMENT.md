@@ -4,7 +4,7 @@
 
 Le connecteur appelle l'API officielle TED v3 `POST /v3/notices/search`, sans clé API pour la recherche d'avis déjà publiés. Il extrait les avis de marché et conserve le titre, le numéro de publication, l'acheteur, le pays, les dates et le type d'avis lorsqu'ils sont présents.
 
-La collecte est limitée à 250 avis par exécution et le flux est publié dans `data/ted-buyer-opportunities.json`. L'exécution automatique est programmée tous les deux jours ; elle peut aussi être lancée manuellement depuis GitHub Actions.
+La collecte actuelle est limitée à la première page de 100 avis par exécution et le flux est publié dans `data/ted-buyer-opportunities.json`. Le script recherche les avis publiés sur les 45 derniers jours ; le workflow est programmé quotidiennement (05:35 UTC) et peut aussi être lancé manuellement depuis GitHub Actions. **Aucune pagination n'est actuellement effectuée** : les résultats au-delà de cette première page ne sont pas récupérés.
 
 ## Prudence sur les données
 
@@ -14,7 +14,7 @@ Le connecteur ne collecte pas les coordonnées personnelles des agents acheteurs
 
 ## Requête
 
-Par défaut, le connecteur recherche les avis publiés depuis le 1er janvier 2026 avec la requête experte TED `PD>=20260101`. Le workflow manuel permet de fournir une requête TED différente et un nombre d'avis entre 1 et 250.
+Le script actuel calcule une date de départ glissante à 45 jours avant l'exécution, demande `page: 1` et `limit: 100`, avec tri décroissant par date de publication. Le workflow manuel ne définit pas d'entrées pour modifier la requête ou la limite. Cette implémentation doit être améliorée avec une pagination bornée et des tests de déduplication avant de prétendre couvrir tous les avis disponibles.
 
 ## Documentation officielle
 
