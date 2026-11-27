@@ -539,3 +539,8 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Sauvegarde/restauration chiffrée, test Android, test multi-comptes, export complet, effacement automatisé, sandbox Stripe, E2E paiements et revue juridique/opérationnelle restent non validés.
 - Aucun accès aux données Firestore de production, aucune modification de données utilisateur, aucune dépense, aucun service payant activé, aucun paiement, merge ou déploiement.
 - La liste des portes restantes et l'ordre prudent de finalisation sont détaillés dans `docs/OPERATIONS_READINESS.md`.
+
+
+### CI sur la tête courante au 27 novembre 2026
+
+Sur le commit `79f4fdf8d161d5d881791ce8653e31c80fbd67a3`, les workflows **Tests DealHunter** et **Tests des règles Firestore** sont terminés avec le résultat `success`. Le job d'émulation Firestore est inclus. Cette validation ne remplace pas les essais Android, la restauration d'une sauvegarde, les essais Stripe sandbox ou les vérifications externes avant ouverture publique.
