@@ -400,3 +400,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les workflows de publication ont le droit d'écrire sur la branche qui les déclenche. À préserver lors de la future revue des permissions et de la stratégie de publication ; ne pas transférer ces secrets ou droits aux scripts de lecture.
 - Les tests CI ne valident pas la fraîcheur des sources, la pagination complète, les conditions de réutilisation commerciale, ni la disponibilité réelle des lots. Qualification humaine obligatoire avant publication comme stock.
 - Aucun accès aux données Firestore réelles, aucune sauvegarde, aucun effacement, aucune activation de facturation, aucun paiement et aucun déploiement n'ont été effectués. Dépense : 0 €.
+
+
+## Mise à jour — 27 novembre 2026 : pagination TED
+
+- Documentation officielle TED consultée : mode `PAGE_NUMBER`, maximum 250 avis par page et 15 000 avis par requête ; le mode `ITERATION` est prévu pour les extractions plus larges. La recherche publique ne nécessite pas de clé.
+- `scripts/collect_ted.py` modifié sur la branche de finalisation : pagination jusqu'à 250 avis/page, déduplication par numéro de publication, contrôles de réponse/timeouts, écriture atomique, plafond de sécurité de 5 000 et indicateur `truncated`.
+- Tests de pagination, déduplication, plafond et erreur ajoutés à `tests/test_ted_procurement.py`.
+- Commit script : `229a67172ff793f366eb168e33dcd9c731c0f9ed`; tests : `5982dd5214a6f8df357bb582711fc610d1dbb6a4`.
+- Documentation connecteur mise à jour. La CI de ces changements est en attente de confirmation ; aucun lancement manuel du collecteur ni appel à l'API de production n'a été effectué.
+- Les annonces restent des signaux d'appels d'offres publics, pas des commandes fermes ni des stocks disponibles. La qualification commerciale demeure manuelle.
