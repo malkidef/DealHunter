@@ -5,7 +5,7 @@ import {
   sendEmailVerification, reload, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot, orderBy
+  getFirestore, doc, getDoc, setDoc, deleteDoc, addDoc, collection, getDocs, updateDoc, query, where, serverTimestamp, writeBatch, runTransaction, limit, onSnapshot, orderBy, documentId, startAfter
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-web-config.js";
 
@@ -1207,18 +1207,40 @@ if (!ready) {
     const generatedAt = new Date().toISOString();
     const collections = {};
     const errors = [];
+    const MAX_EXPORT_DOCUMENTS_PER_COLLECTION = 1000;
+    const EXPORT_PAGE_SIZE = 250;
     const readOwnedCollection = async (label, collectionPath, field) => {
+      const docs = [];
+      let cursor = null;
+      let truncated = false;
       try {
         const baseCollection = collection(db, ...collectionPath);
-        const snapshot = await getDocs(field
-          ? query(baseCollection, where(field, "==", user.uid), limit(501))
-          : query(baseCollection, limit(501)));
-        const docs = snapshot.docs.slice(0, 500).map(item => ({ id: item.id, ...item.data() }));
-        collections[label] = docs;
-        if (snapshot.size > 500) errors.push(label + " : plus de 500 documents, export partiel plafonné.");
+        while (docs.length <= MAX_EXPORT_DOCUMENTS_PER_COLLECTION) {
+          const pageLimit = Math.min(EXPORT_PAGE_SIZE, MAX_EXPORT_DOCUMENTS_PER_COLLECTION + 1 - docs.length);
+          const constraints = [];
+          if (field) constraints.push(where(field, "==", user.uid));
+          constraints.push(orderBy(documentId()));
+          if (cursor) constraints.push(startAfter(cursor));
+          constraints.push(limit(pageLimit));
+          const snapshot = await getDocs(query(baseCollection, ...constraints));
+          if (!snapshot.docs.length) break;
+          docs.push(...snapshot.docs);
+          cursor = snapshot.docs[snapshot.docs.length - 1];
+          if (snapshot.size < pageLimit) break;
+          if (docs.length > MAX_EXPORT_DOCUMENTS_PER_COLLECTION) break;
+        }
+        truncated = docs.length > MAX_EXPORT_DOCUMENTS_PER_COLLECTION;
+        collections[label] = docs.slice(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION)
+          .map(item => ({ id: item.id, ...item.data() }));
+        if (truncated) {
+          errors.push(label + " : plus de " + MAX_EXPORT_DOCUMENTS_PER_COLLECTION +
+            " documents ; export partiel plafonné après pagination.");
+        }
       } catch (error) {
-        collections[label] = [];
-        errors.push(label + " : " + (error.code || error.message || "lecture impossible"));
+        collections[label] = docs.slice(0, MAX_EXPORT_DOCUMENTS_PER_COLLECTION)
+          .map(item => ({ id: item.id, ...item.data() }));
+        errors.push(label + " : lecture interrompue après " + docs.length +
+          " document(s) (" + (error.code || error.message || "erreur inconnue") + ").");
       }
     };
     const readOwnDocument = async (label, path) => {
@@ -1263,7 +1285,7 @@ if (!ready) {
         generatedAt,
         accountUid: user.uid,
         accountEmail: user.email || null,
-        formatVersion: 1,
+        formatVersion: 2,
         totalDocuments,
         limits: errors,
         excluded: [
@@ -1273,7 +1295,7 @@ if (!ready) {
           "Coordonnées de tiers, journaux internes et données fournisseurs",
           "Caches locaux du navigateur et données non synchronisées"
         ],
-        note: "Export personnel filtré. Les erreurs et plafonds éventuels figurent dans limits ; ce fichier ne constitue pas un export administratif exhaustif ni une sauvegarde."
+        note: "Export personnel filtré et paginé. Chaque collection est plafonnée à 1 000 documents ; les erreurs et plafonds figurent dans limits. Les données partagées exclues et les limites techniques signifient que ce fichier ne constitue pas un export administratif exhaustif ni une sauvegarde."
       },
       data: normalize(collections)
     };
