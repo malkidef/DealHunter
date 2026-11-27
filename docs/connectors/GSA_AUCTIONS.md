@@ -42,11 +42,11 @@ Le fichier actuellement présent dans la branche principale contient **591 annon
 - 591 fiches en `availability_status=unverified` ;
 - statut d'enchère `scheduled` pour les 591 lignes de cet instantané.
 
-Le workflow publie le JSON dans le dépôt public. Le flux est donc techniquement consultable par l'application, mais les annonces ne sont pas validées commercialement.
+Le workflow publie le JSON dans le dépôt public. Le flux est donc techniquement consultable par l'application, mais les annonces ne sont pas validées commercialement. Le fichier indique désormais `completeness: unknown` : la spécification OpenAPI publique consultée expose un endpoint et aucun paramètre de pagination ni compteur total. Il ne faut donc pas présenter les 591 lignes historiques ou une future collecte comme le catalogue exhaustif.
 
 ## Données conservées et limites
 
-Le script conserve les identifiants, titre, description de lot, dates, statut, localisation, réserve, enchère actuelle et URL officielle lorsqu'ils sont fournis.
+Le script conserve les identifiants, titre, description de lot, dates, statut, localisation, réserve, enchère actuelle et URL officielle lorsqu'ils sont fournis. Il déduplique les lots ayant un couple vente/lot explicite et refuse de publier un résultat vide afin de préserver le dernier flux valide.
 
 - La quantité reste vide lorsqu'elle n'est pas fournie par l'API.
 - Le champ `reserve` peut être un booléen indiquant qu'une réserve existe ; il n'est pas transformé en montant.
@@ -67,3 +67,8 @@ Le connecteur n'envoie aucun message, ne place aucune enchère, ne crée aucune 
 5. Consulter le journal d'exécution. En cas de succès, le fichier `data/gsa-auctions.json` est actualisé et l'artefact `gsa-auctions-pending` est disponible pendant 14 jours.
 
 Les annonces restent à vérifier manuellement avant toute décision commerciale. Ne pas les convertir automatiquement en stocks vendeurs.
+
+
+### Complétude et protection de publication (audit 27 novembre 2026)
+
+La spécification OpenAPI GSA publiée dans le dépôt officiel décrit une seule opération GET `/auctions`, un tableau `results` et aucun paramètre de pagination/offset ni champ de total. En l'absence de mécanisme documenté, DealHunter ne fabrique pas de pagination. Le collecteur expose explicitement une complétude inconnue, compte les doublons identifiables par couple vente/lot et refuse d'écraser le fichier de sortie lorsqu'une réponse est vide. Ces limites devront être levées auprès de l'équipe API avant de revendiquer une couverture exhaustive.
