@@ -410,3 +410,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Commit script : `229a67172ff793f366eb168e33dcd9c731c0f9ed`; tests : `5982dd5214a6f8df357bb582711fc610d1dbb6a4`.
 - Documentation connecteur mise à jour. La CI de ces changements est en attente de confirmation ; aucun lancement manuel du collecteur ni appel à l'API de production n'a été effectué.
 - Les annonces restent des signaux d'appels d'offres publics, pas des commandes fermes ni des stocks disponibles. La qualification commerciale demeure manuelle.
+
+
+## Audit pagination des autres collecteurs — 27 novembre 2026
+
+- BOAMP (`scripts/collect_boamp.py`) : la requête API demande actuellement `limit=100` sans pagination ni compteur de complétude conservé. Le flux peut donc être incomplet lorsque plus de 100 avis correspondent à la collecte.
+- BODACC (`scripts/collect_bodacc.py`) : même limite actuelle de 100 avis, sans pagination ; seuls les avis de vente/cession sont conservés, sans données personnelles ni données de stock.
+- GSA Auctions (`scripts/gsa_auctions.py`) : l'appel observé ne met pas en œuvre de pagination ; l'instantané historique de 591 annonces ne prouve pas l'exhaustivité du catalogue.
+- SAM.gov (`scripts/sam_opportunities.py`) : pagination par offset, 1 000 avis maximum par page et plafond de 5 000 par exécution ; le total API est conservé pour diagnostic.
+- Aucun de ces constats ne prouve une perte de données à chaque exécution, mais BOAMP/BODACC/GSA ne doivent pas être présentés comme exhaustifs. À traiter ensuite avec pagination bornée, déduplication, métadonnées de complétude et tests, sans écraser les snapshots existants.
+- Les tests Python de la tête `b3f20b332e4495abede38f9d7d7b4fa0eb193d9f` (run DealHunter #747) sont **success** : la pagination TED et ses tests ont passé. Les tests Firestore #597 sont encore en cours au dernier contrôle.
