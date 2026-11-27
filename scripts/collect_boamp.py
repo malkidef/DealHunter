@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 BASE="https://boamp-datadila.opendatasoft.com/api/explore/v2.1"
 DATASET="boamp"
 OUT="data/boamp-buyer-opportunities.json"
+PAGE_SIZE=100
+MAX_RECORDS=5000
 HEADERS={"User-Agent":"DealHunter/0.2 (open-data reuse)"}
 
 RULES=[
@@ -75,6 +77,30 @@ def classify(title):
             return {"category":category,"kind":kind,"relevance":"à étudier","reason":"Besoin potentiel de fourniture ou de matériel détecté dans l’intitulé."}
     return {"category":"À qualifier","kind":"inconnu","relevance":"à vérifier","reason":"Intitulé insuffisant pour déterminer le type de besoin."}
 
+
+def fetch_records(order=""):
+    """Read bounded pages from Opendatasoft Explore API and report truncation."""
+    rows=[]
+    total_available=0
+    offset=0
+    while offset < MAX_RECORDS:
+        url=f"{BASE}/catalog/datasets/{DATASET}/records?limit={PAGE_SIZE}&offset={offset}{order}"
+        payload=get_json(url)
+        page=payload.get("results") if isinstance(payload,dict) else None
+        if not isinstance(page,list):
+            raise RuntimeError("Réponse BOAMP invalide : résultats absents; ancien flux conservé.")
+        try:
+            total_available=max(total_available,int(payload.get("total_count",total_available) or 0))
+        except (TypeError,ValueError):
+            pass
+        if not page:
+            break
+        rows.extend(page)
+        offset += len(page)
+        if len(page) < PAGE_SIZE or (total_available and offset >= total_available):
+            break
+    return rows[:MAX_RECORDS], total_available, (total_available > MAX_RECORDS and len(rows) >= MAX_RECORDS)
+
 def main():
     meta=get_json(f"{BASE}/catalog/datasets/{DATASET}")
     fields=meta.get("fields",[])
@@ -82,11 +108,16 @@ def main():
     date_field=field_name(fields,[r"^dateparution$",r"date.*publication",r"^date_publication$"])
     if not title_field: raise RuntimeError("Champ titre BOAMP introuvable; flux existant conservé.")
     order=f"&order_by={date_field}%20desc" if date_field else ""
-    rows=get_json(f"{BASE}/catalog/datasets/{DATASET}/records?limit=100{order}").get("results",[])
+    rows, total_available, truncated = fetch_records(order)
     notices=[]
+    seen=set()
     for row in rows:
         title=clean(first(row,[title_field,"objet","intitule","titre"]))
         if not title: continue
+        stable_id=str(first(row,["id","idweb","numero_avis","reference"]) or "").strip()
+        dedupe_key=stable_id or (title,clean(first(row,[date_field] if date_field else [])),clean(first(row,["nomacheteur","acheteur","organisme"])))
+        if dedupe_key in seen: continue
+        seen.add(dedupe_key)
         notices.append({
             "id":str(first(row,["id","idweb","numero_avis","reference"]) or ""),
             "title":title,
@@ -97,7 +128,7 @@ def main():
             "source":"BOAMP / DILA","verified":False,**classify(title)
         })
     os.makedirs("data",exist_ok=True)
-    output={"source":"BOAMP — API open data DILA","source_url":"https://boamp-datadila.opendatasoft.com/explore/dataset/boamp/api/","license":"Licence Ouverte / Open Licence","collected_at":datetime.now(timezone.utc).isoformat(),"count":len(notices),"notices":notices}
+    output={"source":"BOAMP — API open data DILA","source_url":"https://boamp-datadila.opendatasoft.com/explore/dataset/boamp/api/","license":"Licence Ouverte / Open Licence","collected_at":datetime.now(timezone.utc).isoformat(),"count":len(notices),"total_available":total_available,"truncated":truncated,"notices":notices}
     tmp=OUT+".tmp"
     with open(tmp,"w",encoding="utf-8") as f: json.dump(output,f,ensure_ascii=False,indent=2)
     os.replace(tmp,OUT)
