@@ -520,3 +520,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Workflow `Tests des règles Firestore` #624 (run `46019701572`) : **completed / success** ; le job `firestore-rules`, la vérification de parité et les tests de l'émulateur sont réussis.
 - Cette confirmation remplace l'état « en cours » indiqué dans la description précédente de la PR. Elle ne vaut pas test réel multi-comptes, export Android, restauration de sauvegarde ou validation de paiements.
 - PR #28 reste ouverte, en brouillon, non fusionnée et non déployée. Aucun accès aux données Firestore réelles, aucune dépense et aucun service payant activé.
+
+
+## Revue des données partagées — 27 novembre 2026
+
+- Relecture des règles Firestore pour `matchRequests`, `matchContacts`, `matchMessages`, `deals` et `dealReviews`.
+- `matchContacts` utilise un ID déterministe `{requestId}_{uid}` et un `ownerUid` ; son export doit retrouver uniquement les demandes acceptées du titulaire et revalider la propriété du document.
+- Les messages, deals et avis sont partagés ; ils ne doivent pas être exportés par copie brute. Ils restent exclus en attendant une projection par titulaire et des tests de règles dédiés.
+- Aucune requête de production, lecture de données utilisateur ou modification de règles n'a été effectuée pendant cette revue statique.
+- Modifications de minimisation de l'export sur la tête courante : commit code `953de57`, test `a143e36`, documentation `f617413`. CI de cette tête : **non confirmé à ce contrôle** ; ne pas déclarer ces changements validés avant résultats.
