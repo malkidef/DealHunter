@@ -40,8 +40,26 @@ function encodeValue(value, seen = new WeakSet()) {
   try {
     if (Array.isArray(value)) return value.map(item => encodeValue(item, seen));
     if (!isPlainObject(value)) throw new TypeError("Objet Firestore ou JavaScript non pris en charge: " + (name || "inconnu"));
+    const keys = Object.keys(value);
+    if (Object.getOwnPropertySymbols(value).length > 0) {
+      throw new TypeError("Clés Symbol non prises en charge");
+    }
+    if (keys.includes("__firestoreType")) {
+      throw new TypeError("Clé réservée __firestoreType interdite dans les données utilisateur");
+    }
     const result = {};
-    for (const key of Object.keys(value).sort()) result[key] = encodeValue(value[key], seen);
+    for (const key of keys.sort()) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, "value")) {
+        throw new TypeError("Accesseur non pris en charge: " + key);
+      }
+      Object.defineProperty(result, key, {
+        value: encodeValue(descriptor.value, seen),
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    }
     return result;
   } finally {
     seen.delete(value);
