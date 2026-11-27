@@ -43,6 +43,20 @@ test("refuse les valeurs non finies, cycles, dates invalides et prototypes incon
   assert.throws(() => encodeValue(undefined), /non pris en charge/);
 });
 
+test("refuse les collisions avec les marqueurs internes et les propriétés à effet de bord", () => {
+  assert.throws(() => encodeValue({ nested: { __firestoreType: "Timestamp", seconds: 1 } }), /Clé réservée/);
+  const withProtoKey = JSON.parse('{"__proto__":{"polluted":true},"safe":1}');
+  const encoded = encodeValue(withProtoKey);
+  assert.equal(Object.prototype.hasOwnProperty.call(encoded, "__proto__"), true);
+  assert.equal(encoded.__proto__.polluted, true);
+  assert.equal({}.polluted, undefined);
+  const withGetter = {};
+  Object.defineProperty(withGetter, "secret", { enumerable: true, get() { throw new Error("getter executed"); } });
+  assert.throws(() => encodeValue(withGetter), /Accesseur/);
+  const withSymbol = { value: 1, [Symbol("hidden")]: 2 };
+  assert.throws(() => encodeValue(withSymbol), /Symbol/);
+});
+
 test("valide le chemin et la structure des documents", () => {
   assert.throws(() => encodeDocument({ path: "", data: {} }), /Chemin/);
   assert.throws(() => encodeDocument({ path: "offers/o1", data: [] }), /objet/);
