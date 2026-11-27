@@ -373,3 +373,16 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les collecteurs BOAMP/BODACC/TED publient quotidiennement ; GSA et SAM publient selon leurs calendriers configurés. Les workflows ont des permissions `contents: write` pour publier leurs fichiers de flux. Les collectes produisent des signaux d'opportunités, pas des stocks confirmés ni des commandes fermes.
 - Cette revue est basée sur le code, les métadonnées et l'historique GitHub ; aucune nouvelle collecte API n'a été déclenchée et aucune donnée Firestore n'a été lue ou modifiée.
 - PR #28 reste non fusionnée et non déployée. Aucun paiement, service payant ou coût engagé.
+
+
+### Limites de couverture des collecteurs — 27 novembre 2026
+
+- Revue statique des scripts de collecte sur la branche de finalisation :
+  - BOAMP : requête limitée à 100 avis, sans pagination dans le collecteur.
+  - BODACC : requête limitée à 100 avis, sans pagination.
+  - TED (collecteur quotidien) : première page uniquement, limite 100 ; le total disponible est conservé comme métadonnée mais les pages suivantes ne sont pas chargées.
+  - SAM.gov : pagination présente, taille de page plafonnée à 1 000 et plafond configurable de 5 000 avis par exécution.
+  - GSA Auctions : le collecteur normalise la liste reçue par l'API ; l'instantané examiné sur la branche contenait 938 annonces au 23 novembre.
+- Conséquence : BOAMP, BODACC et TED sont des échantillons récents, pas des inventaires exhaustifs. Les interfaces et les rapprochements ne doivent pas présenter ces flux comme couvrant tous les avis disponibles.
+- Les tests existants valident des cas de normalisation et de classification ; ils ne démontrent pas une pagination complète BOAMP/BODACC/TED ni une couverture exhaustive des API.
+- Décision : conserver ces limites visibles dans l'évaluation de préparation. Une amélioration de pagination devra inclure gestion des limites API, déduplication par identifiant, arrêt sur page vide, protection contre les réponses partielles et tests sur fixtures ; aucune modification des collecteurs ou collecte réseau n'a été réalisée pendant cette revue.
