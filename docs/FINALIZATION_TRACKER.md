@@ -491,3 +491,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Suppression du paramètre Checkout `payment_method_types` pour laisser Stripe gérer les moyens dynamiques. Tests statiques ajoutés dans `tests/test_ui_navigation.js`, commit `c3b76049682d24320e6dc40e32e0717948e0d81c`.
 - Bloqueurs Stripe : API Connect v1 encore utilisée, SDK `^18.0.0`, capacités v1, reversal de transfert non automatisé à l'ouverture d'un litige après paiement du vendeur, interface d'arbitrage absente, modèle Firestore deals/companies incompatible avec le parcours de vente actuel, tests E2E non exécutés.
 - Ne pas déployer ni activer Stripe avant migration Connect v2, alignement du modèle de données, tests sandbox complets, revue juridique et validation explicite du propriétaire.
+
+## 27 novembre 2026 — contrôle de session avant téléchargement de l’export
+
+- `auth.js` vérifie de nouveau `auth.currentUser.uid` immédiatement avant la création du Blob et le téléchargement.
+- Si le compte a changé pendant les lectures, l’export est interrompu avec un message explicite.
+- Test de non-régression ajouté dans `tests/test_ui_navigation.js`.
+- Commit de code : `a3b3b01`; commit du test : `cc2887b`.
+- CI sur `cc2887b37b6b7d3bd289261e55132b7354b9f11f` : Tests DealHunter #771 **success** ; règles Firestore #621 **success**.
+- Aucune donnée utilisateur lue ou modifiée, aucun export réel exécuté.
+- Limite restante : essais Android et multi-comptes réels indispensables avant de considérer l’export validé en conditions d’usage.
