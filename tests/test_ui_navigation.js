@@ -233,7 +233,7 @@ test("l’export personnel n’interroge pas les collections de données partag�
     "matchRequests", "matchMessages", "matchContacts", "deals", "dealReviews",
     "serviceMatchRequests", "workMatchRequests"
   ]) {
-    assert.doesNotMatch(exporter, new RegExp('["\\\\x27]' + sharedCollection + '["\\\\x27]'),
+    assert.ok(!exporter.includes('"' + sharedCollection + '"') && !exporter.includes("'" + sharedCollection + "'"),
       "La collection partagée " + sharedCollection + " ne doit pas être exportée sans projection dédiée");
   }
   assert.match(exporter, /Demandes de mise en relation impliquant d’autres personnes/);
