@@ -34,6 +34,15 @@ test("une collection en erreur ou partielle marque toute la sauvegarde partielle
   assert.equal(result.totalDocuments, 3);
 });
 
+test("des erreurs présentes invalident le statut complet même si le collecteur l'a marqué complete", () => {
+  const result = createManifest({
+    ...base,
+    collections: [{ path: "offers", documentCount: 2, status: "complete", errors: ["lecture interrompue"] }]
+  });
+  assert.equal(result.status, "partial");
+  assert.equal(result.collections[0].status, "partial");
+});
+
 test("refuse les dates incohérentes, chemins dupliqués et statuts inconnus", () => {
   assert.throws(() => createManifest({ ...base, finishedAt: "2026-11-27T09:00:00Z" }), /temporelle/);
   assert.throws(() => createManifest({ ...base, collections: [base.collections[0], base.collections[0]] }), /doublon/);
