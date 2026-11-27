@@ -125,3 +125,10 @@ La comparaison du point de divergence commun jusqu'à `main` identifie exactemen
 - `data/ted-buyer-opportunities.json`
 
 Aucun fichier source applicatif, règle Firestore, test ou workflow n'apparaît dans ces cinq commits. Il s'agit donc d'un retard de données collectées, pas d'une correction de code manquante. Ces instantanés volumineux ne sont pas importés automatiquement dans la branche de finalisation : leur actualisation doit passer par les collecteurs prévus et leurs contrôles de complétude, sans écrasement aveugle. Le statut divergent de la branche reste volontairement inchangé.
+
+
+### Procédure de sauvegarde locale chiffrée — 27 novembre 2026
+
+Une procédure détaillée est désormais décrite dans `docs/FIRESTORE_BACKUP_RUNBOOK.md`. Elle prévoit un outil local, une identité temporaire strictement en lecture seule, l'authentification courte durée sans clé JSON persistante, un chiffrement avant écriture sur disque, un inventaire récursif des collections et sous-collections, des compteurs/empreintes, puis une restauration uniquement dans un projet isolé ou l'émulateur.
+
+La procédure explicite aussi une limite essentielle : une lecture paginée via SDK ne constitue pas un snapshot transactionnel cohérent à un instant T. Elle doit être présentée comme une sauvegarde logique avec fenêtre de collecte, pas comme une copie atomique Firestore. Aucune commande de production, aucun changement IAM, aucun outil d'export, aucune restauration et aucun coût n'ont été engagés. La sauvegarde reste non opérationnelle tant que l'outil, l'autorisation, l'exécution complète et le test de restauration ne sont pas réalisés.
