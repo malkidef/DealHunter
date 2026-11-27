@@ -438,3 +438,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Tests ajoutés : URL d'offset, récupération multi-pages, plafond et réponse invalide.
 - Commits : collecteur `0886d0bde161d260b8a852769d160b49ddfa8010`, tests `98ded80633999773b4878ea233139b083483250b`.
 - CI à confirmer. Aucun appel réel à l'API BODACC ni écrasement du snapshot de données n'a été effectué.
+
+
+## GSA Auctions — complétude et protection — 27 novembre 2026
+
+- La spécification OpenAPI officielle consultée ne décrit qu'une opération GET `/auctions`, sans paramètres de pagination ni total de résultats. Aucune pagination artificielle n'est ajoutée.
+- `scripts/gsa_auctions.py` déduplique les lots dotés d'un identifiant vente/lot et marque explicitement la complétude comme inconnue. Une réponse vide ne peut plus remplacer le dernier flux valide.
+- Tests ajoutés : déduplication et non-écrasement du flux en cas de réponse vide.
+- Commits : collecteur `52421d69051ba0f6c876afcc2b5b94b49d98eed4`, tests `ad88776edff4a3f2b71927c88bcd65771860917e`.
+- Les tests BOAMP ont réussi sur la version antérieure ; les tests BODACC avaient échoué sur l'absence de la fonction `fetch_records`, corrigée dans `c0dc6f3d51b770acc347a41fa843fcf1c60c17f8`. La CI de ce correctif et des nouveaux tests GSA doit encore confirmer le résultat.
+- Aucune collecte GSA réelle, publication de snapshot ou utilisation de clé API n'a été effectuée.
