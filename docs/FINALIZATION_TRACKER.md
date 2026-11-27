@@ -1,13 +1,14 @@
 # Registre de finalisation — DealHunter
 
-Dernière mise à jour : 25 novembre 2026
+Dernière mise à jour : 27 novembre 2026
 
 Ce document suit les vérifications techniques. Il ne constitue ni une certification de sécurité, ni un avis juridique, ni une autorisation de mise en production.
 
 ## État de la branche de correction
 
-- Branche : `finalization/security-hardening`
-- Pull request : [#21 — Renforcer les règles Firestore et clarifier les imports CSV](https://github.com/malkidef/DealHunter/pull/21)
+- Branche active de finalisation : `finalization/company-verification-current`
+- Pull request active : [#28 — Finaliser les protections de sécurité et les parcours entreprise](https://github.com/malkidef/DealHunter/pull/28)
+- Les références à la PR #21 et à `finalization/security-hardening` dans l'historique ci-dessous décrivent des étapes antérieures, pas la branche active.
 - Base : `main` au commit `dd5c234e52d5733bc37218317686703db9bd337a`
 - La PR est en brouillon et n'est pas fusionnée.
 - Les règles `firestore.rules` et `firebase/firestore.rules` sont identiques dans la branche.
@@ -386,3 +387,16 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Conséquence : BOAMP, BODACC et TED sont des échantillons récents, pas des inventaires exhaustifs. Les interfaces et les rapprochements ne doivent pas présenter ces flux comme couvrant tous les avis disponibles.
 - Les tests existants valident des cas de normalisation et de classification ; ils ne démontrent pas une pagination complète BOAMP/BODACC/TED ni une couverture exhaustive des API.
 - Décision : conserver ces limites visibles dans l'évaluation de préparation. Une amélioration de pagination devra inclure gestion des limites API, déduplication par identifiant, arrêt sur page vide, protection contre les réponses partielles et tests sur fixtures ; aucune modification des collecteurs ou collecte réseau n'a été réalisée pendant cette revue.
+
+
+## Mise à jour — 27 novembre 2026 : CI, divergence et revue des collecteurs
+
+- Commit documentaire contrôlé : `d31268ed01b6e8dd0691c48af27ac4e4c7b001a4`.
+- Workflow `Tests DealHunter` run `45990544578` (#740) : terminé avec succès. Étapes réussies : tests Python, moteur de matching, vérification des fonctions Firebase et validation JavaScript de l'application.
+- Workflow `Tests des règles Firestore` run `45990544500` (#590) : terminé avec succès. Vérification de la synchronisation des règles et tests dans l'émulateur Firestore réussis.
+- La PR #28 est toujours ouverte, en brouillon et non fusionnée. La comparaison `main...finalization/company-verification-current` indique 134 commits en avance et 5 en retard au contrôle du 27 novembre. Les cinq différences de snapshots de données identifiées précédemment restent à analyser ; aucun réalignement, écrasement ou merge n'est effectué.
+- Revue statique des workflows BOAMP, BODACC, TED, GSA et SAM : les flux sont publiés dans le dépôt avec `contents: write`. Les annonces sont des signaux de consultation/revue et ne sont pas des stocks confirmés ni des commandes fermes. Les collecteurs ne sont pas tous équivalents : TED est programmé quotidiennement et sa requête actuelle récupère une seule page de 100 avis sur 45 jours ; SAM et GSA sont programmés tous les deux jours ; BOAMP, BODACC et TED sont quotidiens.
+- Le connecteur TED ne pagine pas actuellement : les résultats au-delà de la première page ne sont pas récupérés. La documentation du connecteur a été corrigée pour refléter cette limite et le calendrier réel.
+- Les workflows de publication ont le droit d'écrire sur la branche qui les déclenche. À préserver lors de la future revue des permissions et de la stratégie de publication ; ne pas transférer ces secrets ou droits aux scripts de lecture.
+- Les tests CI ne valident pas la fraîcheur des sources, la pagination complète, les conditions de réutilisation commerciale, ni la disponibilité réelle des lots. Qualification humaine obligatoire avant publication comme stock.
+- Aucun accès aux données Firestore réelles, aucune sauvegarde, aucun effacement, aucune activation de facturation, aucun paiement et aucun déploiement n'ont été effectués. Dépense : 0 €.
