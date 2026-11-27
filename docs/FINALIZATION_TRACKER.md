@@ -345,3 +345,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les tests verts #737/#587 valident le commit précédent `d2c51ed...`, pas automatiquement tous les commits ultérieurs.
 - PR #28 reste en brouillon. La branche est divergente de `main` (130 commits en avance, 5 en retard au dernier compare) ; aucun rebase, merge ou déploiement effectué.
 - Budget inchangé : aucune dépense ni activation d'un service payant. Stripe et Firebase Blaze restent désactivés.
+
+
+### CI verte et audit des cinq instantanés de données — 27 novembre 2026
+
+- Sur le commit `04154ed9e478acff0f269ca3c99e1977b0695cff`, `Tests DealHunter` #739 (run `45921690357`) : **completed / success** ; `Tests des règles Firestore` #589 (run `45921690312) : **completed / success**, émulateur compris.
+- Comparaison actualisée avec `main` : branche divergente, 131 commits en avance et 5 en retard. Aucun rebase, merge ni écrasement de fichiers n'a été effectué.
+- Les cinq chemins concernés ont été identifiés précisément : `data/boamp-buyer-opportunities.json`, `data/bodacc-business-sales.json`, `data/gsa-auctions.json`, `data/sam-buyer-opportunities.json`, `data/ted-buyer-opportunities.json`.
+- Les SHA de blobs sur `main` diffèrent de ceux de la branche pour les cinq fichiers. Les tailles/versions ne sont donc pas interchangeables ; ils ne doivent pas être copiés ou remplacés sans comparaison de contenu et validation de fraîcheur/source. Les instantanés de données sont préservés des deux côtés.
+- Cette vérification ne prouve pas la fraîcheur ni la qualité des cinq flux ; elle identifie seulement un conflit de versions de fichiers. Les cinq commits en retard ne sont pas intégrés.
+- La tête documentaire suivante doit recevoir ses propres contrôles CI. Aucune action sur les données Firestore, aucune dépense, aucun service payant, aucun déploiement.
