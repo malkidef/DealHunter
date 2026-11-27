@@ -309,3 +309,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Ajout documentaire dans `docs/ACCOUNT_DATA_EXPORT_DESIGN.md`, commit `ccd1f621fe585f7f0d100d2892d1a93c666b3d9e`.
 - Sur le commit parent `967c7b3abfafd0e98960726ef303f76a1876ab20`, `Tests DealHunter` (#731, run `45921173654`) est **success**. `Tests des règles Firestore` (#581, run `45921173659`) est toujours **in_progress** au dernier contrôle ; les tests de l'émulateur sont en cours.
 - Aucune modification du code applicatif, des règles, des données réelles ou des services activés. La CI du nouveau commit documentaire reste à vérifier.
+
+
+### Protocole de triage de demande d'effacement — 27 novembre 2026
+
+- Ajout d'une checklist manuelle et non destructive à `docs/ACCOUNT_ERASURE_DESIGN.md` : vérification proportionnée, inventaire des données, décisions de conservation, simulation, double approbation, exécution idempotente, contrôle des workers et réponse.
+- Séparation explicite des étapes : réception, identité, inventaire, décision, simulation, approbation distincte, exécution, vérification, réponse, clôture.
+- Aucun formulaire utilisateur, aucune purge automatisée, aucun accès ou changement de données réelles ; cette documentation ne remplace pas la validation juridique ni un canal de contact publié.
+- Commit documentaire : `4d00becf5b2bc01bf9e564f37486faad08165ebc`.
+- CI confirmée sur commit documentaire précédent `dfa5b0303b455bb2fba39d995434ae87914e4f86` : `Tests DealHunter` #733 et `Tests des règles Firestore` #583 sont **success**. Ces runs ne couvrent pas le nouveau commit de checklist.
