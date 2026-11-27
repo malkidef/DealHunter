@@ -235,3 +235,8 @@ Ces résultats valident le commit testé, pas les commits ultérieurs.
 ### Décision
 
 La réussite CI est une validation technique utile, mais ne lève pas les blocages de déploiement, de droits RGPD, de contact officiel, de tests réels multi-comptes et de cadre légal. Aucun merge, déploiement ou paiement n'est effectué dans cette étape.
+
+
+## Contrôle CI complémentaire — 27 novembre 2026
+
+Sur le commit `662ec48da02c91a9d8040bf0bd9dcdde20dfe86b`, les workflows `Tests DealHunter` (run `45920762974`, #728) et `Tests des règles Firestore` (run `45920762959`, #578) sont tous deux terminés avec succès. Le second a exécuté avec succès le contrôle de parité et les tests de l'émulateur Firestore. Cette validation CI ne lève pas les bloqueurs de préproduction : parcours réels multi-comptes, export/effacement RGPD complets, sauvegarde restaurable, canal de contact officiel et validation juridique/commerciale restent à traiter. La PR #28 demeure en brouillon, non fusionnée et non déployée.
