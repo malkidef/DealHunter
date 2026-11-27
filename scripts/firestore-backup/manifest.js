@@ -33,13 +33,14 @@ function createManifest({ projectId, startedAt, finishedAt, collections, jsonl }
     if (!["complete", "partial", "error"].includes(item.status)) {
       throw new TypeError("Statut invalide pour " + item.path);
     }
-    if (item.status !== "complete") complete = false;
+    const errors = Array.isArray(item.errors) ? item.errors.map(String) : [];
+    if (item.status !== "complete" || errors.length > 0) complete = false;
     totalDocuments += item.documentCount;
     return {
       path: item.path,
       documentCount: item.documentCount,
-      status: item.status,
-      errors: Array.isArray(item.errors) ? item.errors.map(String) : []
+      status: item.status === "complete" && errors.length > 0 ? "partial" : item.status,
+      errors
     };
   });
 
