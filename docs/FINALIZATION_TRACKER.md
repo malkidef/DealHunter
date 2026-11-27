@@ -429,3 +429,12 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Tests ajoutés à `tests/test_collect_boamp.py` : multi-pages, plafond/troncature et réponse invalide.
 - Commits : collecteur `c3859caa73b45b21ee2497d7835f4ac914fc1b94`, tests `50f516707185c2f351b3179b1fa568d3cc357257`.
 - Validation CI de ces nouveaux commits en attente. Aucun appel réel à l'API BOAMP et aucune publication de snapshot n'ont été lancés.
+
+
+## Pagination BODACC — 27 novembre 2026
+
+- `scripts/collect_bodacc.py` utilise désormais les paramètres Opendatasoft `limit`/`offset`, pages de 100, plafond local de 5 000 avis, total API et indicateur `truncated`.
+- Le filtre demeure strictement limité aux avis `familleavis = 'vente'`. Les données personnelles ne sont toujours pas importées et les annonces restent des signaux de cession d'entreprise/fonds, jamais des stocks.
+- Tests ajoutés : URL d'offset, récupération multi-pages, plafond et réponse invalide.
+- Commits : collecteur `0886d0bde161d260b8a852769d160b49ddfa8010`, tests `98ded80633999773b4878ea233139b083483250b`.
+- CI à confirmer. Aucun appel réel à l'API BODACC ni écrasement du snapshot de données n'a été effectué.
