@@ -204,3 +204,13 @@ test("les champs entreprise sont réinitialisés lors d’un changement de compt
   assert.match(auth, /companyNameInput\.readOnly = false/);
   assert.match(auth, /companyCountryInput\.disabled = false/);
 });
+
+test("l’export personnel est annulé si le compte change pendant sa préparation", () => {
+  const exportStart = auth.indexOf("const exportAccountData = async user =>");
+  const exportEnd = auth.indexOf("if (exportAccountDataButton)", exportStart);
+  assert.ok(exportStart >= 0 && exportEnd > exportStart, "Fonction d’export introuvable");
+  const exporter = auth.slice(exportStart, exportEnd);
+  assert.match(exporter, /if \(auth\.currentUser\?\.uid !== user\.uid\) \{[\s\S]*Le compte a changé pendant la préparation/);
+  assert.ok(exporter.indexOf("Le compte a changé pendant la préparation") < exporter.indexOf("const blob = new Blob"),
+    "Le contrôle de session doit précéder le téléchargement du fichier");
+});
