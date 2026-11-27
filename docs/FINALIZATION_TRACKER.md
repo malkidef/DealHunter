@@ -428,7 +428,7 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Le script conserve le total API lorsqu'il est fourni, expose `total_available` et `truncated`, déduplique les avis et rejette les réponses sans tableau `results`. L'écriture du fichier reste atomique et le flux historique n'est pas touché tant que le collecteur n'est pas exécuté.
 - Tests ajoutés à `tests/test_collect_boamp.py` : multi-pages, plafond/troncature et réponse invalide.
 - Commits : collecteur `c3859caa73b45b21ee2497d7835f4ac914fc1b94`, tests `50f516707185c2f351b3179b1fa568d3cc357257`.
-- Validation CI de ces nouveaux commits en attente. Aucun appel réel à l'API BOAMP et aucune publication de snapshot n'ont été lancés.
+- CI applicative #750 (commit tests BOAMP `50f5167`) : succès ; les trois tests BOAMP de pagination ont passé. Aucun appel réel à l'API BOAMP et aucune publication de snapshot n'ont été lancés.
 
 
 ## Pagination BODACC — 27 novembre 2026
@@ -437,7 +437,7 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Le filtre demeure strictement limité aux avis `familleavis = 'vente'`. Les données personnelles ne sont toujours pas importées et les annonces restent des signaux de cession d'entreprise/fonds, jamais des stocks.
 - Tests ajoutés : URL d'offset, récupération multi-pages, plafond et réponse invalide.
 - Commits : collecteur `0886d0bde161d260b8a852769d160b49ddfa8010`, tests `98ded80633999773b4878ea233139b083483250b`.
-- CI à confirmer. Aucun appel réel à l'API BODACC ni écrasement du snapshot de données n'a été effectué.
+- CI applicative #755 (correctif `c0dc6f3`) : succès, y compris les tests BODACC multi-pages, plafond et réponse invalide. Aucun appel réel à l'API BODACC ni écrasement du snapshot n'a été effectué.
 
 
 ## GSA Auctions — complétude et protection — 27 novembre 2026
@@ -446,7 +446,7 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - `scripts/gsa_auctions.py` déduplique les lots dotés d'un identifiant vente/lot et marque explicitement la complétude comme inconnue. Une réponse vide ne peut plus remplacer le dernier flux valide.
 - Tests ajoutés : déduplication et non-écrasement du flux en cas de réponse vide.
 - Commits : collecteur `52421d69051ba0f6c876afcc2b5b94b49d98eed4`, tests `ad88776edff4a3f2b71927c88bcd65771860917e`.
-- Les tests BOAMP ont réussi sur la version antérieure ; les tests BODACC avaient échoué sur l'absence de la fonction `fetch_records`, corrigée dans `c0dc6f3d51b770acc347a41fa843fcf1c60c17f8`. La CI de ce correctif et des nouveaux tests GSA doit encore confirmer le résultat.
+- CI applicative #756 (commit `52421d6`) : succès pour le code GSA initial. Un test complémentaire a ensuite révélé un appel de déduplication non branché ; le correctif est `08d87a2`, CI applicative #759 : succès. La suite de tests a également été adaptée à l'export paginé (CI #762 : succès).
 - Aucune collecte GSA réelle, publication de snapshot ou utilisation de clé API n'a été effectuée.
 
 
@@ -456,3 +456,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Plafond de 1 000 documents par collection avec détection du document excédentaire ; les erreurs en cours de lecture conservent les documents déjà récupérés et sont signalées dans le manifeste.
 - Version du format d'export portée à 2. Les données partagées/tiers restent exclues : il ne s'agit toujours pas d'un export RGPD exhaustif.
 - Commit : `61bf667ff9719dc7e43dabca4a17b51840167868`. Validation CI et test réel de téléchargement Android encore requis.
+
+
+## État CI — 27 novembre 2026, 13:00 UTC
+
+- BOAMP : tests applicatifs de pagination réussis (#750).
+- BODACC : correctif de fonction de pagination validé par les tests applicatifs (#755).
+- GSA : déduplication et protection contre le flux vide validées sur le code corrigé (#759).
+- Export personnel paginé : tests applicatifs complets réussis sur le commit `24b47160e988392f152a37e3ef703a91fe14bb33` (#762), y compris le contrôle de syntaxe JavaScript et les tests du moteur de matching.
+- Firestore rules #612 : encore en cours au dernier contrôle ; les étapes d'installation sont en cours, l'émulateur n'a pas encore rendu son résultat.
+- Les commits suivants de documentation ont déclenché des exécutions supplémentaires ; ne considérer que les résultats liés au SHA concerné.
