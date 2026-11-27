@@ -235,3 +235,12 @@ Cette section documente l'état initial observé avant la correction. La paginat
 La fonction `exportAccountData` de `auth.js` parcourt désormais les collections personnelles par pages de 250 documents, triées par identifiant Firestore et reprises avec curseur `startAfter`. Le plafond est de 1 000 documents par collection : un document supplémentaire permet de détecter et signaler une troncature. En cas d'erreur au milieu d'une collection, les documents déjà lus sont conservés dans le fichier et l'interruption est signalée dans `limits`. Le format de manifeste passe en version 2.
 
 Cette amélioration ne transforme pas l'export en restitution RGPD complète : les conversations et transactions partagées, les données de tiers et les catégories non encore incluses restent exclues. La limite de 1 000 documents par collection demeure explicite. Le téléchargement Android, les droits sur les champs et la couverture réelle doivent encore être testés avec plusieurs comptes.
+
+
+## 10. Minimisation des demandes de vérification dans l'export — 27 novembre 2026
+
+Les documents `verificationRequests` peuvent contenir des champs ajoutés par la modération, notamment `reviewerNote`, `reviewedAt` ou `revokedAt`. Le titulaire peut lire sa demande dans l'application, mais l'export personnel ne doit pas recopier automatiquement les notes et métadonnées internes de revue.
+
+La fonction d'export applique désormais une liste positive de champs : `ownerUid`, `subjectType`, `subjectName`, `countryCode`, `evidenceLabel`, `publicEvidenceUrl`, `status`, `createdAt` et `updatedAt`. L'identifiant Firestore du document est conservé. Les champs non listés sont exclus par défaut. Un test statique vérifie notamment l'absence de `reviewerNote`, `reviewedAt` et `revokedAt` dans cette projection.
+
+Cette mesure est une minimisation technique, pas une décision juridique exhaustive sur l'accès aux éléments de modération. Elle n'ajoute aucune lecture ni écriture Firestore et ne modifie aucune donnée source.
