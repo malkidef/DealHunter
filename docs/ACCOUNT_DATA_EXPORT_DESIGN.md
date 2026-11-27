@@ -228,3 +228,10 @@ Cette revue est statique : elle ne constitue pas un test multi-comptes réel ni 
 - Une erreur de lecture partielle n'empêche pas le téléchargement du reste : le message d'interface signale le nombre d'erreurs et le manifeste les détaille. Il faut conserver cet avertissement visible dans toute évolution de l'export.
 
 Cette section est une inspection statique du code existant, pas une modification de l'export ni une preuve de fonctionnement sur appareils réels.
+
+
+## Mise à jour — pagination de l'export navigateur (27 novembre 2026)
+
+La fonction `exportAccountData` de `auth.js` parcourt désormais les collections personnelles par pages de 250 documents, triées par identifiant Firestore et reprises avec curseur `startAfter`. Le plafond est de 1 000 documents par collection : un document supplémentaire permet de détecter et signaler une troncature. En cas d'erreur au milieu d'une collection, les documents déjà lus sont conservés dans le fichier et l'interruption est signalée dans `limits`. Le format de manifeste passe en version 2.
+
+Cette amélioration ne transforme pas l'export en restitution RGPD complète : les conversations et transactions partagées, les données de tiers et les catégories non encore incluses restent exclues. La limite de 1 000 documents par collection demeure explicite. Le téléchargement Android, les droits sur les champs et la couverture réelle doivent encore être testés avec plusieurs comptes.
