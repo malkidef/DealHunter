@@ -244,3 +244,17 @@ Les documents `verificationRequests` peuvent contenir des champs ajoutés par la
 La fonction d'export applique désormais une liste positive de champs : `ownerUid`, `subjectType`, `subjectName`, `countryCode`, `evidenceLabel`, `publicEvidenceUrl`, `status`, `createdAt` et `updatedAt`. L'identifiant Firestore du document est conservé. Les champs non listés sont exclus par défaut. Un test statique vérifie notamment l'absence de `reviewerNote`, `reviewedAt` et `revokedAt` dans cette projection.
 
 Cette mesure est une minimisation technique, pas une décision juridique exhaustive sur l'accès aux éléments de modération. Elle n'ajoute aucune lecture ni écriture Firestore et ne modifie aucune donnée source.
+
+
+### 9.2 Revue des données partagées et règle de minimisation — 27 novembre 2026
+
+La revue des règles Firestore confirme les périmètres suivants :
+
+- `matchRequests` : lecture réservée aux deux UID de `participantUids`. Les documents contiennent des identifiants des deux parties, des noms d'entreprise, le produit et le statut du parcours.
+- `matchContacts` : un document est déterministe par `{requestId}_{uid}`. Le champ `ownerUid` doit correspondre à l'UID du titulaire. La lecture n'est permise qu'aux participants d'une demande acceptée. Le document contient email, téléphone, entreprise et date de partage : ces champs sont propres au titulaire qui les a partagés, mais leur export exige de retrouver les seules demandes acceptées du titulaire et de vérifier à nouveau `ownerUid` et l'identifiant déterministe.
+- `matchMessages` : les messages sont des échanges partagés. Une extraction par auteur seul ne restituerait pas correctement le contexte de conversation et pourrait divulguer le contenu d'un tiers. Ils restent exclus de l'export actuel ; leur restitution nécessite une conception dédiée, avec minimisation des messages de tiers et des métadonnées.
+- `deals` et `dealReviews` : ces documents impliquent deux participants et des informations commerciales. Ils restent exclus de l'export actuel. Il faut définir une projection par titulaire et vérifier les champs relatifs à l'autre partie avant de les inclure.
+
+**Décision technique actuelle :** ne pas ajouter de lecture globale des collections partagées. Ne pas exporter `matchContacts` tant que le parcours d'énumération des demandes acceptées et ses règles/index ne sont pas couverts par des tests de règles dédiés. Ne pas inclure les messages, accords commerciaux ou avis par simple copie du document. La limite est déclarée dans le manifeste existant.
+
+Cette revue est statique. Aucun document de production n'a été lu, aucune donnée utilisateur n'a été modifiée et aucun export réel n'a été lancé. Les décisions juridiques sur le droit d'accès aux données partagées restent à valider avant lancement.
