@@ -1270,6 +1270,19 @@ if (!ready) {
       readOwnDocument("verification_entreprise", ["companyVerifications", user.uid])
     ]);
 
+    // Les demandes de vérification peuvent contenir des notes internes de revue.
+    // Ne restituer que les champs soumis par le titulaire et l'état de sa demande.
+    const verificationRequestExportFields = [
+      "ownerUid", "subjectType", "subjectName", "countryCode", "evidenceLabel",
+      "publicEvidenceUrl", "status", "createdAt", "updatedAt"
+    ];
+    collections.demandes_verification = (collections.demandes_verification || []).map(item => ({
+      id: item.id,
+      ...Object.fromEntries(verificationRequestExportFields
+        .filter(field => Object.prototype.hasOwnProperty.call(item, field))
+        .map(field => [field, item[field]]))
+    }));
+
     const normalize = value => {
       if (value && typeof value.toDate === "function") return value.toDate().toISOString();
       if (Array.isArray(value)) return value.map(normalize);
