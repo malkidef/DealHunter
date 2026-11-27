@@ -196,3 +196,23 @@ Le test multi-comptes couvre désormais également la requête filtrée sur `mat
 La règle de lecture des contacts appelle `acceptedRequest(resource.data.requestId)`. Une requête de collection filtrée uniquement par `ownerUid == uid` ne garantit pas à elle seule que chaque document renvoyé référence une demande acceptée à laquelle le compte participe. Ne pas implémenter cette requête large en supposant qu'elle passera les règles.
 
 La stratégie documentée et testée est donc : partir de la liste des demandes produit acceptées déjà autorisées pour le titulaire ; lire le document de contact déterministe `requestId + "_" + uid` ; vérifier que son `ownerUid` correspond au titulaire ; ne jamais lire ou exporter le document `requestId + "_" + otherUid` dans son export. Le test multi-comptes vérifie l'accès par identifiant, et la distinction entre le contact propre et celui de l'autre participant. Le test ne prétend pas qu'une requête de collection par propriétaire est autorisée.
+
+
+## 9. Revue du code d'export existant — 27 novembre 2026
+
+Contrôle statique de `auth.js` sur la branche de finalisation :
+- L'export est bien relié au bouton du compte et utilise exclusivement `auth.currentUser` / l'UID du compte courant ; il exige une adresse e-mail vérifiée et une connexion récente (15 minutes).
+- Les collections principales sont filtrées par `ownerUid`, `reporterUid` ou `recipientUid`. Les sous-collections privées sont lues sous le chemin `users/{uid}` du compte courant.
+- Chaque collection est plafonnée à 500 documents avec une lecture de contrôle à 501 ; il n'y a pas encore de pagination. Un dépassement ou une erreur est indiqué dans le manifeste, mais le résultat reste partiel.
+- Le fichier JSON indique explicitement les familles partagées exclues : conversations/messages, demandes impliquant d'autres personnes, transactions/avis et coordonnées de tiers. Aucun document partagé brut n'est ajouté.
+- Les timestamps Firestore sont convertis en ISO 8601 ; le fichier est téléchargé localement et n'est pas téléversé.
+- La fonction ne lit pas encore les demandes/messages/transactions/avis/coordonnées partagés et ne couvre pas les données détenues par les fournisseurs, journaux internes ou caches locaux. Elle ne doit donc pas être présentée comme un export exhaustif au titre du droit d'accès.
+
+### Vérifications encore requises avant extension
+1. Tests réels sur deux comptes successifs dans le même navigateur, puis un tiers, pour vérifier l'isolation UID et le contenu du fichier.
+2. Vérifier le comportement du téléchargement sur Android et ordinateur.
+3. Tester explicitement le cas de plus de 500 documents et rendre la limite visible avant téléchargement, ou mettre en place une pagination bornée.
+4. Définir et valider une politique pour les messages/commentaires libres et les données transactionnelles partagées avant d'ajouter ces catégories.
+5. Ne pas modifier les règles Firestore pour contourner une requête refusée ; chaque ajout doit conserver les filtres démontrés par les tests de règles.
+
+Cette revue est statique : elle ne constitue pas un test multi-comptes réel ni une validation juridique. Aucun document utilisateur n'a été lu ou modifié et aucune donnée de production n'a été exportée.
