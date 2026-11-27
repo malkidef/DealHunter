@@ -112,3 +112,16 @@ Commit testé : `79f4fdf8d161d5d881791ce8653e31c80fbd67a3`.
 - Workflow **Tests des règles Firestore** : terminé, résultat `success`, job `firestore-rules` compris.
 - Le test statique qui vérifie que l'export personnel n'interroge pas directement les collections partagées est inclus dans ce commit et couvert par le workflow applicatif.
 - Ces résultats valident les suites automatisées exécutées, pas les parcours de production, la sauvegarde, les paiements, ni la conformité juridique.
+
+
+### Analyse des cinq commits présents uniquement sur main — 27 novembre 2026
+
+La comparaison du point de divergence commun jusqu'à `main` identifie exactement cinq commits en retard sur la branche de finalisation. Les cinq ne modifient que des instantanés de données générés automatiquement :
+
+- `data/boamp-buyer-opportunities.json`
+- `data/bodacc-business-sales.json`
+- `data/gsa-auctions.json`
+- `data/sam-buyer-opportunities.json`
+- `data/ted-buyer-opportunities.json`
+
+Aucun fichier source applicatif, règle Firestore, test ou workflow n'apparaît dans ces cinq commits. Il s'agit donc d'un retard de données collectées, pas d'une correction de code manquante. Ces instantanés volumineux ne sont pas importés automatiquement dans la branche de finalisation : leur actualisation doit passer par les collecteurs prévus et leurs contrôles de complétude, sans écrasement aveugle. Le statut divergent de la branche reste volontairement inchangé.
