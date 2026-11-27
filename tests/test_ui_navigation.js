@@ -214,3 +214,12 @@ test("l’export personnel est annulé si le compte change pendant sa préparati
   assert.ok(exporter.indexOf("Le compte a changé pendant la préparation") < exporter.indexOf("const blob = new Blob"),
     "Le contrôle de session doit précéder le téléchargement du fichier");
 });
+
+
+test("l’export des demandes de vérification exclut les notes et métadonnées internes de revue", () => {
+  assert.match(auth, /verificationRequestExportFields = \[/);
+  assert.match(auth, /"evidenceLabel",\s*"publicEvidenceUrl",\s*"status",\s*"createdAt",\s*"updatedAt"/);
+  assert.match(auth, /collections\.demandes_verification = \(collections\.demandes_verification \|\| \[\]\)\.map/);
+  assert.match(auth, /Object\.fromEntries\(verificationRequestExportFields/);
+  assert.doesNotMatch(auth.slice(auth.indexOf("const verificationRequestExportFields"), auth.indexOf("const normalize = value")), /reviewerNote|reviewedAt|revokedAt/);
+});
