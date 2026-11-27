@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: "20"
       - name: Exécuter les tests du moteur de matching
-        run: node --test tests/test_matching.js tests/test_frontend_matching.js tests/test_firestore_adapter.js tests/test_service_matching.js tests/test_work_matching.js tests/test_listing_dedupe.js tests/test_ui_navigation.js
+        run: node --test tests/test_matching.js tests/test_frontend_matching.js tests/test_firestore_adapter.js tests/test_service_matching.js tests/test_work_matching.js tests/test_listing_dedupe.js tests/test_ui_navigation.js tests/test_firestore_backup_serializer.js
       - name: Vérifier les fonctions Firebase
         run: |
           node --check functions/matching/src/firestore-adapter.js
