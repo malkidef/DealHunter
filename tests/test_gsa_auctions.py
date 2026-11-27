@@ -1,5 +1,10 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
+from scripts import gsa_auctions as collector
 from scripts.gsa_auctions import extract_results, normalize_listing
 
 
@@ -90,6 +95,28 @@ class GsaAuctionsMappingTests(unittest.TestCase):
         self.assertEqual(row["description"], "Electric forklift")
         self.assertEqual(row["auction_status"], "active")
         self.assertEqual(row["high_bid_usd"], "1200.00")
+
+
+    def test_deduplicates_only_identified_sale_lots(self):
+        rows = [
+            {"SaleNo": "S1", "LotNo": 1},
+            {"saleNo": "S1", "lotNo": 1},
+            {"SaleNo": "S1", "LotNo": 2},
+            {"ItemName": "No stable identifier"},
+        ]
+        unique, duplicates = collector.deduplicate_results(rows)
+        self.assertEqual(len(unique), 3)
+        self.assertEqual(duplicates, 1)
+
+    def test_empty_input_does_not_overwrite_existing_feed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "empty.json"
+            destination = Path(temp_dir) / "existing.json"
+            source.write_text(json.dumps({"Results": []}), encoding="utf-8")
+            destination.write_text("previous-good-feed", encoding="utf-8")
+            with patch("sys.argv", ["gsa_auctions.py", "--input", str(source), "--output", str(destination)]):
+                self.assertEqual(collector.main(), 1)
+            self.assertEqual(destination.read_text(encoding="utf-8"), "previous-good-feed")
 
 
 if __name__ == "__main__":
