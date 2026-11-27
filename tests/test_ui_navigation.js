@@ -4,6 +4,19 @@ import { test } from "node:test";
 
 const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const auth = fs.readFileSync(new URL("../auth.js", import.meta.url), "utf8");
+const payments = fs.readFileSync(new URL("../firebase/functions/src/payments.js", import.meta.url), "utf8");
+
+test("les fonctions Stripe utilisent le même claim administrateur que les règles Firestore", () => {
+  assert.match(payments, /request\.auth\.token\.dealhunterAdmin !== true/);
+  assert.doesNotMatch(payments, /request\.auth\.token\.admin !== true/);
+});
+
+test("Checkout Stripe laisse Stripe sélectionner dynamiquement les moyens de paiement", () => {
+  assert.match(payments, /checkout\.sessions\.create/);
+  assert.doesNotMatch(payments, /payment_method_types/);
+  assert.match(payments, /stripeClient\(\)\.webhooks\.constructEvent/);
+});
+
 
 test("chaque onglet visible possède une destination réelle", () => {
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map(match => match[1]);
