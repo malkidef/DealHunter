@@ -33,6 +33,29 @@ def build_api_url(limit=PAGE_SIZE, offset=0):
     return f"{BASE}/catalog/datasets/{DATASET}/records?{urllib.parse.urlencode(params)}"
 
 
+def fetch_records():
+    """Fetch bounded Opendatasoft pages and report completeness."""
+    rows = []
+    total_available = 0
+    offset = 0
+    while offset < MAX_RECORDS:
+        payload = get_json(build_api_url(limit=PAGE_SIZE, offset=offset))
+        page = payload.get("results") if isinstance(payload, dict) else None
+        if not isinstance(page, list):
+            raise RuntimeError("Réponse BODACC invalide : résultats absents; ancien flux conservé.")
+        try:
+            total_available = max(total_available, int(payload.get("total_count", total_available) or 0))
+        except (TypeError, ValueError):
+            pass
+        if not page:
+            break
+        rows.extend(page)
+        offset += len(page)
+        if len(page) < PAGE_SIZE or (total_available and offset >= total_available):
+            break
+    return rows[:MAX_RECORDS], total_available, (total_available > MAX_RECORDS and len(rows) >= MAX_RECORDS)
+
+
 def normalize_notice(row, collected_at):
     """Keep only minimal non-personal metadata; never treat a legal notice as stock."""
     notice_id = str(row.get("id") or "").strip()
