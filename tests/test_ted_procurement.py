@@ -111,8 +111,12 @@ class TedCollectorPaginationTests(unittest.TestCase):
             def __exit__(self, *args): return False
             def read(self): return json.dumps({"timedOut": True}).encode()
         try:
-            collector.urlopen = lambda request, timeout: FakeResponse()
-            with self.assertRaises(RuntimeError):
-                collector.fetch_page("PD>=20261101", 1)
+            original_open = collector.urllib.request.urlopen
+            collector.urllib.request.urlopen = lambda request, timeout: FakeResponse()
+            try:
+                with self.assertRaises(RuntimeError):
+                    collector.fetch_page("PD>=20261101", 1)
+            finally:
+                collector.urllib.request.urlopen = original_open
         finally:
-            collector.urlopen = original
+            pass
