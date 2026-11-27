@@ -529,3 +529,13 @@ Commit contrôlé : `e29de7a9365574ee680c653a3e6f7d5c01a70d20`.
 - Les messages, deals et avis sont partagés ; ils ne doivent pas être exportés par copie brute. Ils restent exclus en attendant une projection par titulaire et des tests de règles dédiés.
 - Aucune requête de production, lecture de données utilisateur ou modification de règles n'a été effectuée pendant cette revue statique.
 - Modifications de minimisation de l'export sur la tête courante : commit code `953de57`, test `a143e36`, documentation `f617413`. CI de cette tête : **non confirmé à ce contrôle** ; ne pas déclarer ces changements validés avant résultats.
+
+
+## État de finalisation consolidé — 27 novembre 2026
+
+- PR #28 : ouverte, en brouillon, non fusionnée et non déployée. Comparaison avec `main` : 181 commits en avance, 5 en retard ; aucune synchronisation automatique effectuée.
+- Commit `ce2f0ca55e923f5c8d74df40bbf7f21b4bfcbc7e` : Tests DealHunter **success** et Tests des règles Firestore **success**, job émulateur inclus.
+- Test statique d'exclusion des collections partagées ajouté ensuite dans `tests/test_ui_navigation.js`, commit `99c92d9e61bdbe4d11993dad4f2190d149daef0c`. CI sur cette tête : **aucun résultat retourné au contrôle** ; test en attente de validation automatisée.
+- Sauvegarde/restauration chiffrée, test Android, test multi-comptes, export complet, effacement automatisé, sandbox Stripe, E2E paiements et revue juridique/opérationnelle restent non validés.
+- Aucun accès aux données Firestore de production, aucune modification de données utilisateur, aucune dépense, aucun service payant activé, aucun paiement, merge ou déploiement.
+- La liste des portes restantes et l'ordre prudent de finalisation sont détaillés dans `docs/OPERATIONS_READINESS.md`.
