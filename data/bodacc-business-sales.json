@@ -4,7 +4,7 @@
   "api_url": "https://bodacc-datadila.opendatasoft.com/explore/dataset/annonces-commerciales/api/",
   "license": "Licence Ouverte / Open Licence 2.0",
   "attribution": "Données : DILA / BODACC",
-  "collected_at": "2026-11-27T15:36:02.185052+00:00",
+  "collected_at": "2026-11-28T14:31:19.425214+00:00",
   "count": 100,
   "notice_type": "Ventes et cessions d'entreprises ou de fonds",
   "important_notice": "Ces annonces légales signalent des ventes ou cessions. Elles ne décrivent pas des stocks disponibles et ne constituent pas des offres de marchandises.",
@@ -23,7 +23,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228363",
@@ -39,7 +39,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228430",
@@ -55,7 +55,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228553",
@@ -71,7 +71,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228810",
@@ -87,7 +87,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228848",
@@ -103,7 +103,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228776",
@@ -119,7 +119,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281303",
@@ -135,7 +135,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281304",
@@ -151,7 +151,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281429",
@@ -167,7 +167,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281474",
@@ -183,7 +183,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281493",
@@ -199,7 +199,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281502",
@@ -215,7 +215,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281505",
@@ -231,7 +231,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281510",
@@ -247,7 +247,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281512",
@@ -263,7 +263,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281517",
@@ -279,7 +279,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281520",
@@ -295,7 +295,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281526",
@@ -311,7 +311,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281990",
@@ -327,7 +327,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282212",
@@ -343,7 +343,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282224",
@@ -359,7 +359,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282225",
@@ -375,7 +375,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282279",
@@ -391,7 +391,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282475",
@@ -407,7 +407,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282634",
@@ -423,7 +423,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602283049",
@@ -439,7 +439,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282",
@@ -455,7 +455,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A2026022825",
@@ -471,7 +471,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228139",
@@ -487,7 +487,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228294",
@@ -503,7 +503,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228345",
@@ -519,7 +519,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228814",
@@ -535,7 +535,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281204",
@@ -551,7 +551,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281309",
@@ -567,7 +567,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281468",
@@ -583,7 +583,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281473",
@@ -599,7 +599,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281477",
@@ -615,7 +615,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281481",
@@ -631,7 +631,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281494",
@@ -647,7 +647,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281516",
@@ -663,7 +663,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281528",
@@ -679,7 +679,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281434",
@@ -695,7 +695,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281435",
@@ -711,7 +711,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282108",
@@ -727,7 +727,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282061",
@@ -743,7 +743,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282280",
@@ -759,7 +759,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282362",
@@ -775,7 +775,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282366",
@@ -791,7 +791,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282370",
@@ -807,7 +807,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228140",
@@ -823,7 +823,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228170",
@@ -839,7 +839,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228343",
@@ -855,7 +855,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228511",
@@ -871,7 +871,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228663",
@@ -887,7 +887,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228811",
@@ -903,7 +903,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228854",
@@ -919,7 +919,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228965",
@@ -935,7 +935,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281273",
@@ -951,7 +951,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281296",
@@ -967,7 +967,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281300",
@@ -983,7 +983,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281301",
@@ -999,7 +999,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281485",
@@ -1015,7 +1015,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282101",
@@ -1031,7 +1031,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282369",
@@ -1047,7 +1047,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228304",
@@ -1063,7 +1063,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228514",
@@ -1079,7 +1079,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228515",
@@ -1095,7 +1095,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228549",
@@ -1111,7 +1111,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228554",
@@ -1127,7 +1127,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228851",
@@ -1143,7 +1143,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228855",
@@ -1159,7 +1159,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228902",
@@ -1175,7 +1175,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281233",
@@ -1191,7 +1191,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281295",
@@ -1207,7 +1207,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281428",
@@ -1223,7 +1223,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281472",
@@ -1239,7 +1239,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281488",
@@ -1255,7 +1255,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281499",
@@ -1271,7 +1271,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281500",
@@ -1287,7 +1287,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281501",
@@ -1303,7 +1303,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281504",
@@ -1319,7 +1319,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281513",
@@ -1335,7 +1335,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281519",
@@ -1351,7 +1351,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281430",
@@ -1367,7 +1367,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602283051",
@@ -1383,7 +1383,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A2026022845",
@@ -1399,7 +1399,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228518",
@@ -1415,7 +1415,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228664",
@@ -1431,7 +1431,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228812",
@@ -1447,7 +1447,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228962",
@@ -1463,7 +1463,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A20260228779",
@@ -1479,7 +1479,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281492",
@@ -1495,7 +1495,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281437",
@@ -1511,7 +1511,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602281986",
@@ -1527,7 +1527,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282084",
@@ -1543,7 +1543,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282106",
@@ -1559,7 +1559,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282364",
@@ -1575,7 +1575,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282371",
@@ -1591,7 +1591,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     },
     {
       "source_listing_id": "A202602282372",
@@ -1607,7 +1607,7 @@
       "review_status": "pending",
       "signal_type": "cession_entreprise_ou_fonds",
       "is_inventory": false,
-      "collected_at": "2026-11-27T15:36:02.185052+00:00"
+      "collected_at": "2026-11-28T14:31:19.425214+00:00"
     }
   ]
 }
