@@ -2,7 +2,7 @@
   "source": "BOAMP — API open data DILA",
   "source_url": "https://boamp-datadila.opendatasoft.com/explore/dataset/boamp/api/",
   "license": "Licence Ouverte / Open Licence",
-  "collected_at": "2026-11-27T15:15:49.121809+00:00",
+  "collected_at": "2026-11-28T14:19:37.058248+00:00",
   "count": 100,
   "notices": [
     {
@@ -790,6 +790,48 @@
       "reason": "Marché principalement lié à une prestation de services."
     },
     {
+      "id": "26_115528",
+      "title": "Travaux de remplacement de certaines menuiseries extérieures de divers sites des membres du Ght",
+      "buyer": "Hus-Etablissement support du Ght 10",
+      "place": "67, 57",
+      "deadline": "",
+      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115528",
+      "source": "BOAMP / DILA",
+      "verified": false,
+      "category": "Travaux et construction",
+      "kind": "travaux",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à des travaux."
+    },
+    {
+      "id": "26_115513",
+      "title": "Notation financière de la SEMAPA, de ses programmes et de ses émissions à court et long termes",
+      "buyer": "SEMAPA",
+      "place": "75",
+      "deadline": "2027-01-12T12:00:00+00:00",
+      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115513",
+      "source": "BOAMP / DILA",
+      "verified": false,
+      "category": "À qualifier",
+      "kind": "inconnu",
+      "relevance": "à vérifier",
+      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
+    },
+    {
+      "id": "26_115552",
+      "title": "Marché d’assistance technique à maitrise d’ouvrage (ATMO) commissionnement - Projet BRIFFAUT COMMUN à Valence (26)",
+      "buyer": "Soderec - Université Grenoble Alpes (38)",
+      "place": "26",
+      "deadline": "2026-12-22T17:00:00+00:00",
+      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115552",
+      "source": "BOAMP / DILA",
+      "verified": false,
+      "category": "Services et prestations",
+      "kind": "services",
+      "relevance": "faible",
+      "reason": "Marché principalement lié à une prestation de services."
+    },
+    {
       "id": "26_114492",
       "title": "Fourniture de droits d'usage de licences Microsoft 365 pour la ville de Douai",
       "buyer": "Mairie de Douai",
@@ -1362,48 +1404,6 @@
       "kind": "inconnu",
       "relevance": "à vérifier",
       "reason": "Intitulé insuffisant pour déterminer le type de besoin."
-    },
-    {
-      "id": "26_115233",
-      "title": "SCY-CHAZELLES - site  du Mont-Saint-Quentin –  Lot 6 – Maçonnerie –  Pierre de taille",
-      "buyer": "EPFGE",
-      "place": "57",
-      "deadline": "2027-01-06T17:00:00+00:00",
-      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115233",
-      "source": "BOAMP / DILA",
-      "verified": false,
-      "category": "À qualifier",
-      "kind": "inconnu",
-      "relevance": "à vérifier",
-      "reason": "Intitulé insuffisant pour déterminer le type de besoin."
-    },
-    {
-      "id": "26_115260",
-      "title": "Marché 26CA18  Travaux d’assainissement, de mise en séparatif domaine public / privé et de renouvellement du réseau d’eau potable - Rues du Pavillon et Sandras à APPOIGNY (89)",
-      "buyer": "Communauté de l'Auxerrois",
-      "place": "89",
-      "deadline": "2026-12-18T12:00:00+00:00",
-      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115260",
-      "source": "BOAMP / DILA",
-      "verified": false,
-      "category": "Travaux et construction",
-      "kind": "travaux",
-      "relevance": "faible",
-      "reason": "Marché principalement lié à des travaux."
-    },
-    {
-      "id": "26_115210",
-      "title": "Nettoyage des locaux du siège du SYSEM",
-      "buyer": "SYSEM",
-      "place": "56",
-      "deadline": "",
-      "url": "https://www.boamp.fr/pages/avis/?q=idweb:26-115210",
-      "source": "BOAMP / DILA",
-      "verified": false,
-      "category": "Services et prestations",
-      "kind": "services",
-      "relevance": "faible",
-      "reason": "Marché principalement lié à une prestation de services."
     }
   ]
 }
